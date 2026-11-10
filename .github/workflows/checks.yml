@@ -14,6 +14,6 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci
-      - run: swift run SaveNestChecks
+      - run: swift run --disable-get-task-allow-entitlement SaveNestChecks
       - run: npm test
       - run: npm run build:native
