@@ -14,6 +14,7 @@
     { id: 'archive', title: 'Search archive', detail: 'Links tucked away for later', symbol: 'archive', scope: 'Archive', keywords: 'archived archive restore' },
     { id: 'save-selected', title: 'Save selected browser tabs', detail: 'Choose tabs from your browser window', symbol: 'tabs', command: 'capture', action: 'selected', keywords: 'save selected bulk tabs' },
     { id: 'save-window', title: 'Save all tabs in the current window', detail: 'Keep a whole browsing session', symbol: 'tabs', command: 'capture', action: 'window', keywords: 'save all window bulk tabs' },
+    { id: 'close-duplicates', title: 'Close duplicate tabs', detail: 'Keep one copy of each page in every browser window', symbol: 'tabs', command: 'capture', action: 'duplicates', keywords: 'duplicates duplicate repeated close tabs' },
     { id: 'clipboard', title: 'Save copied link', detail: 'Save a URL from your clipboard', symbol: 'copy', command: 'saveClipboard', keywords: 'clipboard paste copied save link' },
     { id: 'history-sources', title: 'Browser history sources', detail: 'History access, connected profiles and privacy', symbol: 'history', ui: 'sources', keywords: 'history sources privacy access permission pause enable disable' },
     { id: 'settings', title: 'Settings', detail: 'Appearance, shortcuts and capture preferences', symbol: 'settings', command: 'settings', keywords: 'settings preferences hotkey keyboard shortcut theme appearance' },

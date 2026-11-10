@@ -2,7 +2,7 @@
 
 [Back to the project](../README.md) · [Privacy](privacy.md)
 
-Local development now includes a [Read & note workspace](read-and-note.md): article preview beside an Obsidian Markdown file. This feature has not been published yet.
+The [Read & note workspace](read-and-note.md) opens an article beside its Obsidian Markdown file. It is available in the 0.12 preview series.
 
 ## Launcher
 
