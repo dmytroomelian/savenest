@@ -7,6 +7,7 @@ import SwiftUI
 /// account credentials and authorization never cross into the web renderer.
 @MainActor
 final class ElectronBridge {
+    static let settingsWindowIdentifier = NSUserInterfaceItemIdentifier("SaveNest.Settings")
     private let model: AppModel
     private var subscriptions = Set<AnyCancellable>()
     private var pendingSnapshot: DispatchWorkItem?
@@ -39,7 +40,9 @@ final class ElectronBridge {
         model.closeCaptureEditor = { [weak self] in self?.event("editorSaved") }
         model.showTabSelection = { [weak self] _ in self?.event("show"); self?.scheduleSnapshot() }
         model.closeTabSelection = { [weak self] in self?.event("selectionClosed") }
+        model.updater.requestHostCheck = { [weak self] in self?.event("checkForUpdates") }
         model.objectWillChange.sink { [weak self] in self?.scheduleSnapshot() }.store(in: &subscriptions)
+        model.updater.objectWillChange.sink { [weak self] in self?.scheduleSnapshot() }.store(in: &subscriptions)
         model.notes.objectWillChange.sink { [weak self] in self?.scheduleSnapshot() }.store(in: &subscriptions)
         model.tabSearch.objectWillChange.sink { [weak self] in self?.scheduleSnapshot() }.store(in: &subscriptions)
         model.$library.dropFirst().receive(on: DispatchQueue.main).sink { [weak self] library in
@@ -76,10 +79,10 @@ final class ElectronBridge {
 
     private func snapshot() {
         let search = model.tabSearch
-        // Native utility sheets can contain unsaved email/tag text that is not in
-        // the renderer draft. Include visible panels (including import/export),
-        // and fail closed while either host is still completing an operation.
-        let canRestartForUpdate = !NSApp.windows.contains { $0.isVisible }
+        // Plain Settings can stay open for an update. Every other native window,
+        // sheet, editable field, and active shortcut recorder still blocks restart.
+        let hasBlockingWindow = NSApp.windows.contains { $0.isVisible && !isPlainSettingsWindow($0) }
+        let canRestartForUpdate = !hasBlockingWindow && NSApp.modalWindow == nil
             && model.draft == nil && model.tabSelection == nil
             && !model.showingAdd && !model.showingTags && model.sharingLink == nil
             && model.cleanupReview == nil && !model.isCapturing && !model.isCleaningTabs
@@ -145,6 +148,7 @@ final class ElectronBridge {
         state["canUndo"] = model.canUndoLastAction
         state["canSave"] = model.canWriteLibrary
         state["canRestartForUpdate"] = canRestartForUpdate
+        state["updater"] = model.updater.hostStatus
         state["onboarding"] = model.showingOnboarding
         state["analyticsEnabled"] = model.analyticsEnabled
         state["showUsageNotice"] = model.analyticsEnabled && !model.hasSeenUsageNotice
@@ -163,6 +167,18 @@ final class ElectronBridge {
         state["notesStatus"] = model.notes.status()
         Self.write(["event": "state", "state": state])
     }
+
+    private func isPlainSettingsWindow(_ window: NSWindow) -> Bool {
+        guard window.identifier == Self.settingsWindowIdentifier,
+              model.section == .settings, window.attachedSheet == nil else { return false }
+        if let editor = window.firstResponder as? NSTextView, editor.isEditable { return false }
+        func isRecording(in view: NSView) -> Bool {
+            if let recorder = view as? RecorderButton, recorder.recording { return true }
+            return view.subviews.contains { isRecording(in: $0) }
+        }
+        return window.contentView.map { !isRecording(in: $0) } ?? false
+    }
+
     private func linkFields(_ link: SavedLink) -> [String: Any] {
         ["id": link.id.uuidString, "title": link.title, "url": link.url, "note": link.note, "tags": link.tags]
     }
@@ -179,6 +195,7 @@ final class ElectronBridge {
         var tags: [String]?
         var action: String?
         var enabled: Bool?
+        var updateState: String?
         var documentId: String?
         var text: String?
         var revision: String?
@@ -278,6 +295,12 @@ final class ElectronBridge {
                !["app.savenest.mac", "app.savenest.electron", "org.electronjs.Electron"].contains(front.bundleIdentifier ?? "") { previousApplication = front }
         case "restoreFocus": previousApplication?.activate(options: [])
         case "snapshot": snapshot()
+        case "updateStatus":
+            guard let enabled = request.enabled, let state = request.updateState,
+                  model.updater.receiveHostStatus(enabled: enabled, state: state) else {
+                throw Failure(message: "Invalid update status.")
+            }
+        case "checkForUpdates": model.updater.checkForUpdates()
         case "search":
             if let scope = request.scope, let value = TabScope(rawValue: scope) { search.scope = value }
             if let query = request.query { search.query = String(query.prefix(2_000)) }

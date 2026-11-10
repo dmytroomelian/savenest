@@ -131,6 +131,7 @@ exports.run = async ({ workspace, native, root }) => {
   const pending = (await state()).text + '\nSaved while closing.\n';
   await js(`window.workspaceTest.setText(${JSON.stringify(pending)})`);
   assert.equal(await workspace.close(), true);
+  await wait(() => workspace.window === null, 'workspace finishes closing before reopen');
   assert.equal(await fs.readFile(copied.document.path, 'utf8'), pending);
   await workspace.open({ command: 'readerCurrent' });
   win = workspace.window;

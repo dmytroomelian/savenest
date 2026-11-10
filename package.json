@@ -1,7 +1,7 @@
 {
   "name": "savenest-desktop",
   "productName": "SaveNest",
-  "version": "0.12.2",
+  "version": "0.12.3",
   "private": true,
   "description": "SaveNest Electron desktop with native macOS capture and local storage",
   "main": "electron/main.cjs",

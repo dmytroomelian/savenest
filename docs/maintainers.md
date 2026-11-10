@@ -25,6 +25,8 @@ Signing uses a temporary workspace outside synced Desktop/iCloud folders, where 
 
 Electron checks and downloads updates only when requested. Installation/restart requires confirmation and a fresh check that no launcher or native draft is active. Squirrel verifies the downloaded app's signing identity. The Swift helper's Sparkle updater is disabled in Electron builds.
 
+Settings sends manual checks to the Electron host and receives its current status. Its button is available independently of the standalone native automatic-check preference; only an active check/download temporarily disables it. A plain Settings window does not block restart, but its unfinished field edits, shortcut recording, sheets, and Account view do. Failed installation restores the launcher without stopping the helper. Development and preview hosts never contact the release feed.
+
 The native Sparkle feed and Electron's Squirrel feeds remain separate update formats. The native feed may offer the prepared 0.11.1 preview as a one-time migration into Electron, subject to the requirements below. Subsequent Electron updates use Squirrel; neither the outer Electron app nor its embedded helper starts Sparkle.
 
 Both interfaces use the same library path and Keychain services; startup rejects a second library writer. These implementation choices do not establish installed-app preservation. Full migration acceptance remains pending. Recommend an export backup before either an in-app or manual upgrade. For manual installation, quit the existing app before replacement.

@@ -211,6 +211,8 @@ exports.run = async ({ win, native, root, show, toggle }) => {
   toggle(); await wait(() => !win.isVisible(), 'hotkey toggle hides launcher');
   await show();
   assert.deepEqual(errors, []);
-  native.stop(); await wait(() => native.child.exitCode !== null, 'helper exits with parent pipe');
+  await require('./updater-smoke.cjs').run({ native, win });
+  native.stop();
+  await wait(() => native.child.exitCode !== null || native.child.signalCode !== null, 'helper shuts down after parent pipe closes');
   assert.deepEqual(privacyPreferences(), originalPreferences, 'preview must not change live privacy/history preferences');
 };

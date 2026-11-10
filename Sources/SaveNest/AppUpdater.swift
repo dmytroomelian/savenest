@@ -3,24 +3,32 @@ import Combine
 import Sparkle
 import SwiftUI
 
-/// One updater shared by the menus and Settings. Sparkle owns its preferences.
+/// Native Settings delegates to Electron when embedded; standalone releases use Sparkle.
 @MainActor
 final class AppUpdater: NSObject, ObservableObject, NSMenuItemValidation {
+    enum UpdateState: String {
+        case idle, checking, downloading, downloaded, error, current
+    }
+
     @Published private(set) var canCheckForUpdates = false
     @Published private(set) var automaticallyChecksForUpdates = false
     @Published private(set) var unavailableReason: String?
+    @Published private(set) var updateState: UpdateState = .idle
+    let usesElectronUpdater = ProcessInfo.processInfo.arguments.contains("--electron-bridge")
+    var requestHostCheck: (() -> Void)?
+    private var hostUpdatesEnabled = false
     private var controller: SPUStandardUpdaterController?
 
     override init() {
         super.init()
-        guard !AppLaunch.isPreview else {
-            unavailableReason = "Updates are disabled in SaveNest Preview."
+        // Only the host can grant update capability. Never initialize Sparkle
+        // inside its helper, including previews with simulated host status.
+        if usesElectronUpdater {
+            unavailableReason = AppLaunch.isPreview ? "Updates are disabled in SaveNest Preview." : "Preparing update checks…"
             return
         }
-        // The embedded Swift helper must never apply a native Sparkle release
-        // over the Electron application, even if its plist is misconfigured.
-        guard !ProcessInfo.processInfo.arguments.contains("--electron-bridge") else {
-            unavailableReason = "Use SaveNest → Check & Download Updates in the application menu."
+        guard !AppLaunch.isPreview else {
+            unavailableReason = "Updates are disabled in SaveNest Preview."
             return
         }
         guard Bundle.main.bundleIdentifier == "app.savenest.mac",
@@ -46,12 +54,61 @@ final class AppUpdater: NSObject, ObservableObject, NSMenuItemValidation {
     }
 
     func setAutomaticChecks(_ enabled: Bool) {
-        guard unavailableReason == nil else { return }
+        guard !usesElectronUpdater, unavailableReason == nil else { return }
         controller?.updater.automaticallyChecksForUpdates = enabled
+    }
+
+    @discardableResult
+    func receiveHostStatus(enabled: Bool, state: String) -> Bool {
+        guard usesElectronUpdater, let value = UpdateState(rawValue: state) else { return false }
+        hostUpdatesEnabled = enabled
+        updateState = value
+        unavailableReason = enabled ? nil : AppLaunch.isPreview
+            ? "Updates are disabled in SaveNest Preview."
+            : "Updates are available in the installed release of SaveNest."
+        canCheckForUpdates = enabled && value != .checking && value != .downloading
+        return true
+    }
+
+    var buttonTitle: String {
+        guard usesElectronUpdater else { return "Check for Updates…" }
+        switch updateState {
+        case .checking: return "Checking…"
+        case .downloading: return "Downloading…"
+        case .downloaded: return "Install Update…"
+        default: return "Check for Updates…"
+        }
+    }
+
+    var statusMessage: String {
+        if let unavailableReason { return unavailableReason }
+        guard usesElectronUpdater else {
+            return "SaveNest checks for new versions in the background. You choose when to download and install them."
+        }
+        switch updateState {
+        case .idle: return "Check when you’re ready. Available updates download after you start a check."
+        case .checking: return "Checking for a new version of SaveNest…"
+        case .downloading: return "Downloading the update. You can keep using SaveNest."
+        case .downloaded: return "The update is ready. Install now or the next time you quit SaveNest."
+        case .error: return "Couldn’t check or download the update. Check your connection and try again."
+        case .current: return "You’re using the latest available version of SaveNest."
+        }
+    }
+
+    var hostStatus: [String: Any] {
+        ["enabled": hostUpdatesEnabled, "state": updateState.rawValue,
+         "canCheckForUpdates": canCheckForUpdates, "buttonTitle": buttonTitle,
+         "statusMessage": statusMessage]
     }
 
     @objc func checkForUpdates(_ sender: Any? = nil) {
         guard canCheckForUpdates, unavailableReason == nil else { return }
+        if usesElectronUpdater {
+            guard let requestHostCheck else { return }
+            if updateState != .downloaded { receiveHostStatus(enabled: hostUpdatesEnabled, state: UpdateState.checking.rawValue) }
+            requestHostCheck()
+            return
+        }
         NSApp.activate(ignoringOtherApps: true)
         controller?.checkForUpdates(sender)
     }
@@ -76,16 +133,18 @@ struct AppUpdateSettingsView: View {
             HStack {
                 Text("SaveNest \(version)").font(.system(size: 12, weight: .medium))
                 Spacer()
-                Button("Check for Updates…") { updater.checkForUpdates() }
+                Button(updater.buttonTitle) { updater.checkForUpdates() }
                     .buttonStyle(QuietButton())
                     .disabled(!updater.canCheckForUpdates || updater.unavailableReason != nil)
             }
-            Toggle("Automatically check for updates", isOn: Binding(
-                get: { updater.automaticallyChecksForUpdates },
-                set: { updater.setAutomaticChecks($0) }
-            ))
-            .disabled(updater.unavailableReason != nil)
-            Text(updater.unavailableReason ?? "SaveNest checks for new versions in the background. You choose when to download and install them.")
+            if !updater.usesElectronUpdater {
+                Toggle("Automatically check for updates", isOn: Binding(
+                    get: { updater.automaticallyChecksForUpdates },
+                    set: { updater.setAutomaticChecks($0) }
+                ))
+                .disabled(updater.unavailableReason != nil)
+            }
+            Text(updater.statusMessage)
                 .font(.system(size: 11)).foregroundStyle(Color.muted)
                 .fixedSize(horizontal: false, vertical: true)
         }.padding(20).nestSurface()
