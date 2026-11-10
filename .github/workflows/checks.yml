@@ -6,7 +6,7 @@ permissions:
   contents: read
 jobs:
   desktop:
-    runs-on: macos-14
+    runs-on: macos-15-intel
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
@@ -14,6 +14,15 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci
-      - run: swift run SaveNestChecks
+      - name: Build and run core checks
+        run: |
+          swift build --disable-get-task-allow-entitlement --product SaveNestChecks
+          checks_binary="$(swift build --show-bin-path)/SaveNestChecks"
+          codesign --force --sign - "$checks_binary"
+          codesign --verify --strict "$checks_binary"
+          "$checks_binary"
+      - name: Diagnose check launch failure
+        if: failure()
+        run: /usr/bin/log show --last 2m --style compact --predicate 'eventMessage CONTAINS "SaveNestChecks"' | tail -80
       - run: npm test
       - run: npm run build:native

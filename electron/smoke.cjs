@@ -42,6 +42,8 @@ exports.run = async ({ win, native, root, show, toggle }) => {
   assert.equal(win.getBounds().width, 760);
   assert.equal(await js("document.querySelectorAll('.sidebar').length"), 0);
   assert.equal(state.launcherShortcut, '⌘O');
+  assert.equal(state.shortcuts.length, 7, 'native state exposes all configurable shortcuts');
+  assert.equal(state.shortcuts.find(binding => binding.id === 'search').key, state.launcherShortcut);
   assert.equal(await js('typeof require'), 'undefined'); assert.equal(await js('typeof process'), 'undefined');
   assert.equal(win.webContents.getLastWebPreferences().sandbox, true);
   assert.equal(win.webContents.getLastWebPreferences().contextIsolation, true);
@@ -152,6 +154,50 @@ exports.run = async ({ win, native, root, show, toggle }) => {
   assert.equal(await js("document.querySelectorAll('#results .row').length >= 10"), true);
   await fs.mkdir(path.join(root, 'build'), { recursive: true });
   await fs.writeFile(path.join(root, 'build/launcher-preview.png'), (await win.webContents.capturePage()).toPNG());
+  const initialAppearance = state.appearance;
+  // Exercise appearance delivery without writing the user's saved preference.
+  for (const appearance of ['black', 'cream']) {
+    native.emit('event', { event: 'state', state: { ...state, appearance } });
+    await wait(() => js(`document.documentElement.dataset.appearance === '${appearance}'`), appearance + ' appearance');
+    await painted();
+    await fs.writeFile(path.join(root, `build/launcher-${appearance}.png`), (await win.webContents.capturePage()).toPNG());
+  }
+  native.emit('event', { event: 'state', state: { ...state, appearance: initialAppearance } });
+  assert.equal(await js("getComputedStyle(document.getElementById('search')).outlineStyle"), 'none', 'launcher search stays borderless when focused');
+  assert.equal(await js("document.getElementById('open-settings').getBoundingClientRect().width > 0 && document.getElementById('show-shortcuts').getBoundingClientRect().width > 0"), true, 'settings and shortcut help remain visible');
+
+  // App commands remain discoverable even when a scoped search has no pages.
+  await scope('Saved'); await type('unmatched-discovery-fixture');
+  await wait(() => js("document.querySelectorAll('#results .row').length === 0"), 'empty scoped search');
+  await key('k', { metaKey: true });
+  assert.equal(await js("document.getElementById('action-dialog').open"), true);
+  assert.equal(await js("Boolean(document.querySelector('[data-action-id=\"command:settings\"]'))"), true);
+  await js("document.getElementById('action-search').value='saved'; document.getElementById('action-search').dispatchEvent(new Event('input'))");
+  await key('Enter');
+  await wait(() => state.scope === 'Saved' && state.query === '' && state.rows.length > 0, 'global saved search action');
+  await scope('All');
+  native.emit('event', { event: 'state', state: { ...state, appearance: 'black' } });
+  await key('k', { metaKey: true });
+  await painted();
+  await fs.writeFile(path.join(root, 'build/launcher-global-actions.png'), (await win.webContents.capturePage()).toPNG());
+  await key('Escape');
+
+  await js("document.getElementById('show-shortcuts').click()");
+  assert.equal(await js("document.getElementById('shortcuts-dialog').open"), true);
+  assert.equal(await js("document.getElementById('shortcut-list').textContent.includes('Global shortcuts are inactive in this preview.')"), true);
+  const selectedBeforeHelp = await js("document.querySelector('#results .row.selected')?.dataset.id");
+  await key('ArrowDown');
+  assert.equal(await js("document.querySelector('#results .row.selected')?.dataset.id"), selectedBeforeHelp, 'help shields the result selection');
+  await painted();
+  await fs.writeFile(path.join(root, 'build/launcher-shortcuts.png'), (await win.webContents.capturePage()).toPNG());
+  await key('Escape');
+  assert.equal(await js("document.getElementById('shortcuts-dialog').open"), false);
+  assert.equal(win.isVisible(), true, 'closing help keeps launcher visible');
+  await key('/', { metaKey: true });
+  assert.equal(await js("document.getElementById('shortcuts-dialog').open"), true, 'keyboard shortcut opens help');
+  await key('Escape');
+  native.emit('event', { event: 'state', state: { ...state, appearance: initialAppearance } });
+
   await type('raycast'); await key('k', { metaKey: true });
   await wait(() => js("document.getElementById('action-dialog').open"), 'actions screenshot');
   await painted();

@@ -2,13 +2,17 @@
 
 [Back to the project](../README.md) · [Privacy](privacy.md)
 
-Local development now includes a [Read & note workspace](read-and-note.md): article preview beside an Obsidian Markdown file. This feature has not been published yet.
+The [Read & note workspace](read-and-note.md) opens an article beside its Obsidian Markdown file. It is available in the 0.12 preview series.
 
 ## Launcher
 
-Press **⌘O**, then type. Commands, open tabs, saved links, notes, tags, and recent browser history share one search. **Enter** runs the selected command, switches to an open tab, or opens a saved/visited page. **⌘K** shows actions for that result. Pasting a URL offers **Save this link**. Saving with a note and choosing multiple tabs happen inside the same panel.
+Press **⌘O**, then type. Commands, open tabs, saved links, notes, tags, and recent browser history share one search. **Enter** runs the selected command, switches to an open tab, or opens a saved/visited page. Pasting a URL offers **Save this link**. Saving with a note and choosing multiple tabs happen inside the same panel. The launcher keeps its borderless search field, scope dropdown, quick actions, and result list.
 
-The floating launcher opens on the display containing the pointer, including over fullscreen apps, and stays out of the Dock. Click elsewhere to hide it. Escape closes actions, goes back from an editor or scope, then dismisses root search. Unsaved edits require an explicit discard. The launcher remembers context for 60 seconds; after that it resets root search unless a draft is open. **⌘O** toggles it. The old **⌘⇧O** default migrates automatically; custom shortcuts remain unchanged and can be edited through the searchable Settings command.
+Click **Actions** or press **⌘K** for actions on the selected page and app-wide commands. The searchable panel includes **Settings**, **Keyboard shortcuts**, all search scopes, capture actions, and library tools. It remains available in every search scope, even when there are no results. For example, choose **Actions → Search saved links** to browse your saved library, or **Search all pages** to return to the combined search. Changing scope starts a fresh query. Use the arrow keys and Enter to choose an action, or click it.
+
+**Settings** and **Shortcuts** stay visible in the footer, including while editing a link. Click **Shortcuts** or press **⌘/** to open the keyboard guide; Escape or **⌘/** closes it. The guide separates launcher keys from shortcuts that work in other apps and displays your configured capture bindings, including missing assignments or registration errors. **Customize in Settings** opens the shortcut preferences. Preview mode shows the bindings but does not register global shortcuts.
+
+The floating launcher opens on the display containing the pointer, including over fullscreen apps, and stays out of the Dock. Click elsewhere to hide it. Escape closes actions, goes back from an editor or scope, then dismisses root search. Unsaved edits require an explicit discard. The launcher remembers context for 60 seconds; after that it resets root search unless a draft is open. **⌘O** toggles it. The old **⌘⇧O** default migrates automatically; custom shortcuts remain unchanged and can be edited in Settings.
 
 Account, Settings, sharing, and system dialogs retain their native implementation and are reachable from root search. Optional email sign-in and existing billing management are handled by savenest.app; links and notes remain local. Existing saved links and Keychain sessions use the same storage, with no conversion. Settings → Appearance changes both interfaces. [Launcher design](launcher-design.md).
 

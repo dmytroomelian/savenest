@@ -1,0 +1,93 @@
+/* Shared material and color system for the launcher and reading desk. */
+:root {
+  color-scheme: dark;
+  --paper: #111e30;
+  --surface: rgba(163, 199, 231, .08);
+  --raised: rgba(169, 205, 237, .14);
+  --ink: #f0f6ff;
+  --muted: #adbed0;
+  --faint: #8b9fb7;
+  --line: rgba(190, 216, 245, .13);
+  --accent: #6dc6ff;
+  --accent-fill: #0873c7;
+  --on-accent: #fff;
+  --selected: rgba(56, 147, 237, .2);
+  --error: #ffafa8;
+  --article: #132238;
+  --glass-tint: rgba(10, 23, 40, .74);
+  --glass-highlight: rgba(230, 244, 255, .2);
+  --glass-shadow: 0 18px 55px rgba(0, 9, 24, .25);
+  --glass-dialog: rgba(21, 38, 59, .96);
+  --glass-input: rgba(5, 18, 33, .25);
+  --glass-glow: rgba(35, 129, 232, .17);
+  --glass-cyan: rgba(97, 193, 218, .09);
+  font: 13px -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+}
+
+:root[data-appearance="cream"] {
+  color-scheme: light;
+  --paper: #edf3fa;
+  --surface: rgba(255, 255, 255, .42);
+  --raised: rgba(255, 255, 255, .7);
+  --ink: #1c304a;
+  --muted: #526981;
+  --faint: #5d748d;
+  --line: rgba(50, 87, 127, .16);
+  --accent: #0873c7;
+  --accent-fill: #0873c7;
+  --selected: rgba(45, 139, 232, .12);
+  --error: #b23435;
+  --article: #f8fbff;
+  --glass-tint: rgba(231, 240, 250, .79);
+  --glass-highlight: rgba(255, 255, 255, .9);
+  --glass-shadow: 0 18px 55px rgba(29, 58, 92, .12);
+  --glass-dialog: rgba(242, 248, 255, .98);
+  --glass-input: rgba(255, 255, 255, .5);
+  --glass-glow: rgba(99, 172, 249, .12);
+  --glass-cyan: rgba(130, 210, 229, .08);
+}
+
+body { background: transparent; isolation: isolate; }
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  border-radius: 22px;
+  background:
+    radial-gradient(ellipse at 100% 0%, var(--glass-cyan), transparent 60%),
+    radial-gradient(ellipse at 0% 100%, var(--glass-glow), transparent 65%),
+    var(--glass-tint);
+}
+::selection { background: var(--selected); color: var(--ink); }
+::-webkit-scrollbar { width: 7px; height: 7px; }
+::-webkit-scrollbar-thumb { background: var(--line); border: 2px solid transparent; background-clip: padding-box; border-radius: 8px; }
+::-webkit-scrollbar-thumb:hover { background-color: var(--faint); }
+
+/* A solid base keeps both themes legible when macOS disables transparency. */
+@media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+  :root {
+    --glass-tint: var(--paper);
+    --glass-dialog: var(--paper);
+    --glass-input: var(--article);
+    --glass-glow: transparent;
+    --glass-cyan: transparent;
+  }
+  :root[data-appearance="cream"] {
+    --glass-tint: var(--paper);
+    --glass-dialog: var(--paper);
+    --glass-input: var(--article);
+    --glass-glow: transparent;
+    --glass-cyan: transparent;
+  }
+  body::before { background: var(--paper); }
+  * { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
+}
+@media (prefers-contrast: more) {
+  :root { --line: #788ea8; --muted: #d6e3f3; --faint: #c1d2e6; }
+  :root[data-appearance="cream"] { --line: #647e9a; --muted: #2c4663; --faint: #3a5572; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+}

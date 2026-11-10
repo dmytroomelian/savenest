@@ -4,10 +4,11 @@ const fs = require('node:fs/promises');
 const path = require('node:path');
 const { randomUUID } = require('node:crypto');
 const { WORKSPACE_URL, noteCommands, validateWorkspaceCommand, trustedWorkspaceSender, webURL, clampBounds } = require('./workspace-contracts.cjs');
+const { glassWindowOptions } = require('./window-material.cjs');
 
 class ReadingWorkspace {
-  constructor({ native, preview, userData, appearance = () => 'black', onOpen = () => {} }) {
-    Object.assign(this, { native, preview, userData, appearance, onOpen });
+  constructor({ native, preview, userData, appearance = () => 'black', onOpen = () => {}, onWindow = () => {} }) {
+    Object.assign(this, { native, preview, userData, appearance, onOpen, onWindow });
     this.window = null; this.source = null; this.payload = null; this.dirty = false;
     this.original = null; this.generation = 0; this.documentGeneration = 0; this.pendingFlushes = new Map(); this.documents = new Set();
     this.operations = 0; this.closing = false; this.allowClose = false;
@@ -43,9 +44,10 @@ class ReadingWorkspace {
     this.allowClose = false;
     this.window = new BrowserWindow({ width, height, minWidth: 640, minHeight: 480, show: false,
       title: this.preview ? 'Read & Note — SaveNest Preview' : 'Read & Note — SaveNest',
-      titleBarStyle: 'hiddenInset', backgroundColor: this.appearance() === 'cream' ? '#faf9f6' : '#191a1d',
+      titleBarStyle: 'hiddenInset', ...glassWindowOptions,
       webPreferences: { preload: path.join(__dirname, 'workspace-preload.cjs'), sandbox: true, nodeIntegration: false, contextIsolation: true, webSecurity: true, webviewTag: false }
     });
+    this.onWindow(this.window);
     this.window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
     this.window.webContents.on('will-navigate', event => event.preventDefault());
     this.window.webContents.on('will-attach-webview', event => event.preventDefault());

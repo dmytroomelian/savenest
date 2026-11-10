@@ -45,7 +45,7 @@ function assetName(raw) {
     const url = new URL(raw);
     if (url.protocol !== 'savenest-ui:' || url.hostname !== 'app' || url.port || url.username || url.password) return null;
     const name = url.pathname.slice(1);
-    return ['index.html', 'launcher-model.js', 'renderer.js', 'styles.css', 'workspace.html', 'workspace.js', 'workspace.css'].includes(name) ? name : null;
+    return ['index.html', 'launcher-model.js', 'renderer.js', 'styles.css', 'glass.css', 'workspace.html', 'workspace.js', 'workspace.css'].includes(name) ? name : null;
   } catch { return null; }
 }
 

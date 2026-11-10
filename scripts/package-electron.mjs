@@ -115,7 +115,7 @@ for (const directory of apps) {
     sha256: hash.digest('hex'), size: (await stat(archive)).size };
   const feed = { currentRelease: manifest.version, releases: [{ version: manifest.version, updateTo: {
     version: manifest.version, url: artifact.url, name: `SaveNest ${manifest.version}`,
-    notes: 'Free local saving, unified launcher, local browser-history search, and clear privacy controls.',
+    notes: 'Glass appearance, global Actions, visible Settings, and a keyboard shortcut guide. Includes the save-with-note dismissal fix.',
     pub_date: new Date().toISOString(), sha256: artifact.sha256, size: artifact.size
   } }] };
   await mkdir(path.join(releaseDirectory, architecture), { recursive: true });

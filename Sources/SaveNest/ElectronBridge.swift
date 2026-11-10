@@ -99,27 +99,69 @@ final class ElectronBridge {
             if let date = item.history?.lastVisited { row["lastVisited"] = ISO8601DateFormatter().string(from: date) }
             return row
         }
-        Self.write(["event": "state", "state": [
-            "rows": rows, "totalCount": search.results.count, "query": search.query, "scope": search.scope.rawValue,
-            "resultsQuery": search.resultsQuery, "resultsScope": search.resultsScope.rawValue,
-            "loading": search.loading, "loadingContext": search.loadingContext,
-            "contextUnavailable": search.contextUnavailable, "busy": search.busy,
-            "message": model.error ?? search.message ?? model.toast?.message ?? "",
-            "error": model.error != nil, "preview": model.isPreview,
-            "appearance": AppAppearance.saved.rawValue,
-            "canUndo": model.canUndoLastAction, "canSave": model.canWriteLibrary,
-            "canRestartForUpdate": canRestartForUpdate,
-            "onboarding": model.showingOnboarding,
-            "analyticsEnabled": model.analyticsEnabled, "showUsageNotice": model.analyticsEnabled && !model.hasSeenUsageNotice,
-            "launcherShortcut": (model.shortcuts[.search] ?? CaptureAction.search.defaultShortcut).label,
-            "shortcutError": model.shortcutErrors[.search] ?? "",
-            "openCount": search.tabs.count, "savedCount": model.activeCount,
-            "historyCount": search.history.count, "historyEnabled": search.historyEnabled, "loadingHistory": search.loadingHistory,
-            "historySources": search.historySources.map { ["browser": $0.source.browser, "profile": $0.source.profile, "count": $0.count, "issue": $0.issue ?? ""] as [String: Any] },
-            "captureDraft": model.draft.map { self.linkFields($0.link) } as Any? ?? NSNull(),
-            "captureSelection": model.tabSelection.map { ["id": $0.id.uuidString, "links": $0.links.map(self.linkFields)] as [String: Any] } as Any? ?? NSNull(),
-            "tags": model.allTags, "notesStatus": model.notes.status()
-        ]])
+        let shortcuts: [[String: Any]] = CaptureAction.allCases.map { action in
+            // AppModel has already resolved stored bindings and defaults. A missing
+            // or unassigned entry must not advertise a shortcut that is not registered.
+            let shortcut = model.shortcuts[action]
+            let assigned = shortcut?.isAssigned == true
+            return [
+                "id": action.rawValue, "title": action.title,
+                "key": assigned ? shortcut?.label ?? "" : "", "assigned": assigned,
+                "error": model.shortcutErrors[action] ?? ""
+            ]
+        }
+        let historySources: [[String: Any]] = search.historySources.map { source in
+            [
+                "browser": source.source.browser, "profile": source.source.profile,
+                "count": source.count, "issue": source.issue ?? ""
+            ]
+        }
+        var captureDraft: Any = NSNull()
+        if let draft = model.draft {
+            captureDraft = linkFields(draft.link)
+        }
+        var captureSelection: Any = NSNull()
+        if let selection = model.tabSelection {
+            let links: [[String: Any]] = selection.links.map(linkFields)
+            captureSelection = ["id": selection.id.uuidString, "links": links] as [String: Any]
+        }
+
+        // Keep expressions small for the Swift compiler shipped with older Xcode versions.
+        var state: [String: Any] = [:]
+        state["rows"] = rows
+        state["totalCount"] = search.results.count
+        state["query"] = search.query
+        state["scope"] = search.scope.rawValue
+        state["resultsQuery"] = search.resultsQuery
+        state["resultsScope"] = search.resultsScope.rawValue
+        state["loading"] = search.loading
+        state["loadingContext"] = search.loadingContext
+        state["contextUnavailable"] = search.contextUnavailable
+        state["busy"] = search.busy
+        state["message"] = model.error ?? search.message ?? model.toast?.message ?? ""
+        state["error"] = model.error != nil
+        state["preview"] = model.isPreview
+        state["appearance"] = AppAppearance.saved.rawValue
+        state["canUndo"] = model.canUndoLastAction
+        state["canSave"] = model.canWriteLibrary
+        state["canRestartForUpdate"] = canRestartForUpdate
+        state["onboarding"] = model.showingOnboarding
+        state["analyticsEnabled"] = model.analyticsEnabled
+        state["showUsageNotice"] = model.analyticsEnabled && !model.hasSeenUsageNotice
+        state["launcherShortcut"] = (model.shortcuts[.search] ?? CaptureAction.search.defaultShortcut).label
+        state["shortcutError"] = model.shortcutErrors[.search] ?? ""
+        state["shortcuts"] = shortcuts
+        state["openCount"] = search.tabs.count
+        state["savedCount"] = model.activeCount
+        state["historyCount"] = search.history.count
+        state["historyEnabled"] = search.historyEnabled
+        state["loadingHistory"] = search.loadingHistory
+        state["historySources"] = historySources
+        state["captureDraft"] = captureDraft
+        state["captureSelection"] = captureSelection
+        state["tags"] = model.allTags
+        state["notesStatus"] = model.notes.status()
+        Self.write(["event": "state", "state": state])
     }
     private func linkFields(_ link: SavedLink) -> [String: Any] {
         ["id": link.id.uuidString, "title": link.title, "url": link.url, "note": link.note, "tags": link.tags]
