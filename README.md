@@ -4,7 +4,7 @@ Save links. Keep the context. Find them again with **⌘O**.
 
 SaveNest is a free, open-source macOS launcher for saved links, notes, open browser tabs, and recent history. Your library stays on your Mac. Local features work without an account or subscription.
 
-[Download preview](https://github.com/dmytro-omelian/savenest/releases/tag/v0.12.1) · [Website](https://savenest.app) · [Contribute](CONTRIBUTING.md) · [Report a bug](https://github.com/dmytro-omelian/savenest/issues/new?template=bug.yml)
+[Download preview](https://github.com/dmytro-omelian/savenest/releases/tag/v0.12.2) · [Website](https://savenest.app) · [Contribute](CONTRIBUTING.md) · [Report a bug](https://github.com/dmytro-omelian/savenest/issues/new?template=bug.yml)
 
 [![Checks](https://github.com/dmytro-omelian/savenest/actions/workflows/checks.yml/badge.svg)](https://github.com/dmytro-omelian/savenest/actions/workflows/checks.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
@@ -23,7 +23,7 @@ Press **⌘O** to open the launcher, **Enter** to open a result, and **⌘K** fo
 
 ## Try the app
 
-Download the [signed 0.12.1 preview](https://github.com/dmytro-omelian/savenest/releases/tag/v0.12.1) for **macOS 14+**, on Apple Silicon or Intel.
+Download the [signed 0.12.2 preview](https://github.com/dmytro-omelian/savenest/releases/tag/v0.12.2) for **macOS 14+**, on Apple Silicon or Intel.
 
 This is still a preview. Installed-app migration, offline import/export, live browser permissions, Intel runtime, and real update checks remain open. See the [acceptance checklist](docs/preview-acceptance.md). Before upgrading, export a backup. Native 0.10.0 can install this preview through **SaveNest → Check for Updates…**. Quit the old app first only when installing manually.
 
