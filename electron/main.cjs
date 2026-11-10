@@ -1,11 +1,12 @@
 'use strict';
-const { app, BrowserWindow, Menu, Tray, nativeImage, ipcMain, protocol, session, dialog, screen, autoUpdater } = require('electron');
+const { app, BrowserWindow, Menu, Tray, nativeImage, nativeTheme, ipcMain, protocol, session, dialog, screen, autoUpdater } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs/promises');
 const { NativeClient } = require('./native-client.cjs');
 const { createUpdater, canRestartSafely } = require('./updater.cjs');
 const { APP_URL, validateCommand, trustedSender, assetName } = require('./contracts.cjs');
 const { ReadingWorkspace } = require('./workspace.cjs');
+const { glassWindowOptions, updateWindowMaterial } = require('./window-material.cjs');
 
 const preview = !app.isPackaged && process.argv.includes('--preview');
 const smoke = preview && process.argv.includes('--smoke-test');
@@ -20,6 +21,15 @@ let win, tray, native, updater, workspace, latestState, fatalError, quitting = f
 let currentView = 'root';
 let hiddenAt = 0, showing = false, modalDepth = 0, blurTimer;
 const callbacks = [];
+
+function refreshWindowMaterials() {
+  const appearance = latestState?.appearance || 'black';
+  const theme = appearance === 'cream' ? 'light' : 'dark';
+  if (nativeTheme.themeSource !== theme) nativeTheme.themeSource = theme;
+  const options = { appearance, reducedTransparency: nativeTheme.prefersReducedTransparency, highContrast: nativeTheme.shouldUseHighContrastColors };
+  updateWindowMaterial(win, options);
+  updateWindowMaterial(workspace?.window, options);
+}
 
 function send(event) { if (win && !win.isDestroyed()) win.webContents.send('savenest:event', event); }
 function position() {
@@ -106,9 +116,11 @@ async function start() {
     width: 760, height: 520, show: false, frame: false, type: 'panel',
     resizable: false, minimizable: false, maximizable: false, fullscreenable: false,
     alwaysOnTop: true, skipTaskbar: true, roundedCorners: true, hasShadow: true,
-    title: preview ? 'SaveNest Preview' : 'SaveNest', backgroundColor: '#17181b',
+    title: preview ? 'SaveNest Preview' : 'SaveNest', ...glassWindowOptions,
     webPreferences: { preload: path.join(__dirname, 'preload.cjs'), nodeIntegration: false, contextIsolation: true, sandbox: true, webSecurity: true, webviewTag: false }
   });
+  refreshWindowMaterials();
+  nativeTheme.on('updated', refreshWindowMaterials);
   win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
   win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   win.webContents.on('will-navigate', event => event.preventDefault());
@@ -165,10 +177,11 @@ async function start() {
   createMenu();
   const helper = app.isPackaged ? path.join(process.resourcesPath, 'SaveNest.app') : path.join(root, 'build/electron-native/SaveNest.app');
   native = new NativeClient(path.join(helper, 'Contents/MacOS/SaveNest'), { preview, readerLive });
-  workspace = new ReadingWorkspace({ native, preview: preview && !readerLive, userData: app.getPath('userData'), appearance: () => latestState?.appearance || 'black', onOpen: () => hide() });
+  workspace = new ReadingWorkspace({ native, preview: preview && !readerLive, userData: app.getPath('userData'), appearance: () => latestState?.appearance || 'black', onOpen: () => hide(), onWindow: refreshWindowMaterials });
   native.on('event', message => {
     if (message.event === 'state') {
       latestState = message.state;
+      refreshWindowMaterials();
       workspace.send({ event: 'appearance', appearance: latestState.appearance });
       while (callbacks.length) void command({ command: 'callback', url: callbacks.shift() });
     }

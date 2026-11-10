@@ -5,6 +5,7 @@
     { id: 'save-current', title: 'Save current tab', detail: 'Keep the page you were just viewing', symbol: 'bookmark', command: 'capture', action: 'quick', keywords: 'save bookmark capture current page', home: true },
     { id: 'save-note', title: 'Save with a note', detail: 'Capture the current tab and add a thought', symbol: 'note', command: 'capture', action: 'note', keywords: 'save note annotate current page', home: true },
     { id: 'add-link', title: 'Add a link', detail: 'Paste a URL, add notes and tags', symbol: 'plus', ui: 'add', keywords: 'new add save link url bookmark', home: true },
+    { id: 'all-pages', title: 'Search all pages', detail: 'Search open tabs, saved links and browser history together', symbol: 'search', scope: 'All', keywords: 'all everything everywhere search pages' },
     { id: 'open-tabs', title: 'Search open tabs', detail: 'Switch to a page already open in a browser', symbol: 'tabs', scope: 'Open', keywords: 'tabs open windows switch browser' },
     { id: 'saved-links', title: 'Search saved links', detail: 'Your bookmarks, notes and tags', symbol: 'bookmark', scope: 'Saved', keywords: 'saved library bookmarks find' },
     { id: 'browser-history', title: 'Search browser history', detail: 'Find a page you visited in the last 90 days', symbol: 'history', scope: 'History', keywords: 'history visited recent browser past closed' },
@@ -16,6 +17,7 @@
     { id: 'clipboard', title: 'Save copied link', detail: 'Save a URL from your clipboard', symbol: 'copy', command: 'saveClipboard', keywords: 'clipboard paste copied save link' },
     { id: 'history-sources', title: 'Browser history sources', detail: 'History access, connected profiles and privacy', symbol: 'history', ui: 'sources', keywords: 'history sources privacy access permission pause enable disable' },
     { id: 'settings', title: 'Settings', detail: 'Appearance, shortcuts and capture preferences', symbol: 'settings', command: 'settings', keywords: 'settings preferences hotkey keyboard shortcut theme appearance' },
+    { id: 'shortcuts', title: 'Keyboard shortcuts', detail: 'Learn launcher keys and see your capture shortcuts', symbol: 'keyboard', ui: 'shortcuts', keywords: 'keyboard shortcuts keys help learn hotkeys' },
     { id: 'account', title: 'Account & Cloud', detail: 'Optional account · Cloud coming soon', symbol: 'account', command: 'account', keywords: 'account billing sign in login subscription payment' },
     { id: 'tags', title: 'Manage tags', detail: 'Rename or remove tags across your library', symbol: 'tag', command: 'tags', keywords: 'tags rename remove organize' },
     { id: 'refresh', title: 'Refresh tabs and history', detail: 'Read the latest browser state', symbol: 'refresh', command: 'refresh', keywords: 'refresh reload rescan sync' },
@@ -49,8 +51,18 @@
     const commandsFound = state.scope === 'All' ? commands(query, state) : [];
     return [...commandsFound, ...(state.rows || []).map(item => ({ ...item, kind: 'page' }))];
   }
+  function actionCatalog(state = {}) {
+    const groups = ['SaveNest', 'Search', 'Save & read', 'Library'];
+    const keys = { settings: '⌘,', shortcuts: '⌘/', 'add-link': '⌘N', refresh: '⌘R' };
+    return catalog.filter(item => item.id !== 'undo' || state.canUndo).map(item => ({
+      ...item, id: 'command:' + item.id, kind: 'command', key: keys[item.id] || '',
+      group: ['settings', 'shortcuts', 'account'].includes(item.id) ? 'SaveNest' : item.scope ? 'Search'
+        : item.home || item.command === 'capture' || item.command === 'saveClipboard' ? 'Save & read' : 'Library'
+    })).sort((a, b) => groups.indexOf(a.group) - groups.indexOf(b.group)
+      || (a.scope === 'Saved' ? -1 : b.scope === 'Saved' ? 1 : 0));
+  }
   function primaryLabel(item) { return !item ? 'Open' : item.kind === 'command' ? (item.ui === 'add' || item.command === 'capture' ? 'Continue' : 'Run command') : item.isOpen ? 'Switch to tab' : 'Open link'; }
-  const api = { catalog, commands, detectedURL, rows, primaryLabel };
+  const api = { catalog, commands, detectedURL, rows, primaryLabel, actionCatalog };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.LauncherModel = api;
 })(globalThis);

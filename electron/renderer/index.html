@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>SaveNest</title>
+  <link rel="stylesheet" href="glass.css">
   <link rel="stylesheet" href="styles.css">
   <script src="launcher-model.js" defer></script>
   <script src="renderer.js" defer></script>
@@ -14,10 +15,13 @@
       <button id="back" class="icon-button" aria-label="Back to all results" title="Back" hidden>‹</button>
       <span id="nest-mark" aria-hidden="true"></span>
       <input id="search" type="text" placeholder="Search tabs, saved links, history, or commands…" aria-label="Search SaveNest" role="combobox" aria-autocomplete="list" aria-controls="results" aria-expanded="true" autocomplete="off" spellcheck="false" maxlength="2000">
-      <select id="scope" aria-label="Search scope"><option value="All">All</option><option value="Open">Open tabs</option><option value="Saved">Saved</option><option value="History">History</option><option value="Favorites">Favorites</option><option value="Notes">Notes</option><option value="Archive">Archive</option></select>
+      <span class="scope-control">
+        <select id="scope" aria-label="Search scope"><option value="All">All</option><option value="Open">Open tabs</option><option value="Saved">Saved</option><option value="History">History</option><option value="Favorites">Favorites</option><option value="Notes">Notes</option><option value="Archive">Archive</option></select>
+        <svg class="scope-chevron" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 4.5 3 3 3-3"/></svg>
+      </span>
     </header>
     <header id="route-header" hidden><button id="route-back" class="icon-button" aria-label="Back">‹</button><div><span class="breadcrumb">SaveNest</span><h1 id="route-title">Save a link</h1></div><kbd>esc</kbd></header>
-    <div id="onboarding" class="hint-banner" hidden><span>One shortcut for your browser. Type to find a page, or choose a save action below.</span><button id="onboarding-done">Got it</button></div>
+    <div id="onboarding" class="hint-banner" hidden><span>Type to find a page. Open Actions ⌘K to browse search, saving, and app controls.</span><button id="onboarding-done">Got it</button></div>
     <aside id="usage-notice" hidden aria-label="Anonymous usage reporting">
       <p id="usage-notice-text">Anonymous usage counts are on. No saved content, account IDs, or device IDs are sent.</p>
       <div><button id="usage-off">Turn off</button><button id="usage-privacy">Privacy policy ↗</button><button id="usage-dismiss" aria-label="Dismiss usage notice">Dismiss</button></div>
@@ -43,11 +47,17 @@
     <footer>
       <button id="home" aria-label="Back to root search"><span class="footer-mark" aria-hidden="true">≋</span><span id="status">Starting SaveNest…</span></button>
       <span id="preview" hidden>Preview</span>
-      <div class="footer-actions"><button id="primary">Open <kbd>↵</kbd></button><span class="separator"></span><button id="actions">Actions <kbd>⌘K</kbd></button></div>
+      <div class="footer-utilities"><button id="open-settings" title="Settings (⌘,)">Settings</button><button id="show-shortcuts" title="Keyboard shortcuts (⌘/)" aria-haspopup="dialog" aria-controls="shortcuts-dialog">Shortcuts</button></div>
+      <div class="footer-actions"><button id="primary">Open <kbd>↵</kbd></button><span class="separator"></span><button id="actions" title="Browse all actions (⌘K)" aria-haspopup="dialog" aria-controls="action-dialog">Actions <kbd>⌘K</kbd></button></div>
     </footer>
     <div id="notice" role="status" hidden><span id="notice-text"></span><button id="dismiss-notice" aria-label="Dismiss message">×</button></div>
   </main>
   <dialog id="action-dialog" aria-labelledby="actions-title"><h2 id="actions-title">Actions</h2><p id="actions-context"></p><input id="action-search" placeholder="Search actions…" aria-label="Search actions" autocomplete="off"><div id="action-options"></div><div class="action-hint"><span><kbd>↑</kbd><kbd>↓</kbd> navigate</span><span><kbd>esc</kbd> back</span></div></dialog>
+  <dialog id="shortcuts-dialog" aria-labelledby="shortcuts-title">
+    <div class="shortcuts-header"><h2 id="shortcuts-title">Keyboard shortcuts</h2><button id="shortcuts-close" aria-label="Close keyboard shortcuts" autofocus>×</button></div>
+    <div id="shortcut-list"></div>
+    <div class="shortcuts-footer"><button id="shortcut-settings">Customize in Settings</button><span><kbd>esc</kbd> close</span></div>
+  </dialog>
   <dialog id="discard-dialog" aria-labelledby="discard-title"><h2 id="discard-title">Discard this draft?</h2><p>Your changes haven’t been saved.</p><div class="dialog-buttons"><button id="keep-editing" autofocus>Keep editing</button><button id="discard" class="danger">Discard draft</button></div></dialog>
 </body>
 </html>

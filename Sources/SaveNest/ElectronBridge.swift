@@ -99,6 +99,17 @@ final class ElectronBridge {
             if let date = item.history?.lastVisited { row["lastVisited"] = ISO8601DateFormatter().string(from: date) }
             return row
         }
+        let shortcuts: [[String: Any]] = CaptureAction.allCases.map { action in
+            // AppModel has already resolved stored bindings and defaults. A missing
+            // or unassigned entry must not advertise a shortcut that is not registered.
+            let shortcut = model.shortcuts[action]
+            let assigned = shortcut?.isAssigned == true
+            return [
+                "id": action.rawValue, "title": action.title,
+                "key": assigned ? shortcut?.label ?? "" : "", "assigned": assigned,
+                "error": model.shortcutErrors[action] ?? ""
+            ]
+        }
         Self.write(["event": "state", "state": [
             "rows": rows, "totalCount": search.results.count, "query": search.query, "scope": search.scope.rawValue,
             "resultsQuery": search.resultsQuery, "resultsScope": search.resultsScope.rawValue,
@@ -113,6 +124,7 @@ final class ElectronBridge {
             "analyticsEnabled": model.analyticsEnabled, "showUsageNotice": model.analyticsEnabled && !model.hasSeenUsageNotice,
             "launcherShortcut": (model.shortcuts[.search] ?? CaptureAction.search.defaultShortcut).label,
             "shortcutError": model.shortcutErrors[.search] ?? "",
+            "shortcuts": shortcuts,
             "openCount": search.tabs.count, "savedCount": model.activeCount,
             "historyCount": search.history.count, "historyEnabled": search.historyEnabled, "loadingHistory": search.loadingHistory,
             "historySources": search.historySources.map { ["browser": $0.source.browser, "profile": $0.source.profile, "count": $0.count, "issue": $0.issue ?? ""] as [String: Any] },

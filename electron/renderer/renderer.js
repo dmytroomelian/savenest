@@ -7,7 +7,9 @@ let items = [], focusedID = null, selected = new Set(), route = 'root', pendingQ
 let editingID = null, captureID = null, editorBaseline = '', editorSaving = false, lastCaptureID = null, lastSelectionID = null;
 let captureSelected = new Set(), selectionSaving = false, actionItems = [], filteredActions = [], actionIndex = 0, fatal = false;
 let lastNativeMessage = '', noticeSource = '', discardAction = null;
+let shortcutReturnFocus = null;
 const symbols = {
+  keyboard: 'M3 6h18v12H3zM6 9h.01M9 9h.01M12 9h.01M15 9h.01M18 9h.01M6 12h.01M9 12h.01M12 12h.01M15 12h.01M18 12h.01M8 15h8',
   reader: 'M3 4h18v16H3zM13 4v16M6 8h4M6 12h4M16 8h2M16 12h2',
   nest: 'M4 8l8 5 8-5M4 13l8 5 8-5M6 18l6 4 6-4M9 4l3 2 3-2',
   bookmark: 'M6 3h12v18l-6-4-6 4z', note: 'M5 3h14v18H5zM8 8h8M8 12h8M8 16h5',
@@ -93,13 +95,15 @@ function relativeVisit(value) {
   const hours = Math.floor(minutes / 60); return hours < 24 ? `${hours}h ago` : `${Math.floor(hours / 24)}d ago`;
 }
 function updateFooter() {
+  $('open-settings').disabled = fatal;
+  $('shortcut-settings').disabled = fatal;
   $('primary').disabled = fatal || editorSaving || state.busy || (route === 'root' && !current());
   if (route === 'editor') { $('primary').replaceChildren(el('span', '', editorSaving ? 'Saving…' : 'Save link'), el('kbd', '', '⌘↵')); return; }
   if (route === 'selection') { $('primary').replaceChildren(el('span', '', selectionSaving ? 'Saving…' : `Save ${captureSelected.size} tabs`), el('kbd', '', '⌘↵')); $('primary').disabled = fatal || selectionSaving || !captureSelected.size; return; }
   if (route === 'sources') { $('primary').replaceChildren(el('span', '', 'Back to search'), el('kbd', '', 'esc')); return; }
   $('primary').replaceChildren(el('span', '', model.primaryLabel(current())), el('kbd', '', '↵'));
   $('actions').replaceChildren(el('span', '', selected.size ? `Actions · ${selected.size}` : 'Actions'), el('kbd', '', '⌘K'));
-  $('actions').disabled = !current() || fatal;
+  $('actions').disabled = fatal;
 }
 function updateSelection(scroll = false) {
   for (const node of document.querySelectorAll('.row')) {
@@ -128,7 +132,7 @@ function renderRoot() {
   items.forEach((item, index) => {
     const next = item.kind === 'command' ? (query ? 'Commands' : 'Quick actions') : query ? 'Matching pages' : state.scope === 'History' ? 'Recently visited' : state.scope === 'All' ? 'Open tabs & recent links' : state.scope;
     if (next !== group) { nodes.push(el('div', 'group-label', next)); group = next; }
-    const row = el('div', 'row'); row.id = 'result-' + index; row.dataset.id = item.id; row.setAttribute('role', 'option');
+    const row = el('div', 'row'); row.id = 'result-' + index; row.dataset.id = item.id; row.dataset.kind = item.kind; row.setAttribute('role', 'option');
     const tile = el('span', 'row-icon' + (item.kind === 'page' ? ' page-icon' : ''));
     if (item.kind === 'command') tile.append(icon(item.symbol)); else tile.textContent = (item.domain || '?')[0].toUpperCase();
     const text = el('div', 'row-text'), title = el('div', 'row-title', item.title);
@@ -189,6 +193,8 @@ function renderState() {
   const total = state.totalCount > 200 ? `${state.totalCount} matches · refine your search` : `${state.openCount || 0} open · ${state.savedCount || 0} saved · ${state.historyCount || 0} history`;
   $('status').textContent = state.shortcutError ? 'Shortcut unavailable · open Settings' : state.loadingHistory ? 'Reading local history…' : state.loading ? 'Refreshing tabs…' : total;
   $('home').title = `${state.launcherShortcut || '⌘O'} opens SaveNest · History stays on this Mac`;
+  $('home').setAttribute('aria-label', state.shortcutError ? 'Open Settings to fix the launcher shortcut' : 'Back to root search');
+  if ($('shortcuts-dialog').open) renderShortcuts();
   if (state.message !== lastNativeMessage) {
     lastNativeMessage = state.message;
     if (state.message) notice(state.message, state.error, 'native');
@@ -215,21 +221,23 @@ async function execute(item) {
   if (item.kind === 'page') { await run('open', { ids: [item.id] }); return; }
   if (item.ui === 'add') openEditor(null, false, item.url || '');
   else if (item.ui === 'sources') openSources();
+  else if (item.ui === 'shortcuts') showShortcuts();
   else if (item.scope) setScope(item.scope);
   else if (item.command) await run(item.command, item.action ? { action: item.action } : {});
 }
 function showActions() {
-  if (route !== 'root' || !current()) return;
+  if (route !== 'root' || fatal) return;
   const rows = chosen(), single = rows.length === 1;
-  $('actions-context').textContent = single ? rows[0].title : `${rows.length} selected pages`;
+  $('actions-context').textContent = single ? rows[0].title : rows.length ? `${rows.length} selected pages` : 'All SaveNest actions';
   actionItems = [];
-  const add = (title, command, targets, key = '', danger = false) => { if (targets.length) actionItems.push({ title, key, danger, run: () => run(command, { ids: targets.map(row => row.id) }) }); };
-  if (single && rows[0].kind === 'command') actionItems.push({ title: 'Run command', key: '↵', run: () => execute(rows[0]) });
+  const group = single ? 'Selected page' : 'Selected pages';
+  const add = (title, command, targets, key = '', danger = false) => { if (targets.length) actionItems.push({ id: 'context:' + command, group, title, key, danger, run: () => run(command, { ids: targets.map(row => row.id) }) }); };
+  if (single && rows[0].kind === 'command') actionItems.push({ id: 'context:run', group: 'Selected command', title: 'Run command', key: '↵', run: () => execute(rows[0]) });
   else {
     if (single) add(rows[0].isOpen ? 'Switch to tab' : 'Open link', 'open', rows, '↵');
     if (single) add('Read & note', 'readerOpen', rows);
     add('Save to library', 'save', rows.filter(row => !row.isSaved), '⌘S');
-    if (single) actionItems.push({ title: 'Edit title, note & tags', key: '⌘E', run: () => openEditor(rows[0]) });
+    if (single) actionItems.push({ id: 'context:edit', group, title: 'Edit title, note & tags', key: '⌘E', run: () => openEditor(rows[0]) });
     add(single ? 'Copy URL' : 'Copy URLs', 'copy', rows, '⇧⌘C');
     add('Save & close tabs', 'saveClose', rows.filter(row => row.isOpen));
     add(single && rows[0].favorite ? 'Remove favorite' : 'Toggle favorite', 'favorite', rows.filter(row => row.isSaved));
@@ -239,17 +247,63 @@ function showActions() {
     add('Close browser tabs…', 'close', rows.filter(row => row.isOpen), '', true);
     add('Delete saved links…', 'delete', rows.filter(row => row.isSaved), '', true);
   }
-  if (state.canUndo) actionItems.push({ title: 'Undo last library change', key: '⌘Z', run: () => run('undo') });
-  $('action-search').value = ''; actionIndex = 0; renderActions(); $('action-dialog').showModal(); $('action-search').focus();
+  for (const item of model.actionCatalog(state)) actionItems.push({ ...item, run: () => execute(item) });
+  $('action-search').value = ''; actionIndex = 0; renderActions();
+  if (!$('action-dialog').open) $('action-dialog').showModal();
+  $('action-search').focus();
 }
 function renderActions() {
-  const query = $('action-search').value.toLowerCase(); filteredActions = actionItems.filter(item => item.title.toLowerCase().includes(query));
+  const words = $('action-search').value.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  filteredActions = actionItems.filter(item => words.every(word => `${item.title} ${item.keywords || ''} ${item.group}`.toLowerCase().includes(word)));
   actionIndex = Math.min(actionIndex, Math.max(0, filteredActions.length - 1));
-  $('action-options').replaceChildren(...filteredActions.map((item, index) => {
+  const nodes = []; let group = '';
+  filteredActions.forEach((item, index) => {
+    if (item.group !== group) { nodes.push(el('div', 'action-group', item.group)); group = item.group; }
     const button = el('button', `${item.danger ? 'danger ' : ''}${index === actionIndex ? 'active' : ''}`);
-    button.append(el('span', '', item.title)); if (item.key) button.append(el('kbd', '', item.key));
-    button.onclick = () => { $('action-dialog').close(); void item.run(); }; return button;
-  }));
+    button.type = 'button'; button.dataset.actionId = item.id;
+    const label = el('span', 'action-label');
+    if (item.symbol) label.append(icon(item.symbol));
+    label.append(el('span', 'action-title', item.title)); button.append(label);
+    if (item.key) button.append(el('kbd', '', item.key));
+    button.onclick = () => { $('action-dialog').close(); void item.run(); }; nodes.push(button);
+  });
+  if (!nodes.length) nodes.push(el('p', 'action-empty', 'No matching actions. Try “saved”, “settings”, or “shortcuts”.'));
+  $('action-options').replaceChildren(...nodes);
+}
+function renderShortcuts() {
+  const groups = [
+    ['In the launcher', [
+      ['Open Actions', '⌘K'], ['Keyboard shortcuts', '⌘/'], ['Open Settings', '⌘,'],
+      ['Choose a result', '↑ ↓'], ['Open or run a result', '↵'], ['Run result 1–9', '⌘1–9'],
+      ['Next / previous search scope', '⌃Tab / ⌃⇧Tab'], ['Focus search', '⌘F'],
+      ['Add a link', '⌘N'], ['Refresh tabs and history', '⌘R'], ['Back or close', 'esc']
+    ]],
+    ['With a page selected', [
+      ['Save selected pages', '⌘S'], ['Edit title, note and tags', '⌘E'], ['Copy selected URLs', '⇧⌘C']
+    ]],
+    ['While editing a link', [['Save changes', '⌘↵']]]
+  ];
+  const bindings = state.shortcuts || [{ title: 'Open SaveNest', key: state.launcherShortcut || '⌘O', error: state.shortcutError }];
+  const nodes = [];
+  for (const [title, rows] of groups) {
+    nodes.push(el('h3', 'shortcut-group', title));
+    for (const [label, key] of rows) { const row = el('div', 'shortcut-row'); row.append(el('span', '', label), el('kbd', '', key)); nodes.push(row); }
+  }
+  nodes.push(el('h3', 'shortcut-group', 'From any app'));
+  if (state.preview) nodes.push(el('p', 'shortcut-note', 'Your configured shortcuts are shown below. Global shortcuts are inactive in this preview.'));
+  for (const binding of bindings) {
+    const row = el('div', 'shortcut-row'), text = el('span', '', binding.title);
+    if (binding.error) text.append(el('small', 'error', binding.error));
+    row.append(text, binding.key ? el('kbd', '', binding.key) : el('span', 'shortcut-unassigned', 'Not assigned')); nodes.push(row);
+  }
+  $('shortcut-list').replaceChildren(...nodes);
+}
+function showShortcuts() {
+  shortcutReturnFocus = document.activeElement;
+  if ($('action-dialog').open) $('action-dialog').close();
+  renderShortcuts();
+  if (!$('shortcuts-dialog').open) $('shortcuts-dialog').showModal();
+  $('shortcuts-close').focus();
 }
 $('editor-form').onsubmit = async event => {
   event.preventDefault(); if (editorSaving) return;
@@ -279,8 +333,13 @@ $('search').oninput = () => {
 };
 $('scope').onchange = () => setScope($('scope').value);
 $('back').onclick = () => setScope('All'); $('route-back').onclick = back;
-$('home').onclick = () => { if (route !== 'root') back(); else { setScope('All'); focusSearch(); } };
+$('home').onclick = () => { if (state.shortcutError) void run('settings'); else if (route !== 'root') back(); else { setScope('All'); focusSearch(); } };
 $('actions').onclick = showActions;
+$('open-settings').onclick = () => void run('settings');
+$('show-shortcuts').onclick = showShortcuts;
+$('shortcuts-close').onclick = () => $('shortcuts-dialog').close();
+$('shortcut-settings').onclick = () => { $('shortcuts-dialog').close(); void run('settings'); };
+$('shortcuts-dialog').onclose = () => { if (shortcutReturnFocus?.isConnected && !shortcutReturnFocus.closest('dialog')) shortcutReturnFocus.focus(); else focusSearch(); };
 $('primary').onclick = async () => {
   if (route === 'editor') $('editor-form').requestSubmit();
   else if (route === 'sources') back();
@@ -305,15 +364,21 @@ $('keep-editing').onclick = () => { $('discard-dialog').close(); $('edit-note').
 $('discard').onclick = () => { $('discard-dialog').close(); const action = discardAction; discardAction = null; void action?.(); };
 document.addEventListener('keydown', event => {
   if (event.isComposing || event.keyCode === 229) return;
+  if ($('shortcuts-dialog').open) {
+    if (event.key === 'Escape' || (event.metaKey && event.key === '/')) { event.preventDefault(); $('shortcuts-dialog').close(); }
+    return;
+  }
   if ($('discard-dialog').open) return;
   if ($('action-dialog').open) {
     if (event.key === 'Escape') { event.preventDefault(); $('action-dialog').close(); }
-    else if (['ArrowDown', 'ArrowUp'].includes(event.key)) { event.preventDefault(); actionIndex = Math.max(0, Math.min(filteredActions.length - 1, actionIndex + (event.key === 'ArrowDown' ? 1 : -1))); renderActions(); $('action-options').querySelector('.active')?.scrollIntoView({ block: 'nearest' }); }
-    else if (event.key === 'Enter') { event.preventDefault(); const action = filteredActions[actionIndex]; $('action-dialog').close(); void action?.run(); }
+    else if (['ArrowDown', 'ArrowUp'].includes(event.key)) { event.preventDefault(); actionIndex = Math.max(0, Math.min(filteredActions.length - 1, actionIndex + (event.key === 'ArrowDown' ? 1 : -1))); renderActions(); $('action-options').querySelector('.active')?.scrollIntoView({ block: 'nearest' }); $('action-search').focus(); }
+    else if (event.key === 'Enter' && document.activeElement?.tagName !== 'BUTTON') { event.preventDefault(); const action = filteredActions[actionIndex]; if (action) { $('action-dialog').close(); void action.run(); } }
     else if (event.metaKey && event.key.toLowerCase() === 'k') { event.preventDefault(); $('action-dialog').close(); }
+    else if (event.metaKey && event.key === '/') { event.preventDefault(); showShortcuts(); }
     return;
   }
   if (event.key === 'Escape') { event.preventDefault(); back(); return; }
+  if (event.metaKey && event.key === '/') { event.preventDefault(); showShortcuts(); return; }
   if (route !== 'root') { if (event.metaKey && event.key === 'Enter') { event.preventDefault(); $('primary').click(); } return; }
   // Keep native keyboard activation for focused controls, including privacy actions.
   if (event.key === 'Enter' && document.activeElement?.tagName === 'BUTTON') return;

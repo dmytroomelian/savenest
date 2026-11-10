@@ -2,6 +2,8 @@
 
 SaveNest is a browser-focused launcher. Press Command-O, express intent, then act on the selected result. Saving, open-tab search, saved links, and browser history belong to this same interaction. A separate library dashboard is not the default entry point.
 
+The launcher retains its borderless search field, scope dropdown, quick-action rows, and result list. Persistent Settings and Shortcuts buttons in the footer make preferences and keyboard help visible. Actions is the shared entry point for contextual operations and app-wide commands.
+
 ## Research and decisions
 
 The references below were checked on October 30, 2026. These are interaction principles adapted for SaveNest, not claims of feature parity with Raycast.
@@ -18,11 +20,12 @@ The references below were checked on October 30, 2026. These are interaction pri
 ## Interaction contract
 
 - **Command-O:** summon or dismiss the launcher. The native shortcut service owns registration so existing shortcut recording and conflict reporting remain in use. The old default migrates; custom user choices remain. Command-O deliberately occupies the normal Open shortcut because the user requested it; it remains configurable in Settings.
-- **Empty query:** show Save current tab, Save with a note, Add a link, then available open/saved/recent-history pages. Suggestions use existing local data; searches themselves are not logged.
+- **Empty query:** show Read & note current tab, Save current tab, Save with a note, Add a link, then available open/saved/recent-history pages. Suggestions use existing local data; searches themselves are not logged.
 - **Typed text:** rank title/word matches above URL, notes, and optional page context. Single-word title abbreviations provide a restrained fallback. Commands rank exact names and prefixes first.
 - **Same URL across sources:** one page result contains its saved annotations and history metadata; an open tab takes precedence for Enter. Multiple live instances remain distinct because activating the wrong browser profile would be worse than showing two tabs.
 - **Saving:** current-tab capture keeps the native browser identity and damaged-library checks. Local saving does not require an account or subscription. Note drafts and selected-tab lists use the Electron panel. Existing saved records retain their original dates and archive state.
-- **Actions:** Command-K opens a searchable panel. Arrow keys and Enter work there as they do in root search. Destructive close/delete actions retain confirmation. Shift-Space marks pages for bulk actions.
+- **Actions:** Command-K opens a searchable panel from any root-search scope, including empty results. Selected-page or selected-command actions appear first, followed by SaveNest, Search, Save & read, and Library groups. Global commands include Settings, keyboard help, every search scope, capture, and library tools. Arrow keys, Enter, and mouse clicks activate actions. Changing scope through Actions or the dropdown starts a fresh query. Destructive close/delete actions retain confirmation. Shift-Space marks pages for bulk actions.
+- **Settings and shortcuts:** labeled footer buttons remain available while browsing and editing. Command-/ opens keyboard help and closes it again; Escape also closes help and restores focus. The guide shows fixed launcher keys separately from the user's configured global capture bindings, including unassigned keys and registration errors. Customize in Settings opens native preferences. Preview displays these bindings without registering global shortcuts.
 - **Focus:** the panel floats over normal and fullscreen windows without a Dock entry. Clicking elsewhere hides it without pulling focus back. Explicit dismissal restores the previous app. Confirmations keep the panel visible; unfinished drafts survive hiding.
 - **No false success:** blocked saves keep the editor or selection. Browser history permission/format failures are visible in History Sources. Helper failures disable data actions and retain a clear error.
 
