@@ -100,13 +100,13 @@ Validation recorded during 0.13.0 release preparation on November 11, 2026:
 | Claude Desktop | Setup available; app compatibility unverified. |
 | Shared Swift checks | 40 passed on the release branch. |
 | Electron tests | 52 passed on the release branch. |
-| Intel CI | Passed on commit `a42e371`: 40 Swift checks, 52 Electron tests, native build, and MCP fixtures. This does not establish Intel installed-app runtime. |
+| Intel CI | Passed on final code commit `58375b3` (merged unchanged as `f315bd8`): 40 Swift checks, 52 Electron tests, native build, and MCP fixtures including process identity and tab-reference regressions. This does not establish Intel installed-app runtime. |
 | Private adapter Swift tests | 5 passed before the release-source port. |
-| Private adapter stdio protocol checks | 11 passed before the release-source port. |
+| Private adapter stdio protocol checks | 11 passed on the release adapter built from frozen private source. |
 | Native MCP integration checks | Passed with a disposable preview library, simulated browser actions, and test-only Pro verification. Intel CI also passed the MCP fixtures. |
 | Connect setup | Passed against disposable settings, including Codex's real CLI, existing configuration preservation, credential repair, concurrent edits, cancellation, and failure cleanup. Claude configuration merges are fixture-tested. |
-| Earlier local Mac packages | Apple Silicon and Intel architecture and local ad-hoc signature checks passed before the release-source port. The packaged Apple Silicon adapter passed 11 stdio checks. |
+| Packaged MCP adapter | The signed Apple Silicon adapter passed all 11 stdio protocol checks. Apple Silicon, Intel, and Universal archives contain the adapter and its license/notices. |
 | Live Safari and Chrome actions | Passed search, focus, preview-library save, verified close, and repeat-close refusal using disposable tabs. Live checks exposed and fixed transient process lookup and Chromium tab-reordering issues; process-birth and reference regression checks pass. |
-| Signed release | Signing, notarization, installed-app update checks, and publication pending. |
+| Signed release | Apple accepted all three 0.13.0 archives. Extracted-package checks passed signatures, architecture, version/build consistency, stapled notarization, Gatekeeper, licenses, and tamper rejection. |
 
-These results do not verify a real Claude Desktop connection, a complete Claude Code AI workflow, scheduled client workflows, Intel installed-app runtime, or notarized-release installation and updates. Fixture checks and local ad-hoc signatures are not evidence that the signed release has passed those checks. Remaining release results must be recorded after they run.
+These results do not verify a real Claude Desktop connection, a complete Claude Code AI workflow, scheduled client workflows, Intel installed-app runtime, or notarized-release installation and updates. These remaining acceptance checks are separate from the signed-package verification above. Download the verified 0.13.0 packages from the [release page](https://github.com/dmytroomelian/savenest/releases/tag/v0.13.0).
