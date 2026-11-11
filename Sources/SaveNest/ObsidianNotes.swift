@@ -45,7 +45,7 @@ final class ObsidianNotes: ObservableObject {
         } else {
             let panel = NSOpenPanel()
             panel.title = "Choose your Obsidian vault"
-            panel.message = "SaveNest writes Markdown directly into your vault. Choose the folder containing .obsidian."
+            panel.message = "Savenest writes Markdown directly into your vault. Choose the folder containing .obsidian."
             panel.canChooseDirectories = true; panel.canChooseFiles = false; panel.canCreateDirectories = false
             panel.allowsMultipleSelection = false
             NSApp.activate(ignoringOtherApps: true)
@@ -108,7 +108,7 @@ final class ObsidianNotes: ObservableObject {
 
     private func available() throws -> NoteFiles {
         if let error = startupError { throw error }
-        guard let service else { throw NoteFiles.Failure(message: "Notes are unavailable. Quit and reopen SaveNest.") }
+        guard let service else { throw NoteFiles.Failure(message: "Notes are unavailable. Quit and reopen Savenest.") }
         return service
     }
     private func updateStatus() {

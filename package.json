@@ -1,9 +1,9 @@
 {
   "name": "savenest-desktop",
-  "productName": "SaveNest",
-  "version": "0.12.4",
+  "productName": "Savenest",
+  "version": "0.12.5",
   "private": true,
-  "description": "SaveNest Electron desktop with native macOS capture and local storage",
+  "description": "Savenest Electron desktop with native macOS capture and local storage",
   "main": "electron/main.cjs",
   "scripts": {
     "build:native": "CONFIGURATION=debug ELECTRON_HELPER=1 APP_PATH=build/electron-native/SaveNest.app bash scripts/build-app.sh",

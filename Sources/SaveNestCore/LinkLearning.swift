@@ -24,7 +24,7 @@ public enum LinkLearning {
         }
         // Require three separate examples and strong agreement; conflicting or sparse feedback asks the user.
         let unique = Dictionary(grouping: related, by: { Library.identity($0.url) }).values.compactMap(\.first)
-        guard unique.count >= 3 else { return .init(importance: nil, reason: "Is this worth keeping? Label a few links to teach SaveNest what matters.") }
+        guard unique.count >= 3 else { return .init(importance: nil, reason: "Is this worth keeping? Label a few links to teach Savenest what matters.") }
         let positive = unique.filter { $0.importance == .important }.count
         let agreement = Double(max(positive, unique.count - positive)) / Double(unique.count)
         guard agreement >= 0.8 else { return .init(importance: nil, reason: "Your choices on similar links are mixed. You decide.") }

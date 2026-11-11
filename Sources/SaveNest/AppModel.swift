@@ -220,7 +220,7 @@ final class AppModel: ObservableObject {
         }
         #endif
         do { library = try file.load() }
-        catch { loadFailed = true; self.error = "Your saved library couldn’t be opened. The original file has been kept untouched at \(file.url.path). Restore a valid backup there, then restart SaveNest. \(error.localizedDescription)" }
+        catch { loadFailed = true; self.error = "Your saved library couldn’t be opened. The original file has been kept untouched at \(file.url.path). Restore a valid backup there, then restart Savenest. \(error.localizedDescription)" }
         if !isPreview && !loadFailed && !AppRuntime.isPrivateBeta {
             onboardingCompleted = UserDefaults.standard.bool(forKey: "hasCompletedOnboarding")
             showingOnboarding = !onboardingCompleted
@@ -314,7 +314,7 @@ final class AppModel: ObservableObject {
         }
         // The preview owns an in-memory fixture and never loads or writes the user's library.
         if isPreview { apply(); return true }
-        guard !loadFailed else { report("Your library couldn’t be opened. Restore a valid backup and restart SaveNest. Your original file is unchanged."); return false }
+        guard !loadFailed else { report("Your library couldn’t be opened. Restore a valid backup and restart Savenest. Your original file is unchanged."); return false }
         do { try file.save(next); apply(); cloud.libraryDidChange(); return true }
         catch { report("Couldn’t write to your library. \(error.localizedDescription)"); return false }
     }
@@ -459,7 +459,7 @@ final class AppModel: ObservableObject {
     var canWriteLibrary: Bool { !loadFailed }
     private func prepareLocalWrite() -> Bool {
         guard canWriteLibrary else {
-            error = "Your library couldn’t be opened. Restore a valid backup and restart SaveNest. Your original file is unchanged."
+            error = "Your library couldn’t be opened. Restore a valid backup and restart Savenest. Your original file is unchanged."
             return false
         }
         return true
@@ -624,7 +624,7 @@ final class AppModel: ObservableObject {
         return true
     }
     func cancelDraft() { draft = nil; closeCaptureEditor?() }
-    func notify(_ message: String) { notify(CaptureNotice(title: "SaveNest", message: message)) }
+    func notify(_ message: String) { notify(CaptureNotice(title: "Savenest", message: message)) }
     func notify(_ notice: CaptureNotice) {
         toast = notice; showToast?(notice)
         DispatchQueue.main.asyncAfter(deadline: .now() + notice.duration) { [weak self] in
@@ -704,7 +704,7 @@ final class AppModel: ObservableObject {
         for action in [CaptureAction.quick, .note] { candidate[action] = action.memorableShortcut }
         let all = Array(candidate.values)
         guard Set(all.map { "\($0.keyCode):\($0.modifiers)" }).count == all.count else {
-            error = "The preset conflicts with another SaveNest shortcut. Change that shortcut first."; return
+            error = "The preset conflicts with another Savenest shortcut. Change that shortcut first."; return
         }
         if isPreview || AppRuntime.isPrivateBeta { shortcuts = candidate; return }
         let failed = hotkey.register(candidate)

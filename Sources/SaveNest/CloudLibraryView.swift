@@ -5,25 +5,20 @@ struct CloudLibraryView: View {
     @ObservedObject var cloud: CloudLibraryController
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("SaveNest Cloud").font(.system(size: 15, weight: .medium))
-                Spacer()
-                if cloud.isBusy { ProgressView().controlSize(.small) }
-                Text(cloud.enabled ? "Backups on" : "Backups off").font(.system(size: 12)).foregroundStyle(Color.sage)
+            if cloud.enabled || cloud.status?.canUpload == true || cloud.status?.canRestore == true {
+                HStack {
+                    Text(cloud.enabled ? "Backups on" : "Backups off")
+                        .font(.system(size: 13, weight: .medium))
+                    Spacer()
+                    if cloud.isBusy { ProgressView().controlSize(.small) }
+                }
             }
-            Text("Automatic library backups and recovery. Your local features stay free.")
-                .font(.system(size: 13)).foregroundStyle(Color.muted)
-            Text("Includes saved links, quick notes, tags, and collections. Obsidian files and offline articles stay on this Mac. Each Mac keeps separate backups; this is not live sync.")
-                .font(.system(size: 12)).foregroundStyle(Color.muted)
-            Text("Keeps up to 30 daily copies per Mac. Recovery remains available for 90 days after your subscription ends.")
-                .font(.system(size: 12)).foregroundStyle(Color.muted)
             if cloud.needsLocalReview {
-                Text("The previous local library was missing or could not be opened. Automatic backups are paused. Restore a cloud backup, or review this Mac’s current library before turning backups on.")
+                Text("Your previous library couldn’t be opened. Restore a backup or review this library before turning backups on.")
                     .font(.system(size: 12)).foregroundStyle(Color.muted)
             }
             if cloud.hasAccount {
                 HStack {
-                    Button("Refresh Cloud") { cloud.refresh() }.buttonStyle(QuietButton()).disabled(cloud.isBusy)
                     if cloud.enabled {
                         Button("Back up now") { cloud.backUpNow() }.buttonStyle(QuietButton()).disabled(cloud.isBusy)
                         Button("Turn off") { cloud.setEnabled(false) }.buttonStyle(.link).disabled(cloud.activity == .restoring)
@@ -57,9 +52,6 @@ struct CloudLibraryView: View {
                         }.padding(.top, 10)
                     }.font(.system(size: 13))
                 }
-            } else {
-                Text("Sign in to check Cloud access. Signing in alone does not upload your library.")
-                    .font(.system(size: 12)).foregroundStyle(Color.muted)
             }
             if let message = cloud.message {
                 Text(message).font(.system(size: 12)).foregroundStyle(Color.muted)
@@ -69,6 +61,15 @@ struct CloudLibraryView: View {
                 Button("Show recovery copy") { cloud.revealRecoveryCopy() }.buttonStyle(.link)
                     .font(.system(size: 12))
             }
-        }.padding(20).nestSurface()
+            Text("Backups start only when you turn them on.")
+                .font(.system(size: 12)).foregroundStyle(Color.muted)
+            DisclosureGroup("Backup details") {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Includes links, quick notes, tags, and collections. Obsidian files and offline articles stay on this Mac.")
+                    Text("Up to 30 daily copies per Mac. Each Mac has separate backups; changes don’t sync between Macs.")
+                    Text("Restore backups for 90 days after your subscription ends.")
+                }.font(.system(size: 12)).foregroundStyle(Color.muted).padding(.top, 8)
+            }.font(.system(size: 12)).foregroundStyle(Color.muted)
+        }
     }
 }

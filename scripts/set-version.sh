@@ -29,4 +29,4 @@ if (fs.existsSync('package-lock.json')) {
 }
 NODE
 fi
-echo "SaveNest $version ($build_number). Add Resources/ReleaseNotes/$version.html before packaging."
+echo "Savenest $version ($build_number). Add Resources/ReleaseNotes/$version.html before packaging."

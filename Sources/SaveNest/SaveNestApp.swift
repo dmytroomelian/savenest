@@ -42,7 +42,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
                 $0.bundleIdentifier == Bundle.main.bundleIdentifier && $0.processIdentifier != ProcessInfo.processInfo.processIdentifier
             }
             if otherCopy {
-                ElectronBridge.failStartup("Quit the other SaveNest app, then reopen this one. Only one app can write your library.")
+                ElectronBridge.failStartup("Quit the other Savenest app, then reopen this one. Only one app can write your library.")
                 NSApp.terminate(nil); return
             }
         }
@@ -77,7 +77,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         let root = AppRootView(model: model).modifier(ElectronUtilitySheets(model: model, enabled: isElectron))
         libraryWindow = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 750, height: 680), styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView], backing: .buffered, defer: false)
         libraryWindow.identifier = ElectronBridge.settingsWindowIdentifier
-        libraryWindow.title = model.isPreview ? "SaveNest Preview — Settings" : "SaveNest Settings"; libraryWindow.titleVisibility = .hidden
+        libraryWindow.title = model.isPreview ? "Savenest Preview — Settings" : "Savenest Settings"; libraryWindow.titleVisibility = .hidden
         libraryWindow.titlebarAppearsTransparent = true; libraryWindow.isReleasedWhenClosed = false
         libraryWindow.backgroundColor = NSColor(Color.paper)
         let libraryContent = NSHostingView(rootView: root)
@@ -120,7 +120,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         if let electronBridge { electronBridge.event("show"); return }
         if tabSearchPanel == nil {
             let panel = TabSearchPanel(contentRect: .zero, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
-            panel.title = model.isPreview ? "SaveNest Preview" : "SaveNest"; panel.titleVisibility = .hidden
+            panel.title = model.isPreview ? "Savenest Preview" : "Savenest"; panel.titleVisibility = .hidden
             panel.titlebarAppearsTransparent = true; panel.isReleasedWhenClosed = false
             panel.level = .floating; panel.hidesOnDeactivate = false
             panel.isOpaque = false; panel.backgroundColor = .clear; panel.hasShadow = true
@@ -224,9 +224,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     }
     private func setupStatusItem() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-        if let image = NSImage(systemSymbolName: "square.stack.3d.up", accessibilityDescription: "SaveNest") { image.isTemplate = true; statusItem.button?.image = image }
+        if let image = NSImage(systemSymbolName: "square.stack.3d.up", accessibilityDescription: "Savenest") { image.isTemplate = true; statusItem.button?.image = image }
         let menu = NSMenu()
-        menu.addItem(item("Open SaveNest", #selector(openLibrary)))
+        menu.addItem(item("Open Savenest", #selector(openLibrary)))
         menu.addItem(item("Close duplicate tabs", #selector(closeDuplicateTabs)))
         menu.addItem(item("Clean up tabs…", #selector(cleanUpTabs)))
         menu.addItem(.separator())
@@ -238,22 +238,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         menu.addItem(item("Add a link…", #selector(addLink)))
         menu.addItem(.separator()); menu.addItem(item("Account…", #selector(openAccount))); menu.addItem(item("Settings…", #selector(openSettings)))
         menu.addItem(model.updater.menuItem())
-        menu.addItem(NSMenuItem(title: "Quit SaveNest", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
+        menu.addItem(NSMenuItem(title: "Quit Savenest", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
         statusItem.menu = menu
     }
     private func setupMenus() {
         let main = NSMenu()
         let app = NSMenu(); app.addItem(item("Account…", #selector(openAccount))); app.addItem(item("Settings…", #selector(openSettings), key: ",")); app.addItem(.separator())
         app.addItem(model.updater.menuItem()); app.addItem(.separator())
-        app.addItem(NSMenuItem(title: "Hide SaveNest", action: #selector(NSApplication.hide(_:)), keyEquivalent: "h"))
-        app.addItem(NSMenuItem(title: "Quit SaveNest", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
+        app.addItem(NSMenuItem(title: "Hide Savenest", action: #selector(NSApplication.hide(_:)), keyEquivalent: "h"))
+        app.addItem(NSMenuItem(title: "Quit Savenest", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
         let appRoot = NSMenuItem(); appRoot.submenu = app; main.addItem(appRoot)
         let file = NSMenu(title: "File")
         file.addItem(item("Search Tabs & Saved Links…", #selector(openTabSearch)))
         file.addItem(item("Close Duplicate Tabs", #selector(closeDuplicateTabs)))
         file.addItem(item("Clean Up Tabs…", #selector(cleanUpTabs)))
         file.addItem(item("Save Copied Link", #selector(saveClipboard)))
-        file.addItem(item("Add Link…", #selector(addLink), key: "n")); file.addItem(item("Open SaveNest", #selector(openLibrary), key: "0"))
+        file.addItem(item("Add Link…", #selector(addLink), key: "n")); file.addItem(item("Open Savenest", #selector(openLibrary), key: "0"))
         file.addItem(.separator()); file.addItem(item("Save Current Browser Tab", #selector(captureTab))); file.addItem(item("Save with a Note…", #selector(captureNote))); file.addItem(item("Save Selected Tabs…", #selector(captureSelected))); file.addItem(item("Save Browser Window", #selector(captureWindow)))
         file.addItem(.separator()); file.addItem(item("Import Backup…", #selector(importLibrary))); file.addItem(item("Export Backup…", #selector(exportLibrary)))
         file.addItem(.separator()); file.addItem(NSMenuItem(title: "Close Window", action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w"))
@@ -268,7 +268,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     private func presentToast(_ notice: CaptureNotice) {
         toastDismiss?.cancel(); toastPanel?.orderOut(nil)
         let panel = CaptureNoticePanel(contentRect: .zero, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
-        panel.title = "SaveNest notification"
+        panel.title = "Savenest notification"
         panel.level = .statusBar; panel.isOpaque = false; panel.backgroundColor = .clear; panel.hasShadow = true
         panel.hidesOnDeactivate = false
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
@@ -290,7 +290,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         if let frame = screen?.visibleFrame {
             panel.setFrameOrigin(NSPoint(x: frame.maxX - size.width - 24, y: frame.maxY - size.height - 20))
         }
-        // Never activate SaveNest or make the panel key: typing stays in the browser.
+        // Never activate Savenest or make the panel key: typing stays in the browser.
         panel.orderFrontRegardless(); toastPanel = panel
         let dismiss = DispatchWorkItem { [weak panel] in panel?.orderOut(nil) }; toastDismiss = dismiss
         DispatchQueue.main.asyncAfter(deadline: .now() + notice.duration, execute: dismiss)

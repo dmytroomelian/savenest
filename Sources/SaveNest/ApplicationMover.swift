@@ -13,8 +13,8 @@ enum ApplicationMover {
         NSApp.activate(ignoringOtherApps: true)
         let alert = NSAlert()
         alert.alertStyle = .informational
-        alert.messageText = "Move SaveNest to Applications?"
-        alert.informativeText = "SaveNest can move itself to your Applications folder and reopen from there. This keeps the app and its updates in the usual place."
+        alert.messageText = "Move Savenest to Applications?"
+        alert.informativeText = "Savenest can move itself to your Applications folder and reopen from there. This keeps the app and its updates in the usual place."
         alert.addButton(withTitle: "Move to Applications")
         alert.addButton(withTitle: "Not Now")
         alert.showsSuppressionButton = true
@@ -112,8 +112,8 @@ enum ApplicationMover {
     private static func presentFailure(_ error: Error) {
         let alert = NSAlert()
         alert.alertStyle = .warning
-        alert.messageText = "SaveNest couldn’t be moved"
-        alert.informativeText = "You can keep using SaveNest here, or move it to Applications in Finder.\n\n\(error.localizedDescription)"
+        alert.messageText = "Savenest couldn’t be moved"
+        alert.informativeText = "You can keep using Savenest here, or move it to Applications in Finder.\n\n\(error.localizedDescription)"
         alert.addButton(withTitle: "Continue")
         alert.runModal()
     }

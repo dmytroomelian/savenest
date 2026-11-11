@@ -10,7 +10,7 @@ struct ImportanceReviewView: View {
     }
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
-            sheetHeading("What’s worth keeping?", subtitle: "Your choices teach SaveNest what matters to you, on this Mac.")
+            sheetHeading("What’s worth keeping?", subtitle: "Your choices teach Savenest what matters to you, on this Mac.")
             Text("Mark useful references Important. Add a note with the command, idea, or reason you want to find later. Not needed is a label; archiving is always your choice.")
                 .font(.system(size: 12)).foregroundStyle(Color.muted).fixedSize(horizontal: false, vertical: true)
             Toggle("Show reviewed links", isOn: $showReviewed).font(.system(size: 12))

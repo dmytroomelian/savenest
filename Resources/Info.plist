@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
-	<string>SaveNest</string>
+	<string>Savenest</string>
 	<key>CFBundleExecutable</key>
 	<string>SaveNest</string>
 	<key>CFBundleIconFile</key>
@@ -13,11 +13,11 @@
 	<key>CFBundleIdentifier</key>
 	<string>app.savenest.mac</string>
 	<key>CFBundleName</key>
-	<string>SaveNest</string>
+	<string>Savenest</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>0.12.4</string>
+	<string>0.12.5</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
@@ -32,11 +32,11 @@
 		</dict>
 	</array>
 	<key>CFBundleVersion</key>
-	<string>40</string>
+	<string>41</string>
 	<key>LSMinimumSystemVersion</key>
 	<string>14.0</string>
 	<key>NSAppleEventsUsageDescription</key>
-	<string>SaveNest reads the title and address of browser tabs when you use the capture shortcut or menu. Your tabs stay open and your saved links stay on your Mac.</string>
+	<string>Savenest reads the title and address of browser tabs when you use the capture shortcut or menu. Your tabs stay open and your saved links stay on your Mac.</string>
 	<key>NSHighResolutionCapable</key>
 	<true/>
 	<key>NSPrincipalClass</key>

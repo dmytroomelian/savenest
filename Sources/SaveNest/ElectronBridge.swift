@@ -395,7 +395,7 @@ final class ElectronBridge {
             if !enabled { model.dismissUsageNotice() }
         case "onboardingDone": if !model.isPreview { model.completeOnboarding() }
         case "dismissMessage": model.error = nil; search.setMessage("")
-        default: throw Failure(message: "Unknown SaveNest action.")
+        default: throw Failure(message: "Unknown Savenest action.")
         }
     }
 }

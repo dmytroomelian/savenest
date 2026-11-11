@@ -6,7 +6,7 @@ enum CaptureAction: String, CaseIterable, Identifiable {
     case quick, note, selected, window, search, duplicates, reader
     var id: String { rawValue }
     var title: String {
-        switch self { case .quick: return "Save link"; case .note: return "Save with a note"; case .selected: return "Save selected tabs"; case .window: return "Save all tabs in window"; case .search: return "Open SaveNest"; case .duplicates: return "Close duplicate tabs"; case .reader: return "Read & note current tab" }
+        switch self { case .quick: return "Save link"; case .note: return "Save with a note"; case .selected: return "Save selected tabs"; case .window: return "Save all tabs in window"; case .search: return "Open Savenest"; case .duplicates: return "Close duplicate tabs"; case .reader: return "Read & note current tab" }
     }
     var defaultShortcut: CaptureShortcut {
         if self == .reader { return .unassigned }

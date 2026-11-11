@@ -42,7 +42,7 @@ final class UsageAnalytics {
             var request = URLRequest(url: URL(string: "https://savenest.app/api/usage")!)
             request.httpMethod = "POST"
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-            request.setValue("SaveNest", forHTTPHeaderField: "User-Agent")
+            request.setValue("Savenest", forHTTPHeaderField: "User-Agent")
             request.httpBody = try? JSONEncoder().encode(batch)
             // Best effort, memory only: no offline history, background retries, or app-blocking errors.
             _ = try? await session.data(for: request)

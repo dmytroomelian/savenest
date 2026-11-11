@@ -1,6 +1,6 @@
 # Security reporting
 
-Please report vulnerabilities privately to [dima@omelabs.org](mailto:dima@omelabs.org) with the subject “SaveNest security report”. Do not open a public issue containing exploit details, credentials, or personal data.
+Please report vulnerabilities privately to [dima@omelabs.org](mailto:dima@omelabs.org) with the subject “Savenest security report”. Do not open a public issue containing exploit details, credentials, or personal data.
 
 Include the affected version, a minimal reproduction using synthetic data, expected and actual behavior, and the likely impact. Do not send your library, browsing history, session token, or a complete production log.
 

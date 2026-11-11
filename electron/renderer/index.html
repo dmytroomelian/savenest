@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>SaveNest</title>
+  <title>Savenest</title>
   <link rel="stylesheet" href="glass.css">
   <link rel="stylesheet" href="styles.css">
   <script src="launcher-model.js" defer></script>
@@ -14,13 +14,13 @@
     <header id="search-header">
       <button id="back" class="icon-button" aria-label="Back to all results" title="Back" hidden>‹</button>
       <span id="nest-mark" aria-hidden="true"></span>
-      <input id="search" type="text" placeholder="Search tabs, saved links, history, or commands…" aria-label="Search SaveNest" role="combobox" aria-autocomplete="list" aria-controls="results" aria-expanded="true" autocomplete="off" spellcheck="false" maxlength="2000">
+      <input id="search" type="text" placeholder="Search tabs, saved links, history, or commands…" aria-label="Search Savenest" role="combobox" aria-autocomplete="list" aria-controls="results" aria-expanded="true" autocomplete="off" spellcheck="false" maxlength="2000">
       <span class="scope-control">
         <select id="scope" aria-label="Search scope"><option value="All">All</option><option value="Open">Open tabs</option><option value="Saved">Saved</option><option value="History">History</option><option value="Favorites">Favorites</option><option value="Notes">Notes</option><option value="Archive">Archive</option></select>
         <svg class="scope-chevron" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 4.5 3 3 3-3"/></svg>
       </span>
     </header>
-    <header id="route-header" hidden><button id="route-back" class="icon-button" aria-label="Back">‹</button><div><span class="breadcrumb">SaveNest</span><h1 id="route-title">Save a link</h1></div><kbd>esc</kbd></header>
+    <header id="route-header" hidden><button id="route-back" class="icon-button" aria-label="Back">‹</button><div><span class="breadcrumb">Savenest</span><h1 id="route-title">Save a link</h1></div><kbd>esc</kbd></header>
     <div id="onboarding" class="hint-banner" hidden><span>Type to find a page. Open Actions ⌘K to browse search, saving, and app controls.</span><button id="onboarding-done">Got it</button></div>
     <aside id="usage-notice" hidden aria-label="Anonymous usage reporting">
       <p id="usage-notice-text">Anonymous usage counts are on. No saved content, account IDs, or device IDs are sent.</p>
@@ -40,12 +40,12 @@
     <section id="sources-view" class="view form-view" hidden>
       <div class="source-summary"><div><h2>Find a page you visited.</h2><p>Search the last 90 days of browser history alongside open tabs and saved links.</p></div><label class="toggle"><input id="history-enabled" type="checkbox"> History search</label></div>
       <div id="sources"></div>
-      <p class="privacy-note">Up to 2,000 recent records per profile, 20,000 pages total. Read locally; never uploaded or included in backups. Pause to clear history from SaveNest’s memory. Browser history stays unchanged.</p>
+      <p class="privacy-note">Up to 2,000 recent records per profile, 20,000 pages total. Read locally; never uploaded or included in backups. Pause to clear history from Savenest’s memory. Browser history stays unchanged.</p>
       <div class="source-buttons"><button id="history-refresh">Refresh history</button><button id="history-access">Open macOS Privacy settings ↗</button></div>
     </section>
     <section id="selection-view" class="view form-view" hidden><p class="subtle">Choose the tabs to keep. Their browser tabs stay open.</p><div id="capture-tabs"></div></section>
     <footer>
-      <button id="home" aria-label="Back to root search"><span class="footer-mark" aria-hidden="true">≋</span><span id="status">Starting SaveNest…</span></button>
+      <button id="home" aria-label="Back to root search"><span class="footer-mark" aria-hidden="true">≋</span><span id="status">Starting Savenest…</span></button>
       <span id="preview" hidden>Preview</span>
       <div class="footer-utilities"><button id="open-settings" title="Settings (⌘,)">Settings</button><button id="show-shortcuts" title="Keyboard shortcuts (⌘/)" aria-haspopup="dialog" aria-controls="shortcuts-dialog">Shortcuts</button></div>
       <div class="footer-actions"><button id="primary">Open <kbd>↵</kbd></button><span class="separator"></span><button id="actions" title="Browse all actions (⌘K)" aria-haspopup="dialog" aria-controls="action-dialog">Actions <kbd>⌘K</kbd></button></div>

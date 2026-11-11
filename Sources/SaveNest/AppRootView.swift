@@ -10,10 +10,10 @@ struct AppRootView: View {
             HStack(spacing: 14) {
                 Button("Settings") { model.section = .settings }
                     .buttonStyle(QuietButton())
-                Button("Account & Cloud") { model.section = .account }
+                Button("Account & Pro") { model.section = .account }
                     .buttonStyle(QuietButton())
                 Spacer()
-                Button("Open SaveNest") { model.showLibrary?() }.buttonStyle(SageButton())
+                Button("Open Savenest") { model.showLibrary?() }.buttonStyle(SageButton())
             }.padding(.horizontal, 26).padding(.top, 28).padding(.bottom, 12)
             if model.section == .account {
                 AccountView(account: model.account, cloud: model.cloud) { model.showLibrary?() }

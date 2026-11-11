@@ -18,7 +18,7 @@ python3 - "$beta_app/Contents/Info.plist" <<'PY'
 import plistlib,sys
 path=sys.argv[1]
 with open(path,'rb') as f: value=plistlib.load(f)
-value.update(CFBundleIdentifier='app.savenest.aws-beta',CFBundleDisplayName='SaveNest AWS Beta',CFBundleName='SaveNest AWS Beta',SaveNestAccountBaseURL='https://d7ltannvnl.execute-api.eu-north-1.amazonaws.com',SaveNestCloudBaseURL='https://d7ltannvnl.execute-api.eu-north-1.amazonaws.com',SaveNestUpdatesEnabled=False)
+value.update(CFBundleIdentifier='app.savenest.aws-beta',CFBundleDisplayName='Savenest AWS Beta',CFBundleName='Savenest AWS Beta',SaveNestAccountBaseURL='https://d7ltannvnl.execute-api.eu-north-1.amazonaws.com',SaveNestCloudBaseURL='https://d7ltannvnl.execute-api.eu-north-1.amazonaws.com',SaveNestUpdatesEnabled=False)
 value['CFBundleURLTypes']=[{'CFBundleTypeRole':'Editor','CFBundleURLName':'app.savenest.aws-beta.auth','CFBundleURLSchemes':['savenest-beta']}]
 value.pop('SaveNestPostHogProjectToken',None)
 value.pop('SaveNestPostHogHost',None)

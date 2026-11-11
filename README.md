@@ -1,15 +1,15 @@
-# SaveNest for Mac
+# Savenest for Mac
 
 Save links. Keep the context. Find them again with **⌘O**.
 
-SaveNest is a free, open-source macOS launcher for saved links, notes, open browser tabs, and recent history. Your library stays on your Mac. Local features work without an account or subscription.
+Savenest is a free, open-source macOS launcher for saved links, notes, open browser tabs, and recent history. Your library stays on your Mac. Local features work without an account or subscription.
 
 [Download preview](https://github.com/dmytro-omelian/savenest/releases/tag/v0.12.2) · [Website](https://savenest.app) · [Contribute](CONTRIBUTING.md) · [Report a bug](https://github.com/dmytro-omelian/savenest/issues/new?template=bug.yml)
 
 [![Checks](https://github.com/dmytro-omelian/savenest/actions/workflows/checks.yml/badge.svg)](https://github.com/dmytro-omelian/savenest/actions/workflows/checks.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-![SaveNest launcher with commands, open tabs, and saved pages using sample data](docs/assets/launcher.png)
+![Savenest launcher with commands, open tabs, and saved pages using sample data](docs/assets/launcher.png)
 
 ## What it does
 
@@ -25,7 +25,7 @@ Press **⌘O** to open the launcher, **Enter** to open a result, and **⌘K** fo
 
 Download the [signed 0.12.2 preview](https://github.com/dmytro-omelian/savenest/releases/tag/v0.12.2) for **macOS 14+**, on Apple Silicon or Intel.
 
-This is still a preview. Installed-app migration, offline import/export, live browser permissions, Intel runtime, and real update checks remain open. See the [acceptance checklist](docs/preview-acceptance.md). Before upgrading, export a backup. Native 0.10.0 can install this preview through **SaveNest → Check for Updates…**. Quit the old app first only when installing manually.
+This is still a preview. Installed-app migration, offline import/export, live browser permissions, Intel runtime, and real update checks remain open. See the [acceptance checklist](docs/preview-acceptance.md). Before upgrading, export a backup. Native 0.10.0 can install this preview through **Savenest → Check for Updates…**. Quit the old app first only when installing manually.
 
 ## Run a development preview
 
@@ -40,7 +40,7 @@ npm run preview
 
 Preview builds the Swift helper and opens Electron with sample data. It does not read your browser history, write your library, register global shortcuts, or send analytics. No account, server setup, or Apple signing credentials are needed.
 
-For normal app behavior, `npm start` uses your real library. Quit other SaveNest copies and export a backup first.
+For normal app behavior, `npm start` uses your real library. Quit other Savenest copies and export a backup first.
 
 ## Contribute
 
@@ -62,7 +62,7 @@ For launcher or process-integration changes, also run `npm run test:smoke`. It e
 
 Saved links and notes stay local. Browser history is read without modification and kept in memory. **Anonymous usage counts are on by default** and can be disabled in Settings or the first-use notice. Icons, account services, update checks, and reporting can make network requests. Read the [privacy policy](docs/privacy.md) for details.
 
-This repository contains the Electron app and Swift helper. The hosted backend is separate. Optional Cloud subscriptions provide automatic library backup and recovery. Each Mac keeps separate backups; live sync and Teams are not included. See [Cloud backup](docs/cloud-backup.md) for limits and recovery behavior.
+This repository contains the Electron app and Swift helper. The hosted backend is separate. Optional Savenest Pro subscriptions provide automatic library backup and recovery. Each Mac keeps separate backups; live sync and Teams are not included. See [Pro backup](docs/cloud-backup.md) for limits and recovery behavior.
 
 ## Reference
 

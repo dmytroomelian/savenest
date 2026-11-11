@@ -1,6 +1,6 @@
 # Signed preview acceptance
 
-Version 0.11.1/build 35 is the published preview, following 0.11.0. It prepares an in-app migration from native SaveNest 0.10.0/build 33 through Sparkle 2.10.0. Isolated Apple Silicon archive installation has passed; full installed-app acceptance remains pending. Keep the full launch open until the following checks pass in a separate macOS user account or VM with a disposable library. Do not use a person's primary library or Keychain to fill a testing gap.
+Version 0.11.1/build 35 is the published preview, following 0.11.0. It prepares an in-app migration from native Savenest 0.10.0/build 33 through Sparkle 2.10.0. Isolated Apple Silicon archive installation has passed; full installed-app acceptance remains pending. Keep the full launch open until the following checks pass in a separate macOS user account or VM with a disposable library. Do not use a person's primary library or Keychain to fill a testing gap.
 
 ## What automated checks establish
 

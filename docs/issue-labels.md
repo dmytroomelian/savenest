@@ -120,5 +120,5 @@ This creates missing labels and updates the catalog's existing labels. It does n
 
 - A release with published preview artifacts and unverified installed-app acceptance: `task`, `area:release`, `priority:high`, `status:needs-validation`.
 - A proposed bookmark importer with clear scope but no committed release: `enhancement`, `area:library`, `priority:normal`.
-- Later Cloud discovery: `research`, `area:cloud`, `priority:low`. The label does not authorize implementation or outreach.
+- Later Pro discovery: `research`, `area:cloud`, `priority:low`. The label does not authorize implementation or outreach.
 - A newly filed launcher bug: `bug`, `status:triage`; add area and priority after assessment.

@@ -12,7 +12,7 @@ const preview = !app.isPackaged && process.argv.includes('--preview');
 const smoke = preview && process.argv.includes('--smoke-test');
 const readerLive = preview && !smoke && process.argv.includes('--reader-live');
 const root = path.join(__dirname, '..');
-app.setName(readerLive ? 'SaveNest Reader Test' : preview ? 'SaveNest Preview' : 'SaveNest');
+app.setName(readerLive ? 'Savenest Reader Test' : preview ? 'Savenest Preview' : 'Savenest');
 app.setPath('userData', preview ? path.join(root, 'build', smoke ? 'electron-test-profile' : readerLive ? 'electron-reader-test-profile' : 'electron-preview-profile') : path.join(app.getPath('appData'), 'SaveNest Electron'));
 app.enableSandbox();
 protocol.registerSchemesAsPrivileged([{ scheme: 'savenest-ui', privileges: { standard: true, secure: true, supportFetchAPI: true } }]);
@@ -72,7 +72,7 @@ function createLauncherWindow() {
     width: 760, height: 520, show: false, frame: false, type: 'panel',
     resizable: false, minimizable: false, maximizable: false, fullscreenable: false,
     alwaysOnTop: true, skipTaskbar: true, roundedCorners: true, hasShadow: true,
-    title: preview ? 'SaveNest Preview' : 'SaveNest', ...glassWindowOptions,
+    title: preview ? 'Savenest Preview' : 'Savenest', ...glassWindowOptions,
     webPreferences: { preload: path.join(__dirname, 'preload.cjs'), nodeIntegration: false, contextIsolation: true, sandbox: true, webSecurity: true, webviewTag: false }
   });
   win = launcher;
@@ -83,8 +83,8 @@ function createLauncherWindow() {
   launcher.webContents.on('will-attach-webview', event => event.preventDefault());
   launcher.webContents.on('render-process-gone', () => {
     if (quitting || launcher.isDestroyed() || launcher !== win) return;
-    fatalError = 'The window stopped responding. Quit and reopen SaveNest.';
-    dialog.showErrorBox('SaveNest', fatalError);
+    fatalError = 'The window stopped responding. Quit and reopen Savenest.';
+    dialog.showErrorBox('Savenest', fatalError);
   });
   launcher.on('close', event => { if (!quitting && launcher === win) { event.preventDefault(); hide(true); } });
   launcher.on('blur', () => {
@@ -144,11 +144,11 @@ if (!app.requestSingleInstanceLock()) {
     }
     quitting = true; workspace?.destroy(); native?.stop(); tray?.destroy();
   });
-  app.whenReady().then(start).catch(error => { dialog.showErrorBox('SaveNest could not start', error.message); app.exit(1); });
+  app.whenReady().then(start).catch(error => { dialog.showErrorBox('Savenest could not start', error.message); app.exit(1); });
 }
 
 async function start() {
-  if (process.platform !== 'darwin') throw new Error('SaveNest currently requires macOS 14 or later.');
+  if (process.platform !== 'darwin') throw new Error('Savenest currently requires macOS 14 or later.');
   app.dock?.hide();
   session.defaultSession.setPermissionRequestHandler((_webContents, _permission, callback) => callback(false));
   session.defaultSession.setPermissionCheckHandler(() => false);
@@ -167,7 +167,7 @@ async function start() {
   createLauncherWindow();
   nativeTheme.on('updated', refreshWindowMaterials);
   ipcMain.handle('savenest:command', async (event, input) => {
-    if (!win || win.isDestroyed() || !trustedSender(event, win.webContents)) throw new Error('Untrusted SaveNest window.');
+    if (!win || win.isDestroyed() || !trustedSender(event, win.webContents)) throw new Error('Untrusted Savenest window.');
     const request = validateCommand(input);
     if (fatalError) throw new Error(fatalError);
     if (['readerCurrent', 'readerOpen'].includes(request.command)) return workspace.open(request);
@@ -241,9 +241,9 @@ async function start() {
     const iconPath = path.join(helper, 'Contents/Resources/AppIcon.icns');
     const icon = nativeImage.createFromPath(iconPath).resize({ width: 18, height: 18 });
     if (!icon.isEmpty()) {
-      tray = new Tray(icon); tray.setToolTip('SaveNest');
+      tray = new Tray(icon); tray.setToolTip('Savenest');
       tray.setContextMenu(Menu.buildFromTemplate([
-        { label: 'Open SaveNest', click: show },
+        { label: 'Open Savenest', click: show },
         { label: 'Read & note current tab', click: () => void command({ command: 'readerCurrent' }) },
         { label: 'Save current tab', click: () => void command({ command: 'capture', action: 'quick' }) },
         { label: 'Save with a note…', click: () => void command({ command: 'capture', action: 'note' }) },
@@ -282,7 +282,7 @@ async function start() {
 function createMenu() {
   const action = (label, name, accelerator) => ({ label, accelerator, click: () => void command({ command: name }) });
   Menu.setApplicationMenu(Menu.buildFromTemplate([
-    { label: 'SaveNest', submenu: [
+    { label: 'Savenest', submenu: [
       { role: 'about' }, { id: 'check-updates', label: 'Check & Download Updates…', enabled: updater.enabled, click: () => void updater.check() }, action('Account…', 'account'), action('Settings…', 'settings', 'Command+,'),
       { type: 'separator' }, { role: 'hide' }, { role: 'hideOthers' }, { role: 'unhide' }, { type: 'separator' }, { role: 'quit' }
     ] },
@@ -301,6 +301,6 @@ function createMenu() {
       action('Refresh tabs', 'refresh', 'Command+R'), { role: 'togglefullscreen' }
     ] },
     { label: 'Tools', submenu: [action('Manage tags…', 'tags'), action('Clean up tabs…', 'cleanup'), { label: 'Close duplicate tabs', click: () => void command({ command: 'capture', action: 'duplicates' }) }] },
-    { label: 'Window', submenu: [{ role: 'minimize' }, { role: 'zoom' }, { label: 'Open SaveNest', click: show }] }
+    { label: 'Window', submenu: [{ role: 'minimize' }, { role: 'zoom' }, { label: 'Open Savenest', click: show }] }
   ]));
 }

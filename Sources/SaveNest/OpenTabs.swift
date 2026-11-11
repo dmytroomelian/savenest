@@ -23,7 +23,7 @@ enum BrowserScript {
                     process.waitUntilExit(); timeout.cancel(); drain.wait()
                     guard process.terminationStatus == 0 else {
                         let message = String(data: errorBox.data, encoding: .utf8) ?? ""
-                        throw CaptureError.failed(message.contains("1743") ? "Allow SaveNest in System Settings → Privacy & Security → Automation." : "The browser did not respond. Try refreshing.")
+                        throw CaptureError.failed(message.contains("1743") ? "Allow Savenest in System Settings → Privacy & Security → Automation." : "The browser did not respond. Try refreshing.")
                     }
                     continuation.resume(returning: data)
                 } catch { continuation.resume(throwing: error) }
@@ -250,7 +250,7 @@ final class TabSearchModel: ObservableObject {
         busy = true
         Task {
             defer { busy = false }
-            guard await save(tabs) else { message = "Couldn’t save. Check your account or the SaveNest notification."; return }
+            guard await save(tabs) else { message = "Couldn’t save. Check your account or the Savenest notification."; return }
             if closeAfter { await closeTabsNow(tabs) }
             else { message = tabs.count == 1 ? "Saved to your library." : "Saved \(tabs.count) tabs." }
         }

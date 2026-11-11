@@ -47,7 +47,7 @@ exports.run = async ({ win, native, root, show, toggle }) => {
   assert.equal(await js('typeof require'), 'undefined'); assert.equal(await js('typeof process'), 'undefined');
   assert.equal(win.webContents.getLastWebPreferences().sandbox, true);
   assert.equal(win.webContents.getLastWebPreferences().contextIsolation, true);
-  await assert.rejects(js("window.savenest.command({command:'callback',url:'savenest://auth'})"), /Unknown SaveNest action/);
+  await assert.rejects(js("window.savenest.command({command:'callback',url:'savenest://auth'})"), /Unknown Savenest action/);
 
   // The native fixture has no account or subscription. It follows the same local
   // write checks as the normal app; preview only replaces persistence/browser IO.

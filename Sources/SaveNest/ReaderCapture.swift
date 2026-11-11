@@ -99,7 +99,7 @@ enum ReaderCapture {
         ].joined()
         let article: [String: Any] = [
             "title": title,
-            "byline": "SaveNest sample article",
+            "byline": "Savenest sample article",
             "content": content,
             "textContent": paragraphs.joined(separator: "\n\n")
         ]

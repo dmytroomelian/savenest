@@ -1,4 +1,4 @@
-# Using SaveNest
+# Using Savenest
 
 [Back to the project](../README.md) · [Privacy](privacy.md)
 
@@ -20,17 +20,17 @@ Account, Settings, sharing, and system dialogs retain their native implementatio
 
 History search reads local Chrome/Chromium-family, Firefox, and Safari databases without modifying them. It indexes up to 2,000 recent records per profile from the last 90 days, across at most 30 profiles, with a 20,000-URL memory cap. Standard profile locations for Chrome/Beta, Brave, Edge, Arc, Vivaldi, Chromium, Opera, Firefox, and Safari are supported. External/custom profile locations and Safari profile layouts outside the standard history database are not scanned.
 
-History remains in memory, is never uploaded or exported, and is refreshed on opening (at most once per minute) or explicitly via **Refresh tabs and history**. Failed reads clear that source’s old results and show an access/format error. **Browser history sources** shows connected profiles and a pause control that cancels reads and clears the cache. macOS may require file access for protected browser folders; SaveNest does not change those permissions.
+History remains in memory, is never uploaded or exported, and is refreshed on opening (at most once per minute) or explicitly via **Refresh tabs and history**. Failed reads clear that source’s old results and show an access/format error. **Browser history sources** shows connected profiles and a pause control that cancels reads and clears the cache. macOS may require file access for protected browser folders; Savenest does not change those permissions.
 
 A URL found in multiple sources becomes one result with its source labels. If it is open, Enter switches to that tab. Separate open instances remain distinct so profiles/windows are not confused. Title and keyword relevance rank before page-context matches; abbreviated single-word titles are also supported. History-only results can be saved, annotated, or opened like other pages.
 
 ## Capture
 
 1. Open a normal web page in Safari or a supported Chromium browser.
-2. Press **⌘⇧K**. On first use, macOS asks whether SaveNest may automate that browser. Allow it to enable capture. If denied, use System Settings → Privacy & Security → Automation.
+2. Press **⌘⇧K**. On first use, macOS asks whether Savenest may automate that browser. Allow it to enable capture. If denied, use System Settings → Privacy & Security → Automation.
 3. The tab's title and URL are saved locally. Quick Save can also attach up to three existing tags learned from your saved links. A small top-right confirmation appears; the browser keeps focus and its tabs stay open. Capture errors appear in the same place for eight seconds, with a clear reason and an Automation Settings action when permission is needed. They never open the library or a modal dialog. You can preview the popup in Settings.
 
-Use **SaveNest → Settings** (**⌘,**) to record each shortcut separately:
+Use **Savenest → Settings** (**⌘,**) to record each shortcut separately:
 
 | Action | Default shortcut |
 | --- | --- |
@@ -38,18 +38,18 @@ Use **SaveNest → Settings** (**⌘,**) to record each shortcut separately:
 | Save with a note | ⌘⌥K |
 | Save selected tabs | ⌘⌃⇧K |
 | Save all tabs in the current window | ⌘⌥⇧K |
-| Open SaveNest launcher | ⌘O |
+| Open Savenest launcher | ⌘O |
 | Close duplicate tabs | ⌘⇧D |
 
 Settings → **After saving** can close the source tab after Save link or Save with a note. Save-only is the default; your choice is remembered. Closing happens only after a successful library write or confirmed editor save (including a link already saved), and only for the originally captured browser tab. A navigated, missing, or ambiguous tab is left open with a saved-but-not-closed notice. Selected-tab and whole-window capture always keep tabs open.
 
-Your previously configured quick-save shortcut is preserved. Choose a key with Command, Option, or Control. Escape cancels recording. Conflicts with another SaveNest action are rejected; an unavailable system shortcut leaves the previous binding unchanged. Each row has its own reset button.
+Your previously configured quick-save shortcut is preserved. Choose a key with Command, Option, or Control. Escape cancels recording. Conflicts with another Savenest action are rejected; an unavailable system shortcut leaves the previous binding unchanged. Each row has its own reset button.
 
-Save with a note reads the browser link first, then opens only a small editor without activating SaveNest or raising the library. The editor includes both the note and tags, with the note focused. For new links, SaveNest can pre-fill up to three existing tags from repeated patterns in the page title and exact website host. Quick Save uses the same learning and applies those tags silently; clipboard and open-tab single-link saves do too. Suggestions come only from links and tags already stored on this Mac; they remain editable later and never use a cloud model. Auto-tagging is on by default and can be disabled in Settings. **⌘Return** saves and **Escape** cancels. Nothing in the note editor is saved until you confirm. Capturing an existing link opens its existing note and tags without adding automatic tags; saving updates that link without losing its original date or archive state. A second capture while editing brings the existing draft forward instead of discarding it.
+Save with a note reads the browser link first, then opens only a small editor without activating Savenest or raising the library. The editor includes both the note and tags, with the note focused. For new links, Savenest can pre-fill up to three existing tags from repeated patterns in the page title and exact website host. Quick Save uses the same learning and applies those tags silently; clipboard and open-tab single-link saves do too. Suggestions come only from links and tags already stored on this Mac; they remain editable later and never use a cloud model. Auto-tagging is on by default and can be disabled in Settings. **⌘Return** saves and **Escape** cancels. Nothing in the note editor is saved until you confirm. Capturing an existing link opens its existing note and tags without adding automatic tags; saving updates that link without losing its original date or archive state. A second capture while editing brings the existing draft forward instead of discarding it.
 
 Selected-tab capture opens a checklist of the web tabs in the current browser window and saves only the checked tabs. Bulk capture saves every web tab in that window. Neither action extracts hyperlinks from a page or closes tabs. The menu bar and File menu expose the capture actions as well.
 
-The foreground supported browser takes priority. From SaveNest or another non-browser app, capture uses the last active supported browser (remembered across restarts). On a cold start, visible browser windows or a single running browser provide a fallback. Known unsupported foreground browsers get a specific message rather than capturing a different browser.
+The foreground supported browser takes priority. From Savenest or another non-browser app, capture uses the last active supported browser (remembered across restarts). On a cold start, visible browser windows or a single running browser provide a fallback. Known unsupported foreground browsers get a specific message rather than capturing a different browser.
 
 Direct capture adapters: Safari, Safari Technology Preview, Chrome, Chrome Beta, Brave, Edge, Arc, Vivaldi, Chromium, and Opera. These rely on each browser's scripting support; not all adapters have been exercised on this machine. Firefox doesn't expose the same tab scripting interface: copy a URL and paste it into launcher search, choose **Add a link**, or press **⌘N**.
 
@@ -71,9 +71,9 @@ Open tabs participate in the main **⌘O** search. Choose **Search open tabs** o
 
 ## Better titles
 
-Capture attempts a fixed, read-only script in the captured page to read Open Graph/Twitter metadata and, for a matching social post permalink, the post text. X extraction matches the current status ID so a reply or promoted post does not become the title. No metadata is sent to another service, and SaveNest does not change the browser’s security preferences.
+Capture attempts a fixed, read-only script in the captured page to read Open Graph/Twitter metadata and, for a matching social post permalink, the post text. X extraction matches the current status ID so a reply or promoted post does not become the title. No metadata is sent to another service, and Savenest does not change the browser’s security preferences.
 
-Browsers may block this unless **Allow JavaScript from Apple Events** is enabled by the user. Browser Automation access and this JavaScript setting are separate. If metadata is blocked, unavailable, or a page navigates during capture, SaveNest retains a useful native title or builds a descriptive fallback from the URL (for example `@anna on X · 123` or `Instagram reel · ABC123`). Login-only pages and changing social site markup can limit results. These fallbacks identify the link; they do not invent a caption. A captured title can always be edited.
+Browsers may block this unless **Allow JavaScript from Apple Events** is enabled by the user. Browser Automation access and this JavaScript setting are separate. If metadata is blocked, unavailable, or a page navigates during capture, Savenest retains a useful native title or builds a descriptive fallback from the URL (for example `@anna on X · 123` or `Instagram reel · ABC123`). Login-only pages and changing social site markup can limit results. These fallbacks identify the link; they do not invent a caption. A captured title can always be edited.
 
 ## Library and backups
 
@@ -81,12 +81,12 @@ Saved data lives at `~/Library/Application Support/SaveNest/library.json`. Use S
 
 The [native interface reference](legacy-native.md) describes the retained Swift UI.
 
-## Optional Cloud backup
+## Savenest Pro backup
 
-Open **Account & Cloud**, sign in using the email link, and choose **monthly ($4.99 USD)** or **yearly ($49.90 USD)**. Applicable tax is added at checkout. Stripe opens in your browser; return to SaveNest after checkout. Account shows your verified plan and billing date. Use **Manage subscription** to review payment details or cancel automatic renewal. Local saving and search remain free.
+Open **Account & Pro**, sign in using the email link, and choose **monthly ($4.99 USD)** or **yearly ($49.90 USD)**. Applicable tax is added at checkout. Stripe opens in your browser; return to Savenest after checkout. Account shows your verified plan and billing date. Use **Manage billing** to review payment details or cancel automatic renewal. Local saving and search remain free.
 
 Choose **Turn on backups** and confirm the library/account shown. Signing in or subscribing alone never uploads a library. **Back up now** saves the current library; automatic backup handles later changes. Each Mac keeps its own backup history rather than synchronizing live edits.
 
-To recover, open **Available backups**, choose **Restore…**, and review the backup date and link counts. SaveNest preserves the previous local file before replacing it. Use **Show recovery copy** to find that file. Automatic backups remain off after restore until you review the recovered library and enable them again.
+To recover, open **Available backups**, choose **Restore…**, and review the backup date and link counts. Savenest preserves the previous local file before replacing it. Use **Show recovery copy** to find that file. Automatic backups remain off after restore until you review the recovered library and enable them again.
 
-Backups include saved links, quick notes, tags, and collections. They exclude Obsidian Markdown and offline articles. Limits: 2 MiB per library backup, five Macs, up to 30 daily copies per Mac, and 90 days of recovery after a subscription ends. See [Cloud backup](cloud-backup.md) for details.
+Backups include saved links, quick notes, tags, and collections. They exclude Obsidian Markdown and offline articles. Limits: 2 MiB per library backup, five Macs, up to 30 daily copies per Mac, and 90 days of recovery after a subscription ends. See [Pro backup](cloud-backup.md) for details.

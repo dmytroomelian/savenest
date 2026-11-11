@@ -89,7 +89,7 @@ test('Settings dispatches from both the global Actions list and the persistent f
 
 test('global keyboard help shows configured bindings, unassigned actions and registration errors', t => {
   const ui = launcher(t, { scope: 'Saved', shortcuts: [
-    { id: 'search', title: 'Open SaveNest', key: '⌃⌥P', error: '' },
+    { id: 'search', title: 'Open Savenest', key: '⌃⌥P', error: '' },
     { id: 'reader', title: 'Read & note current tab', key: '', error: '' },
     { id: 'quick', title: 'Save link', key: '⇧⌘J', error: 'Already in use. Choose another shortcut.' }
   ] });
@@ -98,12 +98,12 @@ test('global keyboard help shows configured bindings, unassigned actions and reg
   assert.equal(ui.byID('action-dialog').open, false);
   assert.equal(ui.byID('shortcuts-dialog').open, true);
   const shortcutRow = title => [...ui.document.querySelectorAll('.shortcut-row')].find(node => node.firstElementChild?.firstChild?.textContent === title);
-  assert.equal(shortcutRow('Open SaveNest').querySelector('kbd').textContent, '⌃⌥P');
+  assert.equal(shortcutRow('Open Savenest').querySelector('kbd').textContent, '⌃⌥P');
   assert.equal(shortcutRow('Read & note current tab').querySelector('kbd'), null);
   assert.equal(shortcutRow('Read & note current tab').querySelector('.shortcut-unassigned').textContent, 'Not assigned');
   assert.equal(shortcutRow('Save link').querySelector('.error').textContent, 'Already in use. Choose another shortcut.');
-  ui.update({ shortcuts: [{ id: 'search', title: 'Open SaveNest', key: '⌃⌥L', error: '' }] });
-  assert.equal(shortcutRow('Open SaveNest').querySelector('kbd').textContent, '⌃⌥L');
+  ui.update({ shortcuts: [{ id: 'search', title: 'Open Savenest', key: '⌃⌥L', error: '' }] });
+  assert.equal(shortcutRow('Open Savenest').querySelector('kbd').textContent, '⌃⌥L');
   assert.deepEqual(ui.calls, []);
   ui.byID('shortcut-settings').click();
   assert.equal(ui.byID('shortcuts-dialog').open, false);

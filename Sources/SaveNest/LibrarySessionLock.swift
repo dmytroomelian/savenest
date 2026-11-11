@@ -13,6 +13,6 @@ final class LibrarySessionLock {
     }
     deinit { flock(descriptor, LOCK_UN); Darwin.close(descriptor) }
     private struct Failure: LocalizedError {
-        var errorDescription: String? { "SaveNest couldn’t lock its library. Quit other copies of SaveNest and try again." }
+        var errorDescription: String? { "Savenest couldn’t lock its library. Quit other copies of Savenest and try again." }
     }
 }

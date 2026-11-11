@@ -9,7 +9,7 @@ const scopes = new Set(['All', 'Open', 'Saved', 'History', 'Favorites', 'Notes',
 
 function validateCommand(input) {
   if (!input || typeof input !== 'object' || Array.isArray(input) || !commands.has(input.command)) {
-    throw new Error('Unknown SaveNest action.');
+    throw new Error('Unknown Savenest action.');
   }
   const result = { command: input.command };
   for (const [key, limit] of Object.entries({ query: 2000, title: 10000, note: 100000, url: 16384, scope: 20, action: 20, view: 20 })) {

@@ -1,4 +1,4 @@
-# Cloud library backup and restore
+# Savenest Pro backup and restore
 
 The desktop integration is implemented locally. It is not a published release, and the default production website does not acquire cloud routes from these changes alone. Account migration, server deployment, paid entitlement verification, and a real signed-in end-to-end check are release prerequisites.
 
@@ -6,7 +6,7 @@ The desktop integration is implemented locally. It is not a published release, a
 
 All local saving, search, organization, import, export, and quick notes continue working offline and without an account. Signing in alone does not upload a library.
 
-Cloud backup is explicitly enabled for the signed-in account on each Mac. The confirmation explains which content leaves the device. A verified paid subscription and server-side upload permission are both required. Saving a local change schedules a backup after a three-second debounce. Failed requests retry while the app remains open; an unchanged pending snapshot keeps its ID, so a lost response does not create a duplicate upload. Unchanged libraries do not generate another backup request.
+Savenest Pro cloud backup is explicitly enabled for the signed-in account on each Mac. The confirmation explains which content leaves the device. A verified Pro subscription and server-side upload permission are both required. Saving a local change schedules a backup after a three-second debounce. Failed requests retry while the app remains open; an unchanged pending snapshot keeps its ID, so a lost response does not create a duplicate upload. Unchanged libraries do not generate another backup request.
 
 Each Mac has its own stream of snapshots. This is backup and restore, not automatic merging or live multi-Mac sync. The server retains up to 30 daily copies per device and supports up to five devices per account. The latest snapshot's retention is managed by account entitlement, not a blanket object expiration rule. After the subscription expires, the server can allow restoration for 90 days without permitting new uploads.
 
@@ -40,7 +40,7 @@ Restoration turns automatic backup off. The user must explicitly enable it again
 
 ## Endpoint configuration and contract
 
-`AccountController` continues using the existing account origin. Cloud requests default to `https://savenest.app` as well. A release can set the trusted bundle `Info.plist` string `SaveNestCloudBaseURL` to a different HTTPS origin after authentication compatibility is verified. The origin must have no credentials, query, fragment, or non-root path. User defaults, renderer messages, imported snapshots, and environment variables cannot redirect bearer credentials. Redirect responses are not followed.
+`AccountController` continues using the existing account origin. Backup requests default to `https://savenest.app` as well. A release can set the trusted bundle `Info.plist` string `SaveNestCloudBaseURL` to a different HTTPS origin after authentication compatibility is verified. The origin must have no credentials, query, fragment, or non-root path. User defaults, renderer messages, imported snapshots, and environment variables cannot redirect bearer credentials. Redirect responses are not followed.
 
 The native client uses these authenticated JSON endpoints:
 
@@ -60,7 +60,7 @@ A passing local test or preview does not verify a live authenticated upload, ent
 
 ## Private AWS acceptance build
 
-Run `bash scripts/build-aws-beta.sh` to build `~/Applications/SaveNest AWS Beta.app`. This is a standalone native acceptance app using the same account and Cloud controllers as the Electron helper. It is not a packaged Electron rollout or a public release. The finalized beta bundle is installed under the user’s Applications directory because macOS excludes temporary-directory applications from URL-handler resolution even when their scheme appears registered. Quit the private beta before rebuilding it. It opens Account with the test address filled in; email confirmation and PKCE remain required.
+Run `bash scripts/build-aws-beta.sh` to build `~/Applications/SaveNest AWS Beta.app`. This is a standalone native acceptance app using the same account and backup controllers as the Electron helper. It is not a packaged Electron rollout or a public release. The finalized beta bundle is installed under the user’s Applications directory because macOS excludes temporary-directory applications from URL-handler resolution even when their scheme appears registered. Quit the private beta before rebuilding it. It opens Account with the test address filled in; email confirmation and PKCE remain required.
 
 The bundle identifier is `app.savenest.aws-beta`. Only this bundle can use the pinned `SaveNestAccountBaseURL` for the Stockholm AWS deployment; production bundles retain `https://savenest.app`. The private bundle uses `savenest-beta://auth/callback`, which is normalized only after matching its private scheme. The regular state and PKCE validation still apply. Its AWS backend must select the matching trusted `NATIVE_CALLBACK_SCHEME`.
 

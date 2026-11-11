@@ -20,7 +20,7 @@ exports.run = async ({ native, win }) => {
     for (const command of ['updateStatus', 'checkForUpdates']) {
       await assert.rejects(win.webContents.executeJavaScript(
         `window.savenest.command(${JSON.stringify({ command, enabled: true, updateState: 'idle' })})`
-      ), /Unknown SaveNest action/, 'renderer cannot impersonate the update host');
+      ), /Unknown Savenest action/, 'renderer cannot impersonate the update host');
     }
     assert.equal((await status('idle', false)).canCheckForUpdates, false);
     await native.request({ command: 'checkForUpdates' });
