@@ -29,6 +29,10 @@ In a Pro-enabled build, open **Settings → AI connections** and choose **Connec
 
 The 0.13.0 release adds MCP with online Pro verification and Savenest running on the same Mac as the AI client. Shared records reach the connected AI provider; AI-client costs are separate. Codex tool calls are verified on sample data. Claude Code connection and tool discovery are verified; a complete AI workflow has not been verified. Claude Desktop setup is available, but its compatibility is unverified. See [MCP setup, compatibility, and release checks](docs/mcp.md).
 
+## Invite a friend — 0.13.1
+
+Open **Account & Pro → Invite a friend** to send an invitation. A friend new to paid Savenest gets their first monthly Pro payment for **$1.99**, then **$4.99/month**, before applicable tax. After they pay, you get one **$3 discount** on eligible monthly Pro. Yearly plans are excluded; each account gets at most one discounted month across both roles. See the [user guide](docs/user-guide.md#invite-a-friend) for redemption and expiry details.
+
 ## Try the app
 
 Get the current signed app from the [download page](https://savenest.app/download) for **macOS 14+**, on Apple Silicon or Intel. Pro AI connections are included in 0.13.0.

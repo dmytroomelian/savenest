@@ -2,7 +2,7 @@
 
 Updated November 11, 2026
 
-This policy describes free local features, automatic saving and recovery with Pro, and the Pro MCP connection in 0.13.0. See the [MCP guide](mcp.md) for client compatibility and release verification.
+This policy describes free local features, automatic saving and recovery with Pro, the Pro MCP connection in 0.13.0, and friend invitations in 0.13.1. See the [MCP guide](mcp.md) for client compatibility and release verification.
 
 ## Your library stays on your Mac
 
@@ -67,9 +67,11 @@ If you request a sign-in link, we process your email address, optional name, and
 
 Sign-in links expire after 15 minutes; the one-use code exchanged by the app expires after two minutes. Account sessions expire after 30 days. Expired authentication records are removed during later authentication cleanup, rather than by a guaranteed deletion timer. Signing out removes the app’s local credential and, when online, revokes that server session.
 
-Stripe processes Pro payments and subscription management. Savenest stores the associated customer identifier, subscription status, plan, billing-period dates, and payment-event identifiers. Payment-card details are entered on Stripe’s pages and are not stored in Savenest’s database. Pro is optional and billed monthly or yearly. Paid referral invitations remain closed.
+Stripe processes Pro payments and subscription management. Savenest stores the associated customer identifier, subscription status, plan, billing-period dates, and payment-event identifiers. Payment-card details are entered on Stripe’s pages and are not stored in Savenest’s database. Pro is optional and billed monthly or yearly.
 
-For earlier referrals, we retain the invited email, inviter/account links, delivery state, and reward state to resolve existing offers and billing. Account, billing, support, and historical referral records are kept while needed to operate the account, resolve requests or disputes, and meet applicable recordkeeping duties. They do not currently have an automatic deletion schedule. Request account deletion by email; we will explain any records that must be retained.
+When you send a friend invitation, we send the recipient's email address and invitation, including your name, a personal code, and a link, to Resend for delivery. We store the invited email, inviter account link, recipient account link established at checkout, invitation code and dates, delivery state, associated billing identifiers, and qualification and reward state. These records let us deliver invitations, apply the eligible monthly discount, prevent repeated rewards, and resolve billing questions. Referral processing does not give Savenest payment-card details.
+
+Account, billing, support, and referral records, including earlier referrals, are kept while needed to operate the account, resolve requests or disputes, and meet applicable recordkeeping duties. They do not currently have an automatic deletion schedule. Request account deletion by email; we will explain any records that must be retained.
 
 ## The website, bookings, and service providers
 
@@ -77,7 +79,7 @@ The website does not add advertising trackers. Essential account cookies and hos
 
 - [Cloudflare](https://www.cloudflare.com/privacypolicy/) hosts the website and forwards account and backup API requests through the Sites hosting platform.
 - [Amazon Web Services](https://aws.amazon.com/privacy/) hosts the backend, PostgreSQL account and current-library database, and encrypted recovery-backup storage in Stockholm, Sweden.
-- [Resend](https://resend.com/legal/privacy-policy) delivers requested account emails and processed earlier referral emails.
+- [Resend](https://resend.com/legal/privacy-policy) delivers account and friend-invitation emails.
 - [Stripe](https://stripe.com/privacy) processes billing and payment records.
 - [GitHub](https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement) hosts the public source and desktop downloads. We fetch the public star count from our server, not your browser.
 - [Cal.com](https://cal.com/privacy) handles demo bookings when you follow the booking link. Information you enter there is used to arrange your requested meeting.
