@@ -86,7 +86,7 @@ struct AutomationSettingsView: View {
     private func description(_ kind: AutomationClientKind) -> String {
         switch kind {
         case .codex: "Bring saved research into Codex."
-        case .claudeDesktop: "Find and use your links in Claude."
+        case .claudeDesktop: "Setup available. Compatibility unverified."
         case .claudeCode: "Keep research close while you code."
         }
     }

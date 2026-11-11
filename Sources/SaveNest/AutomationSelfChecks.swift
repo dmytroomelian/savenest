@@ -19,6 +19,7 @@ enum AutomationSelfChecks {
     }
 
     static func run() async throws {
+        try AutomationLiveBrowserChecks.checkProcessIdentity()
         guard AppLaunch.isPreview else { throw Failed(errorDescription: "MCP checks require --ui-preview.") }
         try await AutomationClientInstallerChecks.run()
         try await checkConnectionSetup()

@@ -7,6 +7,22 @@ struct AutomationTab {
     let processID: pid_t
     let launchedAt: Date?
     let reference: String
+    let processBirth: AutomationProcessBirth?
+
+    init(tab: OpenBrowserTab, processID: pid_t, launchedAt: Date?, reference: String, processBirth: AutomationProcessBirth? = nil) {
+        self.tab = tab; self.processID = processID; self.launchedAt = launchedAt
+        self.reference = reference; self.processBirth = processBirth
+    }
+}
+
+enum AutomationTabReference {
+    static func make(tab: OpenBrowserTab, birth: AutomationProcessBirth, session: String, safari: Bool) -> String {
+        // Chromium identifies a tab independently of its position. Safari exposes only an index.
+        let position = safari || tab.tabID.isEmpty ? "index:\(tab.index)" : "tab:\(tab.tabID)"
+        let fields = [session, birth.referenceComponent, tab.browserID, tab.windowID, position, tab.url]
+        let identity = fields.map { "\($0.utf8.count):\($0)" }.joined()
+        return SHA256.hash(data: Data(identity.utf8)).map { String(format: "%02x", $0) }.joined()
+    }
 }
 
 @MainActor
@@ -21,34 +37,53 @@ protocol AutomationBrowsing {
 @MainActor
 final class AutomationBrowser: AutomationBrowsing {
     private let session = UUID().uuidString
+    #if DEBUG
+    var snapshotObserverForTesting: (([AutomationTab], [String]) -> Void)?
+    #endif
     func snapshot() async throws -> (tabs: [AutomationTab], warnings: [String]) {
         var tabs: [AutomationTab] = [], warnings: [String] = []
         for browser in Browser.supported {
             try Task.checkCancellation()
-            let processes = NSRunningApplication.runningApplications(withBundleIdentifier: browser.id).filter { !$0.isTerminated }
+            let processes = runningApplications(browser.id)
             guard processes.count <= 1 else { warnings.append("Quit duplicate copies of \(browser.name) before using its tabs."); continue }
             guard let process = processes.first else { continue }
             let pid = process.processIdentifier, launchedAt = process.launchDate
+            guard let processBirth = AutomationProcessBirth.read(pid) else {
+                warnings.append("\(browser.name) could not be read. Its process could not be verified. Refresh and try again.")
+                continue
+            }
             do {
                 let script = BrowserTabScript.script + "\nfunction run() { return JSON.stringify(readBrowserTabs(Application('\(browser.id)'), {id:'\(browser.id)',name:'\(browser.name)',safari:\(browser.safari)})); }"
                 let data = try await BrowserScript.run(script, timeout: 8)
-                guard !process.isTerminated else { continue }
+                let current = runningApplications(browser.id)
+                guard current.count == 1, current.first?.processIdentifier == pid,
+                      AutomationProcessBirth.matches(processBirth, processID: pid) else {
+                    warnings.append("\(browser.name) could not be read. Its process changed during the request. Refresh and try again.")
+                    continue
+                }
                 let found = try JSONDecoder().decode([OpenBrowserTab].self, from: data)
                 for tab in found where Library.validatedURL(tab.url) != nil {
-                    let identity = "\(session)|\(pid)|\(launchedAt?.timeIntervalSince1970 ?? 0)|\(tab.contextKey)"
-                    let reference = SHA256.hash(data: Data(identity.utf8)).map { String(format: "%02x", $0) }.joined()
-                    tabs.append(AutomationTab(tab: tab, processID: pid, launchedAt: launchedAt, reference: reference))
+                    let reference = AutomationTabReference.make(tab: tab, birth: processBirth, session: session, safari: browser.safari)
+                    tabs.append(AutomationTab(tab: tab, processID: pid, launchedAt: launchedAt, reference: reference, processBirth: processBirth))
                 }
             } catch is CancellationError { throw CancellationError() }
             catch { warnings.append("\(browser.name) could not be read. Check macOS Automation permission.") }
         }
+        #if DEBUG
+        snapshotObserverForTesting?(tabs, warnings)
+        #endif
         return (tabs, warnings)
     }
+    private func runningApplications(_ browserID: String) -> [NSRunningApplication] {
+        // Static NSRunningApplication lookups can transiently return no process while the workspace still knows it.
+        NSWorkspace.shared.runningApplications.filter { !$0.isTerminated && $0.bundleIdentifier == browserID }
+    }
     private func requireProcess(_ target: AutomationTab) throws -> Browser {
+        let applications = runningApplications(target.tab.browserID)
         guard let browser = Browser.supported.first(where: { $0.id == target.tab.browserID }),
-              let app = NSRunningApplication(processIdentifier: target.processID), !app.isTerminated,
-              app.bundleIdentifier == browser.id, app.launchDate == target.launchedAt,
-              NSRunningApplication.runningApplications(withBundleIdentifier: browser.id).filter({ !$0.isTerminated }).count == 1 else {
+              applications.count == 1, let app = applications.first,
+              app.processIdentifier == target.processID, app.bundleIdentifier == browser.id,
+              AutomationProcessBirth.matches(target.processBirth, processID: target.processID) else {
             throw AutomationFailure(code: "stale_tab", message: "The browser restarted or the tab is no longer available. Search again.")
         }
         return browser
