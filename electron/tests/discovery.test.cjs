@@ -46,7 +46,7 @@ function launcher(t, initial = {}) {
     assert.ok(button, `Actions must expose ${title}`);
     return button;
   };
-  return { window, document, calls, update, byID, key, action };
+  return { window, document, calls, update, byID, key, action, event: message => onEvent(message) };
 }
 
 for (const scope of ['All', 'Saved']) {
@@ -146,4 +146,48 @@ test('Enter on a focused Actions button preserves native activation instead of r
   settings.click();
   assert.deepEqual(ui.calls, [{ command: 'settings' }]);
   assert.equal(ui.byID('action-dialog').open, false);
+});
+
+
+test('sync status is absent without Pro and changes immediately when sync loses access', t => {
+  const ui = launcher(t, { savedCount: 4 });
+  const status = ui.byID('sync-status');
+  assert.equal(status.hidden, true);
+  assert.equal(ui.byID('status').hidden, false);
+  ui.update({ syncStatus: { state: 'active', label: 'Sync is active' } });
+  assert.equal(status.hidden, false);
+  assert.equal(status.dataset.state, 'active');
+  assert.equal(ui.byID('sync-label').textContent, 'Sync is active');
+  assert.equal(ui.byID('status').hidden, true);
+  for (const [state, label] of [['offline', 'Offline'], ['attention', 'Needs attention'], ['checking', 'Checking…'], ['restoring', 'Restoring…']]) {
+    ui.update({ syncStatus: { state, label } });
+    assert.equal(status.hidden, false);
+    assert.equal(status.dataset.state, state);
+    assert.equal(ui.byID('sync-label').textContent, label);
+  }
+  ui.update({ syncStatus: { state: 'hidden', label: '' } });
+  assert.equal(status.hidden, true);
+  assert.equal(status.dataset.state, undefined);
+  assert.equal(ui.byID('sync-label').textContent, '');
+  assert.equal(ui.byID('status').hidden, false);
+  assert.match(ui.byID('status').textContent, /4 saved/);
+});
+
+test('a native connection failure cannot leave a green active sync status behind', t => {
+  const ui = launcher(t, { syncStatus: { state: 'active', label: 'Sync is active' } });
+  assert.equal(ui.byID('sync-status').hidden, false);
+  ui.event({ event: 'fatal', message: 'The native helper stopped.' });
+  assert.equal(ui.byID('sync-status').hidden, true);
+  assert.equal(ui.byID('sync-status').dataset.state, undefined);
+  assert.equal(ui.byID('status').hidden, false);
+  assert.equal(ui.byID('status').textContent, 'Connection unavailable');
+  ui.update({ syncStatus: { state: 'active', label: 'Sync is active' } });
+  assert.equal(ui.byID('sync-status').hidden, true);
+});
+
+test('sync status does not hide a launcher shortcut error', t => {
+  const ui = launcher(t, { syncStatus: { state: 'active', label: 'Sync is active' }, shortcutError: 'Shortcut unavailable' });
+  assert.equal(ui.byID('sync-status').hidden, true);
+  assert.equal(ui.byID('status').hidden, false);
+  assert.equal(ui.byID('status').textContent, 'Shortcut unavailable · open Settings');
 });

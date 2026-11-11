@@ -2,13 +2,13 @@
 
 Updated November 11, 2026
 
-This policy covers Savenest’s free local features and optional cloud backup and recovery.
+Draft for the Savenest 0.12.6 release preparation. This policy describes free local features and automatic saving and recovery with Pro; it does not announce a published release.
 
 ## Your library stays on your Mac
 
-The free Savenest Mac app works without an account. Saved links, titles, notes, and tags are stored locally. Optional cloud backup uploads a copy only after you sign in, subscribe, and turn on backups. Live sync and Teams are not included.
+The free Savenest Mac app works without an account. Saved links, titles, notes, and tags are stored locally. With verified Pro access, the signed-in Mac app automatically saves library changes to your account when the service permits uploads and the local library is healthy. There is no separate backup toggle. Each Mac has its own saved library; changes are not merged between Macs. Teams is not included.
 
-- **Local content:** browser history and unsaved page context are not uploaded to Savenest. Your saved library is uploaded only when you enable cloud backup.
+- **Local content:** browser history and unsaved page context are not uploaded to Savenest. Your saved library is uploaded automatically by the signed-in Mac app with verified Pro access and server permission.
 - **Optional reporting:** anonymous action counts are on by default. Turn them off in Settings or the first-use notice.
 - **Network requests:** website icons, account services, updates, and usage reporting can contact external servers.
 
@@ -52,7 +52,7 @@ The service keeps daily aggregate counts for approximately 90 days and random ba
 
 ## Optional accounts and subscriptions
 
-If you request a sign-in link, we process your email address, optional name, and authentication records to provide your account. Sign-in does not upload your library. The app keeps its session credential in macOS Keychain. The server stores hashed tokens. A successful browser confirmation can also set a secure, HttpOnly account-session cookie.
+If you request a sign-in link, we process your email address, optional name, and authentication records to provide your account. Website sign-in does not upload your library. The Mac app starts automatic saving after sign-in when Pro access, server permission, and local-library health checks pass. The app keeps its session credential in macOS Keychain. The server stores hashed tokens. A successful browser confirmation can also set a secure, HttpOnly account-session cookie.
 
 Sign-in links expire after 15 minutes; the one-use code exchanged by the app expires after two minutes. Account sessions expire after 30 days. Expired authentication records are removed during later authentication cleanup, rather than by a guaranteed deletion timer. Signing out removes the app’s local credential and, when online, revokes that server session.
 
@@ -65,7 +65,7 @@ For earlier referrals, we retain the invited email, inviter/account links, deliv
 The website does not add advertising trackers. Essential account cookies and hosting/security infrastructure may still process request data. Authentication abuse controls use hashed email/IP-derived keys and expiry times; they do not add raw IP addresses to the usage-count tables.
 
 - [Cloudflare](https://www.cloudflare.com/privacypolicy/) hosts the website and forwards account and backup API requests through the Sites hosting platform.
-- [Amazon Web Services](https://aws.amazon.com/privacy/) hosts the backend, PostgreSQL account database, and encrypted cloud backup storage in Stockholm, Sweden.
+- [Amazon Web Services](https://aws.amazon.com/privacy/) hosts the backend, PostgreSQL account and current-library database, and encrypted recovery-backup storage in Stockholm, Sweden.
 - [Resend](https://resend.com/legal/privacy-policy) delivers requested account emails and processed earlier referral emails.
 - [Stripe](https://stripe.com/privacy) processes billing and payment records.
 - [GitHub](https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement) hosts the public source and desktop downloads. We fetch the public star count from our server, not your browser.
@@ -81,15 +81,17 @@ You can export or delete local links in the app, revoke browser access in macOS,
 
 Depending on your location, you may have rights to access, correct, erase, or receive personal data, restrict or object to its processing, and complain to your data-protection authority. Email [dima@omelabs.org](mailto:dima@omelabs.org) to make a request. We may need to verify that the account belongs to you. We cannot remotely delete local files on your Mac.
 
-## Optional cloud backup and recovery
+## Automatic Pro saving and recovery
 
-Turning on cloud backup uploads saved links, URLs, titles, quick notes, tags, collections, favorite/archive state, importance choices, and creation dates. Backups also include a random device identifier to keep each Mac’s backup history separate. Obsidian Markdown files, offline articles, browser history, unsaved page context, browser cookies, credentials, and app preferences are excluded.
+Automatic Pro saving uploads saved links, URLs, titles, quick notes, tags, collections, favorite/archive state, importance choices, and creation dates. The current library is stored in the service database. Recovery copies include a random device identifier to keep each Mac’s saved library separate. Obsidian Markdown files, offline articles, browser history, unsaved page context, browser cookies, credentials, and app preferences are excluded.
 
 Connections use TLS and AWS encrypts the stored database and backup objects. This is server-side encryption, not end-to-end encryption: the Savenest backend can read backup contents to validate and restore them. Backups are private to the signed-in account and require server-verified Pro access.
 
-The service keeps up to 30 daily copies per Mac, with up to five Macs and a 2 MiB snapshot limit. Recovery remains available for 90 days after your subscription ends. Superseded and expired data is removed by scheduled cleanup; deletion can be delayed while services are unavailable. Database backups can retain older records for up to seven days. Contact support for an account or backup deletion request; we will explain any billing records that must be retained.
+The service keeps each Mac’s current library and one latest successful daily recovery backup, across up to five Macs, with a 2 MiB limit per library copy. An initial recovery copy is created, then the server schedules replacement about once every 24 hours from the current saved library. The previous recovery copy is retired only after its replacement is successfully uploaded and committed. The schedule may be delayed by service failures or a backlog. Recovery remains available for 90 days after Pro access ends; new uploads stop. Superseded and expired data is removed by scheduled cleanup; deletion can be delayed while services are unavailable. Database backups can retain older records for up to seven days. Contact support for an account or backup deletion request; we will explain any billing records that must be retained.
 
-You can turn off automatic backup in Account. Turning it off stops new uploads and does not immediately delete existing recovery copies. Signing out also turns off that Mac’s backup opt-in. Restoring replaces the current local library only after confirmation and preserves the previous file in a local Cloud Recovery folder. Automatic backup stays off after restoration until you enable it again.
+Signing out stops subsequent uploads from that Mac without deleting existing server copies. A request already accepted by the service may have completed. The daily server backup continues from the last saved current library while Pro remains active. A previously known local library that goes missing, or a corrupt library, is held for review so an empty replacement does not overwrite useful saved content. A new, healthy first-install library may start automatically. To clear a recovery hold, restore a saved copy or explicitly confirm **Use this library…** after the local library can be loaded.
+
+Restoring replaces the current local library only after confirmation and preserves its exact previous bytes in a local Cloud Recovery folder. If that preservation fails, restoration stops. A successful restore clears the review hold and automatically saves the restored library when verified Pro access and server permission remain available. During the post-subscription recovery period, restoration remains local because new uploads are not permitted.
 
 ## Policy changes
 

@@ -13,11 +13,6 @@ struct AccountView: View {
                 if AppRuntime.isPrivateBeta {
                     Text("AWS beta · Separate test library").font(.system(size: 12, weight: .medium)).foregroundStyle(Color.sage)
                 }
-                VStack(alignment: .leading, spacing: 8) {
-                    Label("Savenest Free", systemImage: "checkmark.circle.fill").foregroundStyle(Color.sage)
-                    Text("All local features. Free, offline, no account needed.")
-                        .font(.system(size: 13)).foregroundStyle(Color.muted)
-                }.frame(maxWidth: .infinity, alignment: .leading).padding(20).nestSurface()
                 proSubscription
                 if let details = account.account {
                     Text(details.user.email).font(.system(size: 13)).textSelection(.enabled)
@@ -58,38 +53,40 @@ struct AccountView: View {
             .background(Color.paper).foregroundStyle(Color.ink).nestAppearance()
     }
     @ViewBuilder private var proSubscription: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("Savenest Pro").font(.system(size: 17, weight: .semibold))
-                Spacer()
-                if account.hasVerifiedSubscription {
-                    Label("Active", systemImage: "checkmark.circle.fill")
-                        .font(.system(size: 12)).foregroundStyle(Color.sage)
-                }
-            }
-            Text("Automatic cloud backups. Restore when you need to.")
-                .font(.system(size: 13)).foregroundStyle(Color.muted)
-            if let subscription = account.account?.subscription, account.hasVerifiedSubscription {
-                Text(subscription.plan == "yearly" ? "Yearly plan" : "Monthly plan")
-                    .font(.system(size: 13))
-                if let end = subscription.renewsAt {
-                    Text("\(subscription.cancelAtPeriodEnd ? "Access until" : "Renews") \(Date(timeIntervalSince1970: end).formatted(date: .abbreviated, time: .omitted))")
-                        .font(.system(size: 12)).foregroundStyle(Color.muted)
-                }
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Savenest Pro").font(.system(size: 17, weight: .semibold))
+            CloudLibraryView(cloud: cloud)
+            if account.hasVerifiedSubscription {
+                DisclosureGroup("Membership") {
+                    VStack(alignment: .leading, spacing: 10) {
+                        if let subscription = account.account?.subscription {
+                            Text(subscription.plan == "yearly" ? "Yearly plan" : "Monthly plan")
+                            if let end = subscription.renewsAt {
+                                Text("\(subscription.cancelAtPeriodEnd ? "Access until" : "Renews") \(Date(timeIntervalSince1970: end).formatted(date: .abbreviated, time: .omitted))")
+                                    .foregroundStyle(Color.muted)
+                            }
+                        }
+                        if account.canManageBilling { billingButton }
+                    }.font(.system(size: 12)).padding(.top, 8)
+                }.font(.system(size: 12)).foregroundStyle(Color.muted)
             } else if account.subscriptionUnavailable {
                 Text("Couldn’t verify Pro. Refresh your account to try again.")
                     .font(.system(size: 12)).foregroundStyle(Color.muted)
+                if account.canManageBilling { billingButton }
             } else if account.hasExistingSubscription {
                 Text(account.account?.subscription.plan == nil
                      ? "Your existing plan doesn’t include Pro. Manage billing or contact support."
                      : "Check your billing to restore Pro access.")
                     .font(.system(size: 12)).foregroundStyle(Color.muted)
+                if account.canManageBilling { billingButton }
             } else {
+                Text("Everything saved, automatically.")
+                    .font(.system(size: 13)).foregroundStyle(Color.muted)
                 Text("$4.99 / month or $49.90 / year")
                     .font(.system(size: 14, weight: .medium))
                 Text("USD + tax. Auto-renews. Cancel anytime.")
                     .font(.system(size: 12)).foregroundStyle(Color.muted)
-                if account.account?.subscription.billingReady == true && !account.subscriptionUnavailable {
+                if account.account?.subscription.billingReady == true {
                     HStack(spacing: 10) {
                         Button("Choose monthly") { Task { await account.checkout(plan: "monthly") } }
                             .buttonStyle(SageButton())
@@ -100,17 +97,16 @@ struct AccountView: View {
                     Text(account.hasLogin ? "Refresh your account to check plan availability." : "Sign in below to choose a plan.")
                         .font(.system(size: 12)).foregroundStyle(Color.muted)
                 }
+                Text("Local features stay free.")
+                    .font(.system(size: 12)).foregroundStyle(Color.muted)
             }
             if account.isSandbox {
                 Text("Test mode · No real charge").font(.system(size: 11)).foregroundStyle(Color.muted)
             }
-            if account.canManageBilling {
-                Button("Manage billing ↗") { Task { await account.openBilling() } }
-                    .buttonStyle(QuietButton()).disabled(account.isBusy)
-            }
-            Divider()
-            CloudLibraryView(cloud: cloud)
         }.frame(maxWidth: .infinity, alignment: .leading).padding(20).nestSurface()
     }
-
+    private var billingButton: some View {
+        Button("Manage billing ↗") { Task { await account.openBilling() } }
+            .buttonStyle(QuietButton()).disabled(account.isBusy)
+    }
 }

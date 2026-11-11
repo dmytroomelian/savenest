@@ -88,8 +88,8 @@ final class AccountController: NSObject, ObservableObject {
     var cloudSessionID: UUID { sessionGeneration }
 
     /// Native credentials never leave this controller or cross the Electron bridge.
-    func cloudRequest<T: Decodable>(_ path: String, method: String = "GET", body: Data? = nil) async throws -> T {
-        guard path == "api/cloud/status" || path == "api/cloud/snapshots"
+    func cloudRequest<T: Decodable>(_ path: String, method: String = "GET", body: Data? = nil, ifMatch: String? = nil) async throws -> T {
+        guard path == "api/cloud/status" || path == "api/cloud/snapshots" || path == "api/cloud/library"
                 || (path.hasPrefix("api/cloud/snapshots/") && UUID(uuidString: String(path.dropFirst("api/cloud/snapshots/".count))) != nil),
               let token = accessToken, let user = account?.user.id else { throw AccountFailure.signIn }
         let generation = sessionGeneration
@@ -97,6 +97,7 @@ final class AccountController: NSObject, ObservableObject {
         request.httpMethod = method; request.timeoutInterval = 30
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        if let ifMatch { request.setValue(ifMatch, forHTTPHeaderField: "If-Match") }
         if let body {
             guard body.count <= CloudLibraryJSON.maximumBytes else { throw CloudLibraryFailure.tooLarge }
             request.httpBody = body; request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -108,6 +109,7 @@ final class AccountController: NSObject, ObservableObject {
         guard let response = response as? HTTPURLResponse else { throw AccountFailure.invalidResponse }
         guard data.count <= CloudLibraryJSON.maximumBytes + 65_536 else { throw CloudLibraryFailure.tooLarge }
         if response.statusCode == 401 { throw AccountFailure.signIn }
+        if response.statusCode == 412 && path == "api/cloud/library" { throw CloudLibraryFailure.revisionConflict }
         guard (200..<300).contains(response.statusCode) else {
             let reason = (try? JSONDecoder().decode(ErrorResponse.self, from: data))?.error
             throw AccountFailure.service(reason.flatMap { $0.count <= 400 ? $0 : nil }
@@ -397,7 +399,7 @@ final class AccountController: NSObject, ObservableObject {
         guard let userID = account?.user.id, let token = accessToken else { message = "Sign in to the account you used for payment, then refresh your account here."; showAccount(); return }
         do {
             guard let result = try AccountKeychain.claimBilling(url, userID: userID) else {
-                message = hasVerifiedSubscription ? "Savenest Pro is active. Turn on backups when you’re ready." : "This billing return has expired, was already used, or belongs to another account. You can refresh your account here safely."
+                message = hasVerifiedSubscription ? "Savenest Pro is active. Your library will be saved automatically." : "This billing return has expired, was already used, or belongs to another account. You can refresh your account here safely."
                 showAccount(); return
             }
             pendingBilling = nil; startAccessCheck(result, token: token); showAccount()
@@ -419,7 +421,7 @@ final class AccountController: NSObject, ObservableObject {
                 if active && !waitingForPortal {
                     if let pendingID { try? AccountKeychain.cancelBilling(id: pendingID) }
                     self.pendingBilling = nil
-                    self.message = "Savenest Pro is active. Turn on backups when you’re ready."
+                    self.message = "Savenest Pro is active. Your library will be saved automatically."
                     return true
                 }
                 if returned?.status == .cancelled {

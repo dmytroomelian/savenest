@@ -19,7 +19,7 @@
     { id: 'history-sources', title: 'Browser history sources', detail: 'History access, connected profiles and privacy', symbol: 'history', ui: 'sources', keywords: 'history sources privacy access permission pause enable disable' },
     { id: 'settings', title: 'Settings', detail: 'Appearance, shortcuts and capture preferences', symbol: 'settings', command: 'settings', keywords: 'settings preferences hotkey keyboard shortcut theme appearance' },
     { id: 'shortcuts', title: 'Keyboard shortcuts', detail: 'Learn launcher keys and see your capture shortcuts', symbol: 'keyboard', ui: 'shortcuts', keywords: 'keyboard shortcuts keys help learn hotkeys' },
-    { id: 'account', title: 'Account & Pro', detail: 'Cloud backup · Account and billing', symbol: 'account', command: 'account', keywords: 'account pro cloud backup billing sign in login subscription payment' },
+    { id: 'account', title: 'Account & Pro', detail: 'Automatic saving · Account and billing', symbol: 'account', command: 'account', keywords: 'account pro cloud backup billing sign in login subscription payment' },
     { id: 'tags', title: 'Manage tags', detail: 'Rename or remove tags across your library', symbol: 'tag', command: 'tags', keywords: 'tags rename remove organize' },
     { id: 'refresh', title: 'Refresh tabs and history', detail: 'Read the latest browser state', symbol: 'refresh', command: 'refresh', keywords: 'refresh reload rescan sync' },
     { id: 'export', title: 'Export saved links', detail: 'Save a JSON backup of your library', symbol: 'export', command: 'export', keywords: 'export backup library' },

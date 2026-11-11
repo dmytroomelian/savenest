@@ -150,6 +150,8 @@ final class ElectronBridge {
         state["canSave"] = model.canWriteLibrary
         state["canRestartForUpdate"] = canRestartForUpdate
         state["updater"] = model.updater.hostStatus
+        let indicator = model.cloud.indicator
+        state["syncStatus"] = ["state": indicator.rawValue, "label": indicator.label]
         state["onboarding"] = model.showingOnboarding
         state["analyticsEnabled"] = model.analyticsEnabled
         state["showUsageNotice"] = model.analyticsEnabled && !model.hasSeenUsageNotice
