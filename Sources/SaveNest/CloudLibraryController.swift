@@ -26,7 +26,7 @@ final class CloudLibraryController: ObservableObject {
     private var operationFailed = false
     private var lastCheckedAt: Date?
     private let defaults: UserDefaults
-    private let reviewKey = "savenest.cloud.local-library-review-required"
+    private let reviewHold: CloudLibraryReviewHold
     let deviceID: UUID
     var isBusy: Bool { activity != .idle }
     var snapshots: [CloudSnapshotSummary] { status?.snapshots ?? [] }
@@ -48,6 +48,7 @@ final class CloudLibraryController: ObservableObject {
 
     init(model: AppModel, defaults: UserDefaults = .standard) {
         self.model = model; self.defaults = defaults
+        self.reviewHold = CloudLibraryReviewHold(defaults: defaults)
         let savedDevice = defaults.string(forKey: "savenest.cloud.device").flatMap(UUID.init(uuidString:))
         if let id = savedDevice { deviceID = id }
         else {
@@ -63,9 +64,9 @@ final class CloudLibraryController: ObservableObject {
             }
             if CloudBackupStartupPolicy.needsReview(knownDevice: savedDevice != nil,
                 fileExistedAtStartup: model.cloudLibraryExistedAtStartup, libraryLoaded: model.canWriteLibrary) {
-                defaults.set(true, forKey: reviewKey)
+                reviewHold.require()
             }
-            needsLocalReview = defaults.bool(forKey: reviewKey)
+            needsLocalReview = reviewHold.isRequired
         }
     }
     private func isCurrent(_ user: String, _ session: UUID, _ generation: UUID) -> Bool {
@@ -156,7 +157,7 @@ final class CloudLibraryController: ObservableObject {
             NSApp.activate(ignoringOtherApps: true)
             guard alert.runModal() == .alertFirstButtonReturn, model.account.account?.user.id == user else { return }
         }
-        needsLocalReview = false; defaults.set(false, forKey: reviewKey)
+        needsLocalReview = false; reviewHold.clear()
         syncConflict = false; connectionUnavailable = false; operationFailed = false
         enabled = true; message = nil; transfers = CloudLibraryTransferState()
         libraryDidChange()
@@ -247,7 +248,10 @@ final class CloudLibraryController: ObservableObject {
             if try transfers.needsWork(for: model.library) { message = nil }
         } catch {
             guard isCurrent(user, session, generation), !Task.isCancelled else { return }
-            if case CloudLibraryFailure.revisionConflict = error { syncConflict = true }
+            if case CloudLibraryFailure.revisionConflict = error {
+                syncConflict = true
+                reviewHold.require(); needsLocalReview = true
+            }
             recordFailure(error)
         }
     }
@@ -283,7 +287,7 @@ final class CloudLibraryController: ObservableObject {
             guard try CloudLibraryJSON.fingerprint(model.library) == baseline.libraryFingerprint else { throw CloudLibraryFailure.libraryChanged }
             let recovery = try model.restoreCloudLibrary(snapshot, baseline: baseline)
             recoveryFile = recovery
-            needsLocalReview = false; defaults.set(false, forKey: reviewKey)
+            needsLocalReview = false; reviewHold.clear()
             transfers = CloudLibraryTransferState(); syncConflict = false
             connectionUnavailable = false; operationFailed = false
             enabled = model.account.hasVerifiedSubscription && status?.canUpload == true

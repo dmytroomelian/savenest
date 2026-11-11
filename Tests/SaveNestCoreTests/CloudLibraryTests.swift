@@ -3,6 +3,7 @@ import SaveNestCore
 
 func runCloudLibraryChecks() throws {
     try runCloudTransferChecks()
+    runCloudReviewHoldChecks()
     // Fresh installs auto-start; lost/damaged known libraries remain protected.
     XCTAssertFalse(CloudBackupStartupPolicy.needsReview(knownDevice: false, fileExistedAtStartup: false, libraryLoaded: true))
     XCTAssertFalse(CloudBackupStartupPolicy.needsReview(knownDevice: true, fileExistedAtStartup: true, libraryLoaded: true))
@@ -218,4 +219,21 @@ private func runCloudTransferChecks() throws {
     let decoded = try CloudLibraryJSON.decoder().decode(CloudStatus.self, from: status)
     XCTAssertEqual(decoded.libraries?.first?.id, revision)
     XCTAssertEqual(decoded.libraries?.first?.deviceId, device)
+}
+
+private func runCloudReviewHoldChecks() {
+    let suite = "SavenestReviewHoldChecks-\(UUID().uuidString)"
+    let defaults = UserDefaults(suiteName: suite)!
+    defer { defaults.removePersistentDomain(forName: suite) }
+    let firstSession = CloudLibraryReviewHold(defaults: defaults)
+    XCTAssertFalse(firstSession.isRequired)
+    firstSession.require()
+    // Recreating account/controller state must not silently resume saving.
+    let nextSession = CloudLibraryReviewHold(defaults: UserDefaults(suiteName: suite)!)
+    XCTAssertTrue(nextSession.isRequired)
+    XCTAssertFalse(CloudBackupStartupPolicy.canStart(verifiedPro: true, libraryLoaded: true,
+        reviewRequired: nextSession.isRequired, serviceAvailable: true, canUpload: true))
+    // Only the explicit recovery choice clears the persisted hold.
+    nextSession.clear()
+    XCTAssertFalse(CloudLibraryReviewHold(defaults: UserDefaults(suiteName: suite)!).isRequired)
 }

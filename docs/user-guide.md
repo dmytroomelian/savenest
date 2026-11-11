@@ -81,12 +81,12 @@ Saved data lives at `~/Library/Application Support/SaveNest/library.json`. Use S
 
 The [native interface reference](legacy-native.md) describes the retained Swift UI.
 
-## Savenest Pro backup
+## Automatic Pro saving and recovery
 
-Open **Account & Pro**, sign in using the email link, and choose **monthly ($4.99 USD)** or **yearly ($49.90 USD)**. Applicable tax is added at checkout. Stripe opens in your browser; return to Savenest after checkout. Account shows your verified plan and billing date. Use **Manage billing** to review payment details or cancel automatic renewal. Local saving and search remain free.
+Open **Account & Pro**, sign in using the email link, and choose **monthly ($4.99 USD)** or **yearly ($49.90 USD)**. Applicable tax is added at checkout. Stripe opens in your browser; return to Savenest after checkout. Expand **Membership** to see your plan and billing date or choose **Manage billing**. Local features stay free.
 
-Choose **Turn on backups** and confirm the library/account shown. Signing in or subscribing alone never uploads a library. **Back up now** saves the current library; automatic backup handles later changes. Each Mac keeps its own backup history rather than synchronizing live edits.
+Pro starts saving automatically after account, service-permission, and local-library checks pass. **Sync is active** shows a gently pulsing green dot after the server acknowledges a save. Offline changes remain on this Mac and retry automatically. Each Mac has its own saved library; changes do not merge between Macs.
 
-To recover, open **Available backups**, choose **Restore…**, and review the backup date and link counts. Savenest preserves the previous local file before replacing it. Use **Show recovery copy** to find that file. Automatic backups remain off after restore until you review the recovered library and enable them again.
+To recover, expand **Restore library**, choose **Restore…**, and confirm the date and link counts. Savenest preserves the previous local file before replacing it. **Show recovery copy** reveals that file. The restored library saves automatically when verified Pro access and upload permission remain available.
 
-Backups include saved links, quick notes, tags, and collections. They exclude Obsidian Markdown and offline articles. Limits: 2 MiB per library backup, five Macs, up to 30 daily copies per Mac, and 90 days of recovery after a subscription ends. See [Pro backup](cloud-backup.md) for details.
+Saved copies include links, quick notes, tags, and collections. Obsidian files and offline articles stay on this Mac. Limits: 2 MiB per library copy, five Macs, one latest successful daily recovery copy per Mac, and 90 days of recovery after Pro ends. See [Pro saving and recovery](cloud-backup.md) for details.
