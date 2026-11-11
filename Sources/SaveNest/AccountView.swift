@@ -79,7 +79,7 @@ struct AccountView: View {
                 Text("Add Cloud backup").font(.system(size: 15, weight: .medium))
                 Text("$4.99 / month or $49.90 / year")
                     .font(.system(size: 14, weight: .medium))
-                Text("USD. Renews automatically. Cancel anytime in Manage subscription. Signing in or subscribing does not upload your library; turn on backups when you’re ready.")
+                Text("USD, plus applicable tax. Renews automatically. Cancel anytime in Manage subscription. Signing in or subscribing does not upload your library; turn on backups when you’re ready.")
                     .font(.system(size: 12)).foregroundStyle(Color.muted)
                 if account.account?.subscription.billingReady == true && !account.subscriptionUnavailable {
                     HStack(spacing: 10) {

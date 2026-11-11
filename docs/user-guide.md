@@ -83,7 +83,7 @@ The [native interface reference](legacy-native.md) describes the retained Swift 
 
 ## Optional Cloud backup
 
-Open **Account & Cloud**, sign in using the email link, and choose **monthly ($4.99 USD)** or **yearly ($49.90 USD)**. Stripe opens in your browser; return to SaveNest after checkout. Account shows your verified plan and billing date. Use **Manage subscription** to review payment details or cancel automatic renewal. Local saving and search remain free.
+Open **Account & Cloud**, sign in using the email link, and choose **monthly ($4.99 USD)** or **yearly ($49.90 USD)**. Applicable tax is added at checkout. Stripe opens in your browser; return to SaveNest after checkout. Account shows your verified plan and billing date. Use **Manage subscription** to review payment details or cancel automatic renewal. Local saving and search remain free.
 
 Choose **Turn on backups** and confirm the library/account shown. Signing in or subscribing alone never uploads a library. **Back up now** saves the current library; automatic backup handles later changes. Each Mac keeps its own backup history rather than synchronizing live edits.
 
