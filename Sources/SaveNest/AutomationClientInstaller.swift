@@ -10,7 +10,7 @@ enum AutomationClientKind: String, Codable, CaseIterable, Identifiable, Sendable
     var detail: String {
         switch self {
         case .codex: "Find and organize links while you work."
-        case .claudeDesktop: "Bring your saved links into Claude."
+        case .claudeDesktop: "Setup available. Compatibility not yet verified."
         case .claudeCode: "Use SaveNest from your coding sessions."
         }
     }

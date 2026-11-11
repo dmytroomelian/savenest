@@ -21,17 +21,17 @@ Savenest is a macOS launcher with a free, open-source core for saved links, note
 
 Press **⌘O** to open the launcher, **Enter** to open a result, and **⌘K** for actions. See the [user guide](docs/user-guide.md) for shortcuts and browser support.
 
-## Pro AI connections — coming soon
+## Pro AI connections — 0.13.0
 
 Use your saved links in Codex and Claude. The local MCP integration exposes selected links and quick notes, library organization, and permitted tab actions. Each connection has its own revocable permissions; closing tabs without saving requires a separate permission. Article text and external Obsidian files are excluded.
 
 In a Pro-enabled build, open **Settings → AI connections** and choose **Connect** on the Codex, Claude Desktop, or Claude Code card. Savenest verifies Pro and installs the local setup with saved-library reading only. Use **Manage** to allow more actions or disconnect. Manual configuration and repair are under **Advanced setup**.
 
-MCP requires a Pro-enabled build, online subscription verification, and Savenest running on the same Mac as the AI client. Shared records reach the connected AI provider; AI-client costs are separate. Public availability remains **Coming soon** until signed-release compatibility checks pass. See [MCP setup and behavior](docs/mcp.md).
+The 0.13.0 release adds MCP with online Pro verification and Savenest running on the same Mac as the AI client. Shared records reach the connected AI provider; AI-client costs are separate. Codex tool calls are verified on sample data. Claude Code connection and tool discovery are verified; a complete AI workflow has not been verified. Claude Desktop setup is available, but its compatibility is unverified. See [MCP setup, compatibility, and release checks](docs/mcp.md).
 
 ## Try the app
 
-Get the current signed app from the [download page](https://savenest.app/download) for **macOS 14+**, on Apple Silicon or Intel. Automatic Pro saving described below is being prepared for **0.12.6** and is not yet a published release.
+Get the current signed app from the [download page](https://savenest.app/download) for **macOS 14+**, on Apple Silicon or Intel. Pro AI connections are included in 0.13.0.
 
 This is still a preview. Installed-app migration, offline import/export, live browser permissions, Intel runtime, and real update checks remain open. See the [acceptance checklist](docs/preview-acceptance.md). Before upgrading, export a backup. Native 0.10.0 can install this preview through **Savenest → Check for Updates…**. Quit the old app first only when installing manually.
 
@@ -70,7 +70,7 @@ For launcher or process-integration changes, also run `npm run test:smoke`. It e
 
 The free app keeps saved links and notes local. With Pro, the signed-in app automatically saves your library to your account. Browser history is read without modification and kept in memory. An enabled Pro MCP connection shares requested records with the AI client, within the permissions you grant. **Anonymous usage counts are on by default** and can be disabled in Settings or the first-use notice. Icons, account services, update checks, and reporting can make network requests. Read the [privacy policy](docs/privacy.md) for details.
 
-This repository contains the Electron app, Swift helper, and shared automation operations. The hosted backend and private Pro MCP adapter are separate. Public builds remain usable without the private adapter. In the planned 0.12.6 behavior, Savenest Pro automatically saves changes once the signed-in account, service permissions, and local library pass their checks. There is no sync toggle. **Sync is active** shows a green pulse only after a server acknowledgement in the current session and a recent successful status check. Offline and failure states stay non-green and retry every minute.
+This repository contains the Electron app, Swift helper, and shared automation operations. The hosted backend and private Pro MCP adapter are separate. Public builds remain usable without the private adapter. Savenest Pro automatically saves changes once the signed-in account, service permissions, and local library pass their checks. There is no sync toggle. **Sync is active** shows a green pulse only after a server acknowledgement in the current session and a recent successful status check. Offline and failure states stay non-green and retry every minute.
 
 Each Mac has its own current saved library and latest successful daily recovery copy; changes are not merged between Macs. Recovery remains available for 90 days after Pro access ends. A missing previously known library or corrupt file requires restoration or an explicit **Use this library…** confirmation before automatic saving resumes. A confirmed restore preserves the previous local bytes and saves the restored library automatically when Pro access is active. Signing out stops new uploads. See [Pro saving and recovery](docs/cloud-backup.md) for limits, safety checks, and release prerequisites.
 

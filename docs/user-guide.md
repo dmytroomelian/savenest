@@ -2,7 +2,7 @@
 
 [Back to the project](../README.md) · [Privacy](privacy.md)
 
-Local saving, search, reading, browser tools, and import/export remain free. The optional [Pro MCP connection](mcp.md) lets Codex or Claude use selected links and quick notes, organize the library, and manage permitted tabs. It is coming soon to a signed Pro-enabled release.
+Local saving, search, reading, browser tools, and import/export remain free. The optional [Pro MCP connection](mcp.md), included in 0.13.0, lets Codex or Claude use selected links and quick notes, organize the library, and manage permitted tabs. Claude Desktop setup is available, but its compatibility is unverified.
 
 The [Read & note workspace](read-and-note.md) opens an article beside its Obsidian Markdown file. It is available in the 0.12 preview series.
 
@@ -77,9 +77,11 @@ Capture attempts a fixed, read-only script in the captured page to read Open Gra
 
 Browsers may block this unless **Allow JavaScript from Apple Events** is enabled by the user. Browser Automation access and this JavaScript setting are separate. If metadata is blocked, unavailable, or a page navigates during capture, Savenest retains a useful native title or builds a descriptive fallback from the URL (for example `@anna on X · 123` or `Instagram reel · ABC123`). Login-only pages and changing social site markup can limit results. These fallbacks identify the link; they do not invent a caption. A captured title can always be edited.
 
-## AI connections — Pro, coming soon
+## AI connections — Pro, 0.13.0
 
-In a Pro-enabled build, open **Settings → AI connections** and choose **Connect** on the Codex, Claude Desktop, or Claude Code card. Savenest verifies Pro and installs the local setup with read-only access to saved links and quick notes. Follow any restart guidance shown. No configuration copying is needed for normal setup. Builds without the private adapter show **Coming soon**.
+In the official 0.13.0 build, open **Settings → AI connections** and choose **Connect** on the Codex, Claude Desktop, or Claude Code card. Savenest verifies Pro and installs the local setup with read-only access to saved links and quick notes. Follow any restart guidance shown. No configuration copying is needed for normal setup. Public source builds omit the private adapter by default.
+
+Codex tool calls are verified on sample data. Claude Code connection and tool discovery are verified; a complete AI workflow has not been verified. Claude Desktop setup is available, but its compatibility is unverified.
 
 Choose **Manage** to change that app’s permissions or disconnect it. **Advanced setup** contains configuration copying, setup repair, and a local access test. **How it works** explains privacy and runtime requirements and lets you pause all AI connections. Disconnecting one app does not affect another.
 

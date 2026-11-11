@@ -2,7 +2,7 @@
 
 Updated November 11, 2026
 
-Draft for Savenest release preparation. This policy describes free local features, automatic saving and recovery with Pro, and the upcoming Pro MCP connection; it does not announce a published release.
+This policy describes free local features, automatic saving and recovery with Pro, and the Pro MCP connection in 0.13.0. See the [MCP guide](mcp.md) for client compatibility and release verification.
 
 ## Your library stays on your Mac
 
@@ -43,7 +43,7 @@ Update checks contact savenest.app; release downloads are hosted on GitHub. Thes
 
 Automatic tag suggestions use links and tags already stored on your Mac. They do not call an AI provider. The optional Pro MCP integration shares requested records with the AI client you authorize.
 
-### AI connections through MCP — coming soon
+### AI connections through MCP — Pro, 0.13.0
 
 The Pro MCP adapter runs on the same Mac as Savenest and the connected Codex, Claude Desktop, or Claude Code client. It exposes saved link details and quick notes. Reading open tabs and recent browser history requires the corresponding permissions. Article text, live page content, and external Obsidian Markdown files are excluded.
 

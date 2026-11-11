@@ -1,6 +1,6 @@
 # Open source and paid features
 
-Savenest keeps its desktop core under MIT and reserves new proprietary paid components and hosted services for separate commercial terms. This repository contains the open-source desktop app and shared automation operations. The Pro MCP adapter is developed separately and has not been released publicly. Cloud backup, sync, and Teams have their own release status.
+Savenest keeps its desktop core under MIT and reserves proprietary paid components and hosted services for separate commercial terms. This repository contains the open-source desktop app and shared automation operations. The Pro MCP adapter is developed separately for the official 0.13.0 distribution. Automatic Pro saving and recovery, cross-device merging, and Teams have their own scope and availability.
 
 This page describes the project policy. It does not replace or add conditions to the [MIT license](../LICENSE). Customer use of the official bundled MCP adapter is covered by the separate [Pro MCP component license](pro-mcp-license.md).
 
@@ -38,7 +38,7 @@ The native operation service and shared library operations in this repository re
 
 MCP access in the official app requires an enabled connection, its granted permissions, and recently verified Pro access. The connection operates locally; subscription verification uses the existing account service. Publishing the shared operation service under MIT does not restrict the rights MIT already grants to it, and client-side access checks are not a promise that modified builds cannot bypass those checks.
 
-The private adapter must not be included in a public source archive under this repository’s default MIT license. Official binary distributions carry the component license and required dependency notices. When Pro access ends, permission to use the proprietary component ends; the free core, MIT permissions, and local library use and export remain unaffected. Public marketing remains **Coming soon** until signed compatibility checks pass and the paid component is released.
+The private adapter must not be included in a public source archive under this repository’s default MIT license. Official binary distributions carry the component license and required dependency notices. When Pro access ends, permission to use the proprietary component ends; the free core, MIT permissions, and local library use and export remain unaffected. See the [MCP guide](mcp.md) for 0.13.0 client compatibility and release verification.
 
 ## Contributions and future releases
 

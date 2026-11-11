@@ -27,7 +27,7 @@ struct AutomationSettingsView: View {
                     .fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
             }
             HStack {
-                Text(controller.adapterURL == nil ? "Coming soon with Pro." : "Connect to share saved links and notes.")
+                Text(controller.adapterURL == nil ? "Requires the official Pro-enabled app." : "Connect to share saved links and notes.")
                     .font(.system(size: 11)).foregroundStyle(Color.muted)
                 Spacer()
                 Button("How it works") { showingDetails = true }.buttonStyle(.link).font(.system(size: 11))

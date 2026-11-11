@@ -1,6 +1,6 @@
 # Pro AI connections through MCP
 
-**Public availability: coming soon.** This guide describes the Pro integration under development. A source build is not evidence that a signed public release has passed compatibility checks.
+**Release: 0.13.0 with Pro.** Codex tool calls are verified on sample data. Claude Code connection and tool discovery are verified; a complete AI workflow has not been verified. Claude Desktop setup is available, but its compatibility is unverified. The development checks below distinguish client verification from pending release checks.
 
 Savenest’s MCP connection lets Codex, Claude Desktop, and Claude Code work with saved links and quick notes on your Mac. The AI can find research, organize links, save open tabs, and close selected tabs when permitted. The AI client provides the model and scheduling; Savenest provides the local actions.
 
@@ -21,7 +21,7 @@ Local saving, search, reading, browser tools, and import/export remain free. A p
 3. Follow the result shown by Savenest. Restart the AI client or its MCP connection if requested, then ask it to check Savenest’s connection status.
 4. Choose **Manage** on the app’s card when you want to allow more actions. A new connection can only read saved links and quick notes. Tabs, history, saving/editing, opening, and destructive actions require an explicit grant.
 
-Normal setup does not require copying configuration or handling credentials. **Manage → Disconnect** revokes that app’s access without affecting other connections. **How it works** explains privacy and runtime requirements and contains **Allow AI connections**, which pauses or resumes all connections on this Mac. Connections start disabled; **Connect** enables them during setup. Builds without the private adapter show **Coming soon**.
+Normal setup does not require copying configuration or handling credentials. **Manage → Disconnect** revokes that app’s access without affecting other connections. **How it works** explains privacy and runtime requirements and contains **Allow AI connections**, which pauses or resumes all connections on this Mac. Connections start disabled; **Connect** enables them during setup. Public source builds omit the private adapter by default.
 
 ### Advanced setup and recovery
 
@@ -76,14 +76,14 @@ Library undo is limited to the latest eligible mutation. Its token expires after
 
 - **App unavailable:** open Savenest on this Mac and check that connections are allowed in **How it works**. Retry after resuming the connection.
 - **Client setup missing:** use **Manage → Advanced setup → Repair setup**, then follow the restart guidance. Manual configuration is available in the same panel.
-- **Adapter missing:** the screen shows **Coming soon**. Public source builds do not include the private adapter by default; connecting requires a Pro-enabled build.
+- **Adapter missing:** use an official 0.13.0 build containing the adapter. Public source builds do not include the private component by default.
 - **Pro cannot be verified:** check the account and connection, refresh account status, then retry. MCP does not fall back to unchecked access.
 - **Permission denied:** choose **Manage** on that app’s card and inspect its permissions. Browser Automation and history access may also need macOS approval.
 - **Tab changed or cannot be identified:** refresh the tab list and select the intended target again. Ambiguous Safari duplicates stay open.
 - **Record changed:** fetch the current saved record before editing or removing it.
 - **Some actions failed:** inspect each target’s result. Do not assume the entire batch succeeded or retry completed actions under a new request ID.
 
-Keep the landing page marked **Coming soon** until the signed adapter and app pass real Codex, Claude Desktop, Claude Code, Safari, and Chrome compatibility checks on the supported Mac architectures.
+The 0.13.0 release includes Claude Desktop setup with compatibility explicitly marked unverified. Availability copy must retain that distinction. Deploy the website's 0.13.0 availability copy only after the app release is published.
 
 ## Development checks
 
@@ -91,16 +91,22 @@ Run `swift run SaveNestChecks`, `npm test`, and `npm run test:mcp`. The MCP inte
 
 The private adapter has its own Swift tests and stdio protocol fixtures. Opt into packaging with `SAVENEST_MCP_PACKAGE_PATH` pointing to that private package, or `SAVENEST_MCP_BINARY` pointing to a reviewed architecture-matching binary beside its license and third-party notices. Public builds omit it by default.
 
-Recorded local validation on November 11, 2026, before porting MCP onto the 0.12.6 release source. These results are separate from validation of the combined release and its public release gate:
+Validation recorded during 0.13.0 release preparation on November 11, 2026:
 
 | Check | Evidence |
 | --- | --- |
 | Codex CLI 0.166.0 | Real MCP handshake, `get_status`, and `search_links` passed against synthetic fixture data. |
-| Private adapter Swift tests | 5 passed. |
-| Private adapter stdio protocol checks | 11 passed. |
-| Native MCP integration checks | Passed with a disposable preview library, simulated browser actions, and test-only Pro verification. |
+| Claude Code | Connection and tool discovery verified. A complete AI workflow has not been verified. |
+| Claude Desktop | Setup available; app compatibility unverified. |
+| Shared Swift checks | 40 passed on the release branch. |
+| Electron tests | 52 passed on the release branch. |
+| Intel CI | Passed on commit `a42e371`: 40 Swift checks, 52 Electron tests, native build, and MCP fixtures. This does not establish Intel installed-app runtime. |
+| Private adapter Swift tests | 5 passed before the release-source port. |
+| Private adapter stdio protocol checks | 11 passed before the release-source port. |
+| Native MCP integration checks | Passed with a disposable preview library, simulated browser actions, and test-only Pro verification. Intel CI also passed the MCP fixtures. |
 | Connect setup | Passed against disposable settings, including Codex's real CLI, existing configuration preservation, credential repair, concurrent edits, cancellation, and failure cleanup. Claude configuration merges are fixture-tested. |
-| Electron tests | 55 passed. |
-| Local Mac packages | Apple Silicon and Intel packages include the latest adapter. App, helper, and adapter architecture/signature checks passed with local ad-hoc signing. Packaged Apple Silicon adapter passed all 11 stdio checks. |
+| Earlier local Mac packages | Apple Silicon and Intel architecture and local ad-hoc signature checks passed before the release-source port. The packaged Apple Silicon adapter passed 11 stdio checks. |
+| Live Safari and Chrome actions | Rerun pending. Safari exited during an earlier test, and the stale-target safety check stopped the action. That run does not establish full live-browser compatibility. |
+| Signed release | Signing, notarization, installed-app update checks, and publication pending. |
 
-These results do not verify real Claude Desktop or Claude Code connections, real Safari or Chrome actions, scheduled client workflows, Intel runtime, or notarized-release installation and updates. Client configuration tests do not establish a working connection inside either Claude app. Public availability remains **Coming soon**.
+These results do not verify a real Claude Desktop connection, a complete Claude Code AI workflow, scheduled client workflows, Intel installed-app runtime, or notarized-release installation and updates. Fixture checks and local ad-hoc signatures are not evidence that the signed release has passed those checks. Remaining release results must be recorded after they run.
