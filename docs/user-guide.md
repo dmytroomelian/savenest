@@ -2,6 +2,8 @@
 
 [Back to the project](../README.md) · [Privacy](privacy.md)
 
+Local saving, search, reading, browser tools, and import/export remain free. The optional [Pro MCP connection](mcp.md) lets Codex or Claude use selected links and quick notes, organize the library, and manage permitted tabs. It is coming soon to a signed Pro-enabled release.
+
 The [Read & note workspace](read-and-note.md) opens an article beside its Obsidian Markdown file. It is available in the 0.12 preview series.
 
 ## Launcher
@@ -14,13 +16,13 @@ Click **Actions** or press **⌘K** for actions on the selected page and app-wid
 
 The floating launcher opens on the display containing the pointer, including over fullscreen apps, and stays out of the Dock. Click elsewhere to hide it. Escape closes actions, goes back from an editor or scope, then dismisses root search. Unsaved edits require an explicit discard. The launcher remembers context for 60 seconds; after that it resets root search unless a draft is open. **⌘O** toggles it. The old **⌘⇧O** default migrates automatically; custom shortcuts remain unchanged and can be edited in Settings.
 
-Account, Settings, sharing, and system dialogs retain their native implementation and are reachable from root search. Optional email sign-in and existing billing management are handled by savenest.app; links and notes remain local. Existing saved links and Keychain sessions use the same storage, with no conversion. Settings → Appearance changes both interfaces. [Launcher design](launcher-design.md).
+Account, Settings, sharing, and system dialogs retain their native implementation and are reachable from root search. Optional email sign-in and billing management are handled by savenest.app. Local links and notes remain available; Pro saving and enabled AI connections have the separate data flows described below. Existing saved links and Keychain sessions use the same storage, with no conversion. Settings → Appearance changes both interfaces. [Launcher design](launcher-design.md).
 
 ### Browser history
 
 History search reads local Chrome/Chromium-family, Firefox, and Safari databases without modifying them. It indexes up to 2,000 recent records per profile from the last 90 days, across at most 30 profiles, with a 20,000-URL memory cap. Standard profile locations for Chrome/Beta, Brave, Edge, Arc, Vivaldi, Chromium, Opera, Firefox, and Safari are supported. External/custom profile locations and Safari profile layouts outside the standard history database are not scanned.
 
-History remains in memory, is never uploaded or exported, and is refreshed on opening (at most once per minute) or explicitly via **Refresh tabs and history**. Failed reads clear that source’s old results and show an access/format error. **Browser history sources** shows connected profiles and a pause control that cancels reads and clears the cache. macOS may require file access for protected browser folders; Savenest does not change those permissions.
+History remains in memory and is excluded from library exports and Savenest uploads. If you enable an AI connection and grant history access, requested history records can reach your AI provider. Launcher history refreshes on opening (at most once per minute) or explicitly via **Refresh tabs and history**. Failed reads clear that source’s old results and show an access/format error. **Browser history sources** shows connected profiles and a pause control that cancels reads and clears the cache. macOS may require file access for protected browser folders; Savenest does not change those permissions.
 
 A URL found in multiple sources becomes one result with its source labels. If it is open, Enter switches to that tab. Separate open instances remain distinct so profiles/windows are not confused. Title and keyword relevance rank before page-context matches; abbreviated single-word titles are also supported. History-only results can be saved, annotated, or opened like other pages.
 
@@ -75,6 +77,16 @@ Capture attempts a fixed, read-only script in the captured page to read Open Gra
 
 Browsers may block this unless **Allow JavaScript from Apple Events** is enabled by the user. Browser Automation access and this JavaScript setting are separate. If metadata is blocked, unavailable, or a page navigates during capture, Savenest retains a useful native title or builds a descriptive fallback from the URL (for example `@anna on X · 123` or `Instagram reel · ABC123`). Login-only pages and changing social site markup can limit results. These fallbacks identify the link; they do not invent a caption. A captured title can always be edited.
 
+## AI connections — Pro, coming soon
+
+In a Pro-enabled build, open **Settings → AI connections** and choose **Connect** on the Codex, Claude Desktop, or Claude Code card. Savenest verifies Pro and installs the local setup with read-only access to saved links and quick notes. Follow any restart guidance shown. No configuration copying is needed for normal setup. Builds without the private adapter show **Coming soon**.
+
+Choose **Manage** to change that app’s permissions or disconnect it. **Advanced setup** contains configuration copying, setup repair, and a local access test. **How it works** explains privacy and runtime requirements and lets you pause all AI connections. Disconnecting one app does not affect another.
+
+History and destructive permissions start disabled. Grant removal, save-and-close, or direct closing only when that client needs them. Direct closing does not save a link first. Your AI client can use already-approved permissions in a scheduled task, subject to its own approval rules. Keep the Mac awake with Savenest and the AI client running.
+
+The connection reads link details and quick notes, not article text or external Obsidian files. Requested records reach your AI provider. It requires online Pro verification; a failed verification pauses MCP access while free app tools continue working. See the [MCP guide](mcp.md) for setup, examples, and recovery.
+
 ## Library and backups
 
 Saved data lives at `~/Library/Application Support/SaveNest/library.json`. Use Settings to export or merge-import JSON backups. Writes are atomic; an unreadable or newer-format library is preserved and further writes are blocked. Keep a backup before testing changes with real data.
@@ -83,7 +95,7 @@ The [native interface reference](legacy-native.md) describes the retained Swift 
 
 ## Automatic Pro saving and recovery
 
-Open **Account & Pro**, sign in using the email link, and choose **monthly ($4.99 USD)** or **yearly ($49.90 USD)**. Applicable tax is added at checkout. Stripe opens in your browser; return to Savenest after checkout. Expand **Membership** to see your plan and billing date or choose **Manage billing**. Local features stay free.
+Open **Account & Pro**, sign in using the email link, and choose **monthly ($4.99 USD)** or **yearly ($49.90 USD)**. Applicable tax is added at checkout. Stripe opens in your browser; return to Savenest after checkout. Expand **Membership** to see your plan and billing date or choose **Manage billing**. Core saving, search, reading, and import/export stay free.
 
 Pro starts saving automatically after account, service-permission, and local-library checks pass. **Sync is active** shows a gently pulsing green dot after the server acknowledges a save. Offline changes remain on this Mac and retry automatically. Each Mac has its own saved library; changes do not merge between Macs.
 

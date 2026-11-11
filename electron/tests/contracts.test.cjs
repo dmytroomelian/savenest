@@ -18,6 +18,12 @@ test('valid scoped search and annotation preserve literal untrusted text', () =>
   assert.deepEqual(validateCommand(input), { ...input, ids: ['saved:123'] });
   assert.equal(validateCommand({ command: 'search', scope: 'Archive', query: '#read' }).scope, 'Archive');
 });
+test('saved editor revisions survive IPC and reject malformed values', () => {
+  assert.equal(validateCommand({ command: 'edit', revision: 'a'.repeat(64) }).revision, 'a'.repeat(64));
+  assert.equal(validateCommand({ command: 'edit', revision: 'missing' }).revision, 'missing');
+  assert.throws(() => validateCommand({ command: 'edit', revision: 123 }));
+  assert.throws(() => validateCommand({ command: 'edit', revision: 'a'.repeat(129) }));
+});
 test('IPC only accepts the owning main frame at the exact local app URL', () => {
   const frame = { url: APP_URL }, contents = { mainFrame: frame };
   assert.equal(trustedSender({ sender: contents, senderFrame: frame }, contents), true);

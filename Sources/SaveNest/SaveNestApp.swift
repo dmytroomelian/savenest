@@ -29,6 +29,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     private var electronBridge: ElectronBridge?
     private var librarySession: LibrarySessionLock?
     func applicationDidFinishLaunching(_ notification: Notification) {
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("--automation-browser-checks") {
+            guard AppLaunch.isPreview, ProcessInfo.processInfo.arguments.contains("--ui-preview") else {
+                fputs("Live browser checks require --ui-preview.\n", stderr); exit(1)
+            }
+            NSApp.setActivationPolicy(.accessory)
+            Task { @MainActor in
+                do { try await AutomationLiveBrowserChecks.run(); print("Live browser checks passed"); exit(0) }
+                catch { fputs("Live browser checks failed: \(error.localizedDescription)\n", stderr); exit(1) }
+            }
+            return
+        }
+        if ProcessInfo.processInfo.arguments.contains("--automation-checks") && AppLaunch.isPreview {
+            NSApp.setActivationPolicy(.prohibited)
+            Task { @MainActor in
+                do { try await AutomationSelfChecks.run(); print("Automation integration checks passed"); exit(0) }
+                catch { fputs("Automation checks failed: \(error)\n", stderr); exit(1) }
+            }
+            return
+        }
+        #endif
         let isElectron = ProcessInfo.processInfo.arguments.contains("--electron-bridge")
         if isElectron && ProcessInfo.processInfo.arguments.contains("--ui-preview") && !AppLaunch.isPreview {
             ElectronBridge.failStartup("Preview requires a debug helper. Run npm run build:native first.")
@@ -55,6 +76,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             }
         }
         model = AppModel()
+        model.aiConnections.start()
         model.showTabSearch = { [weak self] in self?.openTabSearch() }
         model.tabSearch.close = { [weak self] in self?.tabSearchPanel?.orderOut(nil); self?.model.tabSearch.suspend() }
         model.showLibrary = { [weak self] in self?.openLibrary() }
@@ -110,7 +132,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         if model != nil && !model.isPreview { Task { await model.account.synchronizeLogin() } }
     }
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
-    func applicationWillTerminate(_ notification: Notification) { electronBridge?.event("quit") }
+    func applicationWillTerminate(_ notification: Notification) { model?.aiConnections.stop(); electronBridge?.event("quit") }
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool { openLibrary(); return true }
     @objc func openLibrary() {
         if electronBridge != nil && model.cleanupReview != nil { openSettings(); return }

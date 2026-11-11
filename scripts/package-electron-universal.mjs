@@ -40,6 +40,9 @@ for (const architecture of ['arm64', 'x64']) {
   run('spctl', ['--assess', '--type', 'execute', app]);
 }
 assert.equal(plist(apps.arm64, 'CFBundleVersion'), plist(apps.x64, 'CFBundleVersion'));
+const mcpFlag = bundle => { try { return plist(bundle, 'SaveNestMCPEnabled') === 'true'; } catch { return false; } };
+const hasMCP = mcpFlag(apps.arm64);
+assert.equal(hasMCP, mcpFlag(apps.x64), 'Both release architectures must contain the same MCP component choice.');
 assert.equal(await sha256(path.join(apps.arm64, 'Contents/Resources/app.asar')),
   await sha256(path.join(apps.x64, 'Contents/Resources/app.asar')), 'Release app code must match across architectures');
 
@@ -74,12 +77,18 @@ await makeUniversalApp({ x64AppPath: apps.x64, arm64AppPath: apps.arm64, outAppP
 const embeddedHelper = path.join(app, 'Contents/Resources/SaveNest.app');
 await cp(helper, embeddedHelper, { recursive: true, verbatimSymlinks: true });
 run('xattr', ['-cr', app]);
+const mcpExecutable = path.join(app, 'Contents/Resources/savenest-mcp');
+if (hasMCP) {
+  for (const cpu of ['arm64', 'x86_64']) run('lipo', [mcpExecutable, '-verify_arch', cpu]);
+  run('codesign', ['--force', '--options', 'runtime', '--timestamp', '--sign', identity, mcpExecutable]);
+}
 await sign({ app, identity, platform: 'darwin', version: manifest.devDependencies.electron,
   preAutoEntitlements: false, preEmbedProvisioningProfile: false,
-  ignore: file => file === embeddedHelper || file.startsWith(`${embeddedHelper}/`),
+  ignore: file => file === embeddedHelper || file.startsWith(`${embeddedHelper}/`) || (hasMCP && file === mcpExecutable),
   optionsForFile: file => ({ hardenedRuntime: true,
     entitlements: file === app ? path.resolve('Resources/Electron.entitlements') : ['com.apple.security.cs.allow-jit'] })
 });
+if (hasMCP) run('codesign', ['--verify', '--strict', mcpExecutable]);
 run('codesign', ['--verify', '--deep', '--strict', app]);
 for (const bundle of [app, embeddedHelper]) {
   for (const cpu of ['arm64', 'x86_64']) run('lipo', [path.join(bundle, 'Contents/MacOS/SaveNest'), '-verify_arch', cpu]);

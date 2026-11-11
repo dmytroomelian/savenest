@@ -26,3 +26,4 @@ jobs:
         run: /usr/bin/log show --last 2m --style compact --predicate 'eventMessage CONTAINS "SaveNestChecks"' | tail -80
       - run: npm test
       - run: npm run build:native
+      - run: npm run test:mcp

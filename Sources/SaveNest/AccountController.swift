@@ -8,7 +8,7 @@ enum AccountFailure: LocalizedError {
     case signIn, subscription, invalidResponse, callback, keychain, accountBusy, service(String)
     var errorDescription: String? {
         switch self {
-        case .signIn: return "Sign in to manage this account. All local features work without signing in."
+        case .signIn: return "Sign in to manage this account. Core local saving and search work without signing in."
         case .subscription: return "Savenest is free on your Mac. Pro subscriptions are not available yet."
         case .invalidResponse: return "Savenest couldn’t verify your account. Please try again in a moment."
         case .callback: return "This sign-in link doesn’t match your request. Start sign-in again in Savenest."
@@ -201,7 +201,7 @@ final class AccountController: NSObject, ObservableObject {
             let previous = account?.user.id == value.user.id ? account?.subscription : nil
             account = SaveNestAccount(user: value.user, subscription: previous ?? value.subscription)
             verifiedAt = nil; subscriptionUnavailable = true
-            message = "We couldn’t check your subscription right now. Try Refresh account again. All local features remain available."
+            message = "We couldn’t check your subscription right now. Try Refresh account again. Core local features remain available."
         } else {
             account = value; verifiedAt = Date(); subscriptionUnavailable = false; message = nil
             if value.subscription.active, pendingReferralCode != nil { clearReferralCode() }

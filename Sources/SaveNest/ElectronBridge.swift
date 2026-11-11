@@ -97,6 +97,7 @@ final class ElectronBridge {
                 "profile": item.history?.profile ?? "",
                 "note": item.link?.note ?? "", "tags": item.link?.tags ?? [],
                 "favorite": item.link?.isFavorite ?? false, "archived": item.link?.isArchived ?? false,
+                "revision": item.link.map { AutomationLibrary.revision($0) } ?? "missing",
                 "context": String(item.context.prefix(400))
             ]
             if let date = item.link?.createdAt { row["createdAt"] = ISO8601DateFormatter().string(from: date) }
@@ -328,7 +329,7 @@ final class ElectronBridge {
             search.setMessage("Copied \(items.count) \(items.count == 1 ? "link" : "links").")
         case "save", "saveClose":
             for item in items where item.tab == nil && item.link == nil {
-                guard await model.saveWorkspaceLink(SavedLink(url: item.url, title: item.title, browser: item.history?.browser ?? "History")) else {
+                guard await model.add(url: item.url, title: item.title, collection: "Inbox") else {
                     throw Failure(message: "Couldn’t save. Check your library and try again.")
                 }
                 search.setMessage("Saved to your library.")
@@ -341,10 +342,11 @@ final class ElectronBridge {
         case "undo": model.undoLastAction()
         case "edit":
             guard let item = items.first else { throw Failure(message: "This item changed. Reopen the editor.") }
+            guard let revision = request.revision else { throw Failure(message: "Reopen the editor before saving this link.") }
             var link = item.link ?? SavedLink(url: item.url, title: item.title, browser: item.tab?.browserName ?? "Manual")
             link.title = request.title ?? link.title; link.note = request.note ?? link.note
             link.tags = request.tags ?? link.tags
-            guard await model.saveWorkspaceLink(link) else { throw Failure(message: model.error ?? "Couldn’t save. Check your library and try again.") }
+            guard await model.saveWorkspaceLink(link, expectedRevision: revision) else { throw Failure(message: model.error ?? "Couldn’t save. Check your library and try again.") }
         case "add":
             guard await model.add(url: request.url ?? "", title: request.title ?? "", collection: "Inbox", note: request.note ?? "", tags: request.tags ?? []) else {
                 throw Failure(message: model.error ?? "Couldn’t save. Check your library and try again.")

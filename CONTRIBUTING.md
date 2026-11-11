@@ -1,6 +1,6 @@
 # Contributing to Savenest
 
-Savenest is a free Mac app for saving and finding browser pages. Bug reports, documentation, accessibility improvements, and code contributions are welcome. This repository contains the MIT-licensed desktop app; the hosted backend is separate.
+Savenest has a free Mac core for saving and finding browser pages. Bug reports, documentation, accessibility improvements, and code contributions are welcome. This repository contains the MIT-licensed desktop app and shared automation operations; the hosted backend and private Pro MCP adapter are separate.
 
 ## Start here
 
@@ -72,8 +72,14 @@ If Swift reports paths from a previous checkout location, regenerate the disposa
 
 Push your branch to your fork and open a pull request against `dmytro-omelian/savenest`'s `main` branch. Explain the problem, resulting behavior, and checks actually run. Link a related issue when one exists. Keep the change focused and include screenshots with sample data for visible UI changes.
 
-Preserve local data compatibility and offline use. Do not put local saving, editing, import, or export behind account or subscription checks. Browser history and unsaved page context remain local and ephemeral. Keep renderer isolation and validate all commands crossing process boundaries.
+Preserve local data compatibility and offline use. Do not put the app's core local saving, editing, import, or export behind account or subscription checks. Browser history and unsaved page context remain ephemeral. MCP may share permitted history records with an explicitly connected AI client; article bodies and live page text are excluded. Keep renderer isolation and validate all commands crossing process boundaries.
 
 Never commit credentials, real user libraries, browser databases, personal screenshots, signing material, or generated build artifacts.
+
+## Open source and paid features
+
+Contributions to this repository remain under MIT, including shared operations and client screens for optional paid services. Keep proprietary paid implementations in a separate private module or backend; do not add them to this repository under its MIT license. Shared fixes belong in the public core.
+
+The public app must remain buildable and usable for its free core without private modules, paid accounts, or release credentials. Resale restrictions for proprietary paid components and service access do not apply to MIT code or contributions. See the [licensing policy](docs/licensing.md).
 
 By submitting a contribution, you confirm you have the right to contribute it under this repository's MIT license. No separate contributor agreement is required.

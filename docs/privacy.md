@@ -2,7 +2,7 @@
 
 Updated November 11, 2026
 
-Draft for the Savenest 0.12.6 release preparation. This policy describes free local features and automatic saving and recovery with Pro; it does not announce a published release.
+Draft for Savenest release preparation. This policy describes free local features, automatic saving and recovery with Pro, and the upcoming Pro MCP connection; it does not announce a published release.
 
 ## Your library stays on your Mac
 
@@ -11,6 +11,7 @@ The free Savenest Mac app works without an account. Saved links, titles, notes, 
 - **Local content:** browser history and unsaved page context are not uploaded to Savenest. Your saved library is uploaded automatically by the signed-in Mac app with verified Pro access and server permission.
 - **Optional reporting:** anonymous action counts are on by default. Turn them off in Settings or the first-use notice.
 - **Network requests:** website icons, account services, updates, and usage reporting can contact external servers.
+- **AI connections:** enabling a Pro MCP connection shares requested link details and quick notes with the AI client, within the permissions you grant.
 
 ## Who runs Savenest
 
@@ -40,7 +41,17 @@ Savenest may request a website’s favicon or public homepage to display its ico
 
 Update checks contact savenest.app; release downloads are hosted on GitHub. These services receive ordinary request information. Opening a saved page uses your browser. Sharing by email uses the email application you choose and sends the content you explicitly share to your selected recipient.
 
-Savenest does not upload your saved library to an AI provider. Automatic tag suggestions use links and tags already stored on your Mac.
+Automatic tag suggestions use links and tags already stored on your Mac. They do not call an AI provider. The optional Pro MCP integration shares requested records with the AI client you authorize.
+
+### AI connections through MCP — coming soon
+
+The Pro MCP adapter runs on the same Mac as Savenest and the connected Codex, Claude Desktop, or Claude Code client. It exposes saved link details and quick notes. Reading open tabs and recent browser history requires the corresponding permissions. Article text, live page content, and external Obsidian Markdown files are excluded.
+
+Returned titles, URLs, tags, quick notes, and permitted browser records enter the AI conversation and may be processed or retained by that AI provider under its terms and your account settings. A local connection does not mean that the AI conversation stays on your Mac. Savenest does not host or proxy MCP records. Your Savenest account credential never crosses the MCP connection.
+
+AI connections are disabled by default. Choosing **Connect** in **Settings → AI connections** enables the local connection and installs that client's configuration with read-only access to saved links and quick notes. Each client has a separate credential stored in owner-only local files. **Manage** controls tab and history access, saving/editing, opening links, removal, save-and-close, and direct closing. Once granted, permissions can be used in unattended tasks without a new Savenest confirmation for each action. The AI client may impose its own approvals. You can disconnect one client or pause all connections in **How it works**.
+
+Connection settings and recent action results stay local. Queries, URLs, note contents, and connection credentials are excluded from usage reporting. Pro access is verified online through the existing account service without sending library contents. When verification expires and cannot be renewed, MCP data access pauses; free app tools continue working. Disconnecting does not remove content already received by the AI provider.
 
 ## Anonymous usage counts
 

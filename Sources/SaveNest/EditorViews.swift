@@ -37,6 +37,7 @@ struct LinkDetailView: View {
     @State private var confirmingDelete = false
     @State private var tagsText = ""
     @State private var saving = false
+    @State private var originalRevision: String?
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
             HStack(spacing: 12) {
@@ -70,9 +71,10 @@ struct LinkDetailView: View {
                 } label: { Image(systemName: "ellipsis") }.menuStyle(.borderlessButton).frame(width: 30)
                 Spacer()
                 Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction).buttonStyle(.plain)
-                Button(saving ? "Saving…" : "Save changes") { link.tags = SavedLink.normalizedTags(link.tags + SavedLink.parseTags(tagsText)); saving = true; Task { if await model.update(link) { dismiss() }; saving = false } }.buttonStyle(SageButton()).keyboardShortcut(.return, modifiers: .command).disabled(saving)
+                Button(saving ? "Saving…" : "Save changes") { link.tags = SavedLink.normalizedTags(link.tags + SavedLink.parseTags(tagsText)); saving = true; Task { if await model.update(link, expectedRevision: originalRevision) { dismiss() }; saving = false } }.buttonStyle(SageButton()).keyboardShortcut(.return, modifiers: .command).disabled(saving)
             }
         }.padding(32).frame(width: 510).background(Color.paper).foregroundStyle(Color.ink).nestAppearance()
+            .onAppear { if originalRevision == nil { originalRevision = AutomationLibrary.revision(link) } }
             .interactiveDismissDisabled()
             .alert("Delete this link?", isPresented: $confirmingDelete) {
                 Button("Cancel", role: .cancel) {}
@@ -132,12 +134,14 @@ private enum SettingsTab: String, CaseIterable, Identifiable {
     case general = "General"
     case capture = "Capture"
     case library = "Library"
+    case ai = "AI connections"
     var id: Self { self }
     var icon: String {
         switch self {
         case .general: "sparkles"
         case .capture: "command"
         case .library: "tray.full"
+        case .ai: "point.3.connected.trianglepath.dotted"
         }
     }
 }
@@ -151,9 +155,11 @@ struct SettingsView: View {
     var onBack: () -> Void = {}
     var body: some View {
         ScrollView { VStack(alignment: .leading, spacing: 26) {
-            Button { onBack() } label: { Label("All tabs", systemImage: "chevron.left") }
-                .buttonStyle(.plain).font(.system(size: 12, weight: .medium)).foregroundStyle(Color.muted)
-            sheetHeading("Make yourself at home.", subtitle: "A few small things, just how you like them.")
+            if selectedTab != .ai {
+                Button { onBack() } label: { Label("All tabs", systemImage: "chevron.left") }
+                    .buttonStyle(.plain).font(.system(size: 12, weight: .medium)).foregroundStyle(Color.muted)
+                sheetHeading("Make yourself at home.", subtitle: "A few small things, just how you like them.")
+            }
             if let error = model.error { Text(error).font(.system(size: 11)).foregroundStyle(.red) }
             settingsTabs
             ZStack(alignment: .topLeading) {
@@ -166,7 +172,9 @@ struct SettingsView: View {
             }
             .frame(maxWidth: .infinity, alignment: .topLeading)
             .clipped()
-            HStack { NestMark().frame(width: 20, height: 20); Text("Savenest " + (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "development")); Spacer(); Text("A small app for a clearer mind.") }.font(.system(size: 10)).foregroundStyle(Color.muted)
+            if selectedTab != .ai {
+                HStack { NestMark().frame(width: 20, height: 20); Text("Savenest " + (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "development")); Spacer(); Text("A small app for a clearer mind.") }.font(.system(size: 10)).foregroundStyle(Color.muted)
+            }
         }.padding(32) }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(Color.paper).foregroundStyle(Color.ink).nestAppearance()
@@ -225,6 +233,8 @@ struct SettingsView: View {
 
     @ViewBuilder private var settingsContent: some View {
         switch selectedTab {
+        case .ai:
+            AutomationSettingsView(controller: model.aiConnections, account: model.account)
         case .general:
             appearancePicker
             AppUpdateSettingsView(updater: model.updater)

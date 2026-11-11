@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm, appendFile } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, appendFile, access } from 'node:fs/promises';
 import { createReadStream } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
@@ -33,6 +33,18 @@ try {
     assert.equal(plist(bundle, 'SaveNestUpdatesEnabled'), 'false', 'The Electron app and embedded helper must not activate Sparkle.');
   }
   const cpus = architecture === 'universal' ? ['arm64', 'x86_64'] : [architecture === 'x64' ? 'x86_64' : 'arm64'];
+  const mcpExecutable = path.join(app, 'Contents/Resources/savenest-mcp');
+  let hasMCP = false;
+  try { hasMCP = plist(app, 'SaveNestMCPEnabled') === 'true'; } catch { /* Older public releases have no MCP component. */ }
+  if (hasMCP) {
+    for (const cpu of cpus) run('lipo', [mcpExecutable, '-verify_arch', cpu]);
+    run('codesign', ['--verify', '--strict', mcpExecutable]);
+    for (const name of ['SaveNest-Pro-MCP-LICENSE.txt', 'SaveNest-Pro-MCP-THIRD-PARTY-NOTICES.txt']) {
+      assert.ok((await readFile(path.join(app, 'Contents/Resources/licenses', name))).length > 50);
+    }
+  } else {
+    await assert.rejects(access(mcpExecutable), 'Public builds must not accidentally contain the private MCP adapter.');
+  }
   for (const cpu of cpus) {
     run('lipo', [path.join(app, 'Contents/MacOS/SaveNest'), '-verify_arch', cpu]);
     run('lipo', [path.join(helper, 'Contents/MacOS/SaveNest'), '-verify_arch', cpu]);
@@ -62,6 +74,6 @@ try {
   let rejected = false;
   try { run('codesign', ['--verify', '--deep', '--strict', app]); } catch { rejected = true; }
   assert.equal(rejected, true, 'A modified app archive must fail signature verification.');
-  console.log(JSON.stringify({ archive: path.resolve(archive), architecture, version, build, sha256,
+  console.log(JSON.stringify({ archive: path.resolve(archive), architecture, version, build, sha256, mcp: hasMCP,
     checks: ['matching versions and numeric builds', 'Sparkle public-key continuity', 'correct architectures', 'signature', 'stapled notarization', 'Gatekeeper', 'native updater disabled', 'licenses', 'tamper rejection'] }, null, 2));
 } finally { await rm(temporary, { recursive: true, force: true }); }
