@@ -1,5 +1,6 @@
 name: Bug report
 description: Report an unexpected behavior using non-sensitive examples.
+labels: ["bug", "status:triage"]
 body:
   - type: markdown
     attributes:
