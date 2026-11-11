@@ -77,7 +77,7 @@ struct LinkDetailView: View {
             .alert("Delete this link?", isPresented: $confirmingDelete) {
                 Button("Cancel", role: .cancel) {}
                 Button("Delete", role: .destructive) { model.delete(link); dismiss() }
-            } message: { Text("This permanently removes the link and its note from SaveNest.") }
+            } message: { Text("This permanently removes the link and its note from Savenest.") }
     }
 }
 
@@ -166,7 +166,7 @@ struct SettingsView: View {
             }
             .frame(maxWidth: .infinity, alignment: .topLeading)
             .clipped()
-            HStack { NestMark().frame(width: 20, height: 20); Text("SaveNest " + (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "development")); Spacer(); Text("A small app for a clearer mind.") }.font(.system(size: 10)).foregroundStyle(Color.muted)
+            HStack { NestMark().frame(width: 20, height: 20); Text("Savenest " + (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "development")); Spacer(); Text("A small app for a clearer mind.") }.font(.system(size: 10)).foregroundStyle(Color.muted)
         }.padding(32) }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(Color.paper).foregroundStyle(Color.ink).nestAppearance()
@@ -236,7 +236,7 @@ struct SettingsView: View {
                 OwnerUsageView(account: model.account)
             }.padding(20).nestSurface()
             Link("Read the privacy policy ↗", destination: URL(string: "https://savenest.app/privacy")!).font(.system(size: 12))
-            Button("Account & Cloud…") { model.showAccount?() }.buttonStyle(QuietButton())
+            Button("Account & Pro…") { model.showAccount?() }.buttonStyle(QuietButton())
         case .capture:
             VStack(alignment: .leading, spacing: 12) {
                 fieldLabel("CLIPBOARD")
@@ -283,7 +283,7 @@ struct SettingsView: View {
             }.padding(20).nestSurface()
             VStack(alignment: .leading, spacing: 10) {
                 fieldLabel("BROWSERS & PRIVACY")
-                Text("SaveNest reads browser tabs only when you use a capture or tab tool.")
+                Text("Savenest reads browser tabs only when you use a capture or tab tool.")
                     .font(.system(size: 11)).foregroundStyle(Color.muted)
                 Button("Open Automation Settings ↗") { NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Automation")!) }.buttonStyle(.link).font(.system(size: 11))
             }
@@ -327,7 +327,7 @@ struct SettingsView: View {
                         .accessibilityAddTraits(appearance == option.rawValue ? .isSelected : [])
                 }
             }
-            Text("Applies throughout SaveNest. Your choice is remembered.").font(.system(size: 11)).foregroundStyle(Color.muted)
+            Text("Applies throughout Savenest. Your choice is remembered.").font(.system(size: 11)).foregroundStyle(Color.muted)
         }
     }
 

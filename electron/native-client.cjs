@@ -12,8 +12,8 @@ class NativeClient extends EventEmitter {
     // Never send helper diagnostics or account URLs to the renderer or console.
     this.child.stderr.resume();
     this.child.on('error', () => this.fail('The native helper could not start. Run npm run build:native.'));
-    this.child.on('exit', () => this.fail('The native helper stopped. Quit and reopen SaveNest.'));
-    this.child.stdin.on('error', () => this.fail('The native helper disconnected. Quit and reopen SaveNest.'));
+    this.child.on('exit', () => this.fail('The native helper stopped. Quit and reopen Savenest.'));
+    this.child.stdin.on('error', () => this.fail('The native helper disconnected. Quit and reopen Savenest.'));
   }
   receive(chunk) {
     this.buffer += chunk;
@@ -31,16 +31,16 @@ class NativeClient extends EventEmitter {
       if (!pending) continue;
       clearTimeout(pending.timer); this.pending.delete(message.id);
       if (message.ok) pending.resolve(message.result ?? true);
-      else pending.reject(new Error(message.error || 'SaveNest could not finish this action.'));
+      else pending.reject(new Error(message.error || 'Savenest could not finish this action.'));
     }
   }
   request(command) {
-    if (this.closed) return Promise.reject(new Error('SaveNest is disconnected. Quit and reopen the app.'));
-    if (this.pending.size >= 128) return Promise.reject(new Error('SaveNest is busy. Try again shortly.'));
+    if (this.closed) return Promise.reject(new Error('Savenest is disconnected. Quit and reopen the app.'));
+    if (this.pending.size >= 128) return Promise.reject(new Error('Savenest is busy. Try again shortly.'));
     const id = ++this.sequence;
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
-        this.pending.delete(id); reject(new Error('This action is still taking time. Check SaveNest before trying again.'));
+        this.pending.delete(id); reject(new Error('This action is still taking time. Check Savenest before trying again.'));
       }, 120000);
       this.pending.set(id, { resolve, reject, timer });
       this.child.stdin.write(JSON.stringify({ ...command, id }) + '\n');
@@ -53,7 +53,7 @@ class NativeClient extends EventEmitter {
     this.pending.clear(); this.emit('failure', message);
   }
   stop() {
-    this.fail('SaveNest is closing.');
+    this.fail('Savenest is closing.');
     this.child.stdin.end();
     const child = this.child;
     const timer = setTimeout(() => { if (child.exitCode === null) child.kill('SIGTERM'); }, 1500);

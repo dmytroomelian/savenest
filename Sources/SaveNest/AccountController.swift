@@ -9,11 +9,11 @@ enum AccountFailure: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .signIn: return "Sign in to manage this account. All local features work without signing in."
-        case .subscription: return "SaveNest is free on your Mac. Cloud subscriptions are not available yet."
-        case .invalidResponse: return "SaveNest couldn’t verify your account. Please try again in a moment."
-        case .callback: return "This sign-in link doesn’t match your request. Start sign-in again in SaveNest."
-        case .keychain: return "SaveNest couldn’t access your login in macOS Keychain. Unlock your keychain and try again."
-        case .accountBusy: return "Another copy of SaveNest is updating your account. Please try again in a moment."
+        case .subscription: return "Savenest is free on your Mac. Pro subscriptions are not available yet."
+        case .invalidResponse: return "Savenest couldn’t verify your account. Please try again in a moment."
+        case .callback: return "This sign-in link doesn’t match your request. Start sign-in again in Savenest."
+        case .keychain: return "Savenest couldn’t access your login in macOS Keychain. Unlock your keychain and try again."
+        case .accountBusy: return "Another copy of Savenest is updating your account. Please try again in a moment."
         case .service(let message): return message
         }
     }
@@ -111,7 +111,7 @@ final class AccountController: NSObject, ObservableObject {
         guard (200..<300).contains(response.statusCode) else {
             let reason = (try? JSONDecoder().decode(ErrorResponse.self, from: data))?.error
             throw AccountFailure.service(reason.flatMap { $0.count <= 400 ? $0 : nil }
-                ?? "Cloud backup is not available right now. Your local library is unchanged.")
+                ?? "Backup is unavailable right now. Your local library is unchanged.")
         }
         do { return try CloudLibraryJSON.decoder().decode(T.self, from: data) }
         catch { throw AccountFailure.invalidResponse }
@@ -157,7 +157,7 @@ final class AccountController: NSObject, ObservableObject {
         if response.statusCode == 401 { throw AccountFailure.signIn }
         guard (200..<300).contains(response.statusCode) else {
             let reason = (try? JSONDecoder().decode(ErrorResponse.self, from: data))?.error
-            throw AccountFailure.service(reason.flatMap { $0.count <= 400 ? $0 : nil } ?? "SaveNest is temporarily unavailable. Try again shortly.")
+            throw AccountFailure.service(reason.flatMap { $0.count <= 400 ? $0 : nil } ?? "Savenest is temporarily unavailable. Try again shortly.")
         }
         do { return try JSONDecoder().decode(T.self, from: data) }
         catch { throw AccountFailure.invalidResponse }
@@ -220,7 +220,7 @@ final class AccountController: NSObject, ObservableObject {
     }
 
     func sendReferralInvite() async {
-        referralMessage = "Paid referral offers are paused. SaveNest is free on your Mac."
+        referralMessage = "Paid referral offers are paused. Savenest is free on your Mac."
     }
 
     func clearReferralCode() {
@@ -258,7 +258,7 @@ final class AccountController: NSObject, ObservableObject {
                     guard authAttempt == attempt.id, pendingSignIn?.id == attempt.id, signInStage == .sending else { return }
                     guard let stored = try AccountKeychain.pending(), stored.id == attempt.id, !stored.consumed else { await synchronizeLogin(); return }
                     signInStage = .waiting; resendAvailableAt = Date().addingTimeInterval(30)
-                    message = "Open the sign-in email on this Mac. SaveNest will finish signing you in automatically."
+                    message = "Open the sign-in email on this Mac. Savenest will finish signing you in automatically."
                 } catch {
                     guard authAttempt == attempt.id, signInStage == .sending else { return }
                     // Keep the attempt: a timed-out request may still have delivered the email.
@@ -277,7 +277,7 @@ final class AccountController: NSObject, ObservableObject {
         guard let url = AppRuntime.canonicalCallback(receivedURL) else { return }
         if AccountAccess.referralCode(url) != nil {
             clearReferralCode()
-            message = "SaveNest is now free on your Mac. Paid referral offers are paused while Cloud is being developed."
+            message = "Savenest is free on your Mac. Paid referral offers are paused."
             showAccount(); return
         }
         guard url.scheme == "savenest", ["auth", "billing"].contains(url.host ?? "") else { return }
@@ -305,7 +305,7 @@ final class AccountController: NSObject, ObservableObject {
                 guard NativeCallback.isNonce(response.accessToken), response.account.user.email.lowercased() == attempt.email else { throw AccountFailure.invalidResponse }
                 guard authAttempt == attempt.id else { revoke(response.accessToken); return }
                 do {
-                    guard try AccountKeychain.completeSignIn(attempt, token: response.accessToken) else { revoke(response.accessToken); message = "Sign-in was cancelled in another copy of SaveNest. Send a fresh link to continue."; return }
+                    guard try AccountKeychain.completeSignIn(attempt, token: response.accessToken) else { revoke(response.accessToken); message = "Sign-in was cancelled in another copy of Savenest. Send a fresh link to continue."; return }
                 } catch { revoke(response.accessToken); throw error }
                 sessionGeneration = UUID(); refreshFlight?.task.cancel(); refreshFlight = nil; isRefreshing = false
                 accessToken = response.accessToken; hasLogin = true; applyAccount(response.account)
@@ -328,13 +328,13 @@ final class AccountController: NSObject, ObservableObject {
                 let response: AccountResponse = try await request("api/account", token: sharedToken)
                 guard sessionGeneration == generation, accessToken == previousToken, try AccountKeychain.token() == sharedToken else { return }
                 if previousToken != nil, account?.user.id != response.account.user.id {
-                    message = "Another copy of SaveNest signed in to a different account. Sign out here before switching."; return
+                    message = "Another copy of Savenest signed in to a different account. Sign out here before switching."; return
                 }
                 sessionGeneration = UUID(); accessToken = sharedToken; hasLogin = true
                 refreshFlight?.task.cancel(); refreshFlight = nil; isRefreshing = false
                 applyAccount(response.account); signInStage = .idle; pendingSignIn = nil
             } else if previousToken != nil {
-                clearLocalLogin(); message = "You signed out in another copy of SaveNest."
+                clearLocalLogin(); message = "You signed out in another copy of Savenest."
             }
             if !hasLogin, signInStage != .sending {
                 let stored = try AccountKeychain.pending()
@@ -354,13 +354,13 @@ final class AccountController: NSObject, ObservableObject {
     }
     func checkout(plan: String) async {
         guard ["monthly", "yearly"].contains(plan) else { return }
-        guard hasLogin else { message = "Sign in before choosing a Cloud plan."; showAccount(); return }
+        guard hasLogin else { message = "Sign in to choose a Pro plan."; showAccount(); return }
         _ = await refresh(force: true)
         guard !subscriptionUnavailable, account?.subscription.billingReady == true else {
-            message = "Cloud checkout is temporarily unavailable. Try Refresh account again."; return
+            message = "Pro checkout is unavailable. Try Refresh account again."; return
         }
         guard !hasExistingSubscription else {
-            message = "You already have a subscription. Use Manage subscription to update it."; return
+            message = "You already have a subscription. Use Manage billing to update it."; return
         }
         await startBilling(flow: .checkout, plan: plan)
     }
@@ -378,13 +378,13 @@ final class AccountController: NSObject, ObservableObject {
             if flow == .checkout, plan == "monthly", let pendingReferralCode { body["referralCode"] = pendingReferralCode }
             let result: URLResponse = try await request(flow == .checkout ? "api/billing/checkout" : "api/billing/portal", method: "POST", body: body, token: token)
             guard sessionGeneration == generation, accessToken == token, pendingBilling?.id == attempt.id else { return }
-            guard try AccountKeychain.billing()?.id == attempt.id else { pendingBilling = nil; billingStage = .idle; message = "This billing request was cancelled in another copy of SaveNest."; return }
+            guard try AccountKeychain.billing()?.id == attempt.id else { pendingBilling = nil; billingStage = .idle; message = "This billing request was cancelled in another copy of Savenest."; return }
             let host = flow == .checkout ? "checkout.stripe.com" : "billing.stripe.com"
             guard result.url.scheme == "https", result.url.host == host, result.url.user == nil, result.url.password == nil,
                   result.url.port == nil || result.url.port == 443 else { throw AccountFailure.invalidResponse }
             guard NSWorkspace.shared.open(result.url) else { throw AccountFailure.service("Your browser couldn’t open Stripe. Check your default browser, then try again.") }
             startAccessCheck(nil, token: token, pendingID: attempt.id)
-            message = flow == .checkout ? "Finish payment in Stripe. Your access will update automatically." : "Make your changes in Stripe, then return to SaveNest."
+            message = flow == .checkout ? "Finish payment in Stripe. Your access will update automatically." : "Make your changes in Stripe, then return to Savenest."
         } catch {
             if let created { try? AccountKeychain.cancelBilling(id: created.id) }
             guard sessionGeneration == generation else { return }
@@ -397,7 +397,7 @@ final class AccountController: NSObject, ObservableObject {
         guard let userID = account?.user.id, let token = accessToken else { message = "Sign in to the account you used for payment, then refresh your account here."; showAccount(); return }
         do {
             guard let result = try AccountKeychain.claimBilling(url, userID: userID) else {
-                message = hasVerifiedSubscription ? "Your Cloud subscription is active. Turn on backups when you’re ready." : "This billing return has expired, was already used, or belongs to another account. You can refresh your account here safely."
+                message = hasVerifiedSubscription ? "Savenest Pro is active. Turn on backups when you’re ready." : "This billing return has expired, was already used, or belongs to another account. You can refresh your account here safely."
                 showAccount(); return
             }
             pendingBilling = nil; startAccessCheck(result, token: token); showAccount()
@@ -419,7 +419,7 @@ final class AccountController: NSObject, ObservableObject {
                 if active && !waitingForPortal {
                     if let pendingID { try? AccountKeychain.cancelBilling(id: pendingID) }
                     self.pendingBilling = nil
-                    self.message = "Your Cloud subscription is active. Turn on backups when you’re ready."
+                    self.message = "Savenest Pro is active. Turn on backups when you’re ready."
                     return true
                 }
                 if returned?.status == .cancelled {
@@ -436,7 +436,7 @@ final class AccountController: NSObject, ObservableObject {
             guard self.billingPollID == id, self.accessToken == token, self.sessionGeneration == generation, !Task.isCancelled else { return }
             self.billingPoll = nil
             self.billingStage = completed ? .idle : (self.pendingBilling == nil ? .idle : .waiting)
-            if !completed { self.message = "Still waiting for payment confirmation. We’ll check again when you return to SaveNest." }
+            if !completed { self.message = "Still waiting for payment confirmation. We’ll check again when you return to Savenest." }
         }
     }
     func cancelBilling() {
@@ -469,7 +469,7 @@ final class AccountController: NSObject, ObservableObject {
         else { presentationWindow?()?.makeKeyAndOrderFront(nil); NSApp.activate(ignoringOtherApps: true) }
     }
     private func friendly(_ error: Error) -> String {
-        if error is URLError { return "SaveNest couldn’t connect. Check your internet connection and try again. Your saved library is still available." }
+        if error is URLError { return "Savenest couldn’t connect. Check your internet connection and try again. Your saved library is still available." }
         return error.localizedDescription
     }
     private func randomSecret() throws -> String {

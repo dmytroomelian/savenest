@@ -166,7 +166,7 @@ function renderRoot() {
   $('results').replaceChildren(...nodes); $('results').setAttribute('aria-busy', String(state.loading || state.loadingHistory));
   if (!items.length) {
     const empty = el('div', 'empty'); const paused = state.scope === 'History' && !state.historyEnabled;
-    empty.append(icon(paused ? 'history' : 'search'), el('h2', '', paused ? 'History search is paused' : state.loading || state.loadingHistory ? 'Gathering your pages…' : 'No matching pages'), el('p', '', paused ? 'Enable local history search to find pages you visited.' : state.scope === 'History' ? 'Try another search or check which browser histories SaveNest can read.' : 'Try a title, website, word from a note, or #tag.'));
+    empty.append(icon(paused ? 'history' : 'search'), el('h2', '', paused ? 'History search is paused' : state.loading || state.loadingHistory ? 'Gathering your pages…' : 'No matching pages'), el('p', '', paused ? 'Enable local history search to find pages you visited.' : state.scope === 'History' ? 'Try another search or check which browser histories Savenest can read.' : 'Try a title, website, word from a note, or #tag.'));
     if (state.scope === 'History') { const sources = el('button', '', 'Browser history sources'); sources.onclick = openSources; empty.append(sources); }
     $('results').append(empty);
   }
@@ -179,7 +179,7 @@ function renderSources() {
     detail.append(el('strong', '', `${source.browser} · ${source.profile}`), el('p', '', source.issue || 'Local history available'));
     row.append(icon('history'), detail, el('span', 'source-count', source.issue ? 'Needs access' : `${source.count} pages`)); return row;
   });
-  if (!nodes.length) nodes.push(el('p', 'subtle', state.preview ? 'Preview uses sample visits. Your browser history is not read.' : !state.historyEnabled ? 'History is paused and cleared from SaveNest’s memory.' : state.loadingHistory ? 'Checking local browser profiles…' : 'No readable history found. Open a supported browser, then refresh.'));
+  if (!nodes.length) nodes.push(el('p', 'subtle', state.preview ? 'Preview uses sample visits. Your browser history is not read.' : !state.historyEnabled ? 'History is paused and cleared from Savenest’s memory.' : state.loadingHistory ? 'Checking local browser profiles…' : 'No readable history found. Open a supported browser, then refresh.'));
   $('sources').replaceChildren(...nodes); $('history-refresh').disabled = state.loadingHistory || !state.historyEnabled;
 }
 function openSources() { $('route-title').textContent = 'Browser history sources'; setRoute('sources'); renderSources(); $('history-enabled').focus(); }
@@ -192,7 +192,7 @@ function renderState() {
   $('usage-notice-text').textContent = state.preview ? 'Preview: reporting is disabled. The app shares anonymous usage counts by default, with no saved content or account/device IDs.' : 'Anonymous usage counts are on. No saved content, account IDs, or device IDs are sent.';
   const total = state.totalCount > 200 ? `${state.totalCount} matches · refine your search` : `${state.openCount || 0} open · ${state.savedCount || 0} saved · ${state.historyCount || 0} history`;
   $('status').textContent = state.shortcutError ? 'Shortcut unavailable · open Settings' : state.loadingHistory ? 'Reading local history…' : state.loading ? 'Refreshing tabs…' : total;
-  $('home').title = `${state.launcherShortcut || '⌘O'} opens SaveNest · History stays on this Mac`;
+  $('home').title = `${state.launcherShortcut || '⌘O'} opens Savenest · History stays on this Mac`;
   $('home').setAttribute('aria-label', state.shortcutError ? 'Open Settings to fix the launcher shortcut' : 'Back to root search');
   if ($('shortcuts-dialog').open) renderShortcuts();
   if (state.message !== lastNativeMessage) {
@@ -228,7 +228,7 @@ async function execute(item) {
 function showActions() {
   if (route !== 'root' || fatal) return;
   const rows = chosen(), single = rows.length === 1;
-  $('actions-context').textContent = single ? rows[0].title : rows.length ? `${rows.length} selected pages` : 'All SaveNest actions';
+  $('actions-context').textContent = single ? rows[0].title : rows.length ? `${rows.length} selected pages` : 'All Savenest actions';
   actionItems = [];
   const group = single ? 'Selected page' : 'Selected pages';
   const add = (title, command, targets, key = '', danger = false) => { if (targets.length) actionItems.push({ id: 'context:' + command, group, title, key, danger, run: () => run(command, { ids: targets.map(row => row.id) }) }); };
@@ -283,7 +283,7 @@ function renderShortcuts() {
     ]],
     ['While editing a link', [['Save changes', '⌘↵']]]
   ];
-  const bindings = state.shortcuts || [{ title: 'Open SaveNest', key: state.launcherShortcut || '⌘O', error: state.shortcutError }];
+  const bindings = state.shortcuts || [{ title: 'Open Savenest', key: state.launcherShortcut || '⌘O', error: state.shortcutError }];
   const nodes = [];
   for (const [title, rows] of groups) {
     nodes.push(el('h3', 'shortcut-group', title));

@@ -1,6 +1,6 @@
 # Maintainer notes
 
-These notes cover official SaveNest distribution. Contributors only need the [development setup and checks](../CONTRIBUTING.md); no release credentials are required.
+These notes cover official Savenest distribution. Contributors only need the [development setup and checks](../CONTRIBUTING.md); no release credentials are required.
 
 ## Build boundaries
 

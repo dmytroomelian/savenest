@@ -198,7 +198,7 @@ async function persistDraft() {
 function showConflict(value) {
   conflict = value; $('conflict-banner').hidden = false;
   $('conflict-banner').querySelector('strong').textContent = value.missing ? 'This note moved or was deleted' : 'Changed in Obsidian';
-  $('conflict-detail').textContent = value.missing ? 'Locate the file, or keep your writing in a new copy.' : 'This file changed outside SaveNest. Keep the disk version or save your writing separately.';
+  $('conflict-detail').textContent = value.missing ? 'Locate the file, or keep your writing in a new copy.' : 'This file changed outside Savenest. Keep the disk version or save your writing separately.';
   $('reload-note').hidden = Boolean(value.missing); $('locate-note').hidden = !value.missing;
   setStatus('Your writing is safe here — choose a version'); announceDirty();
 }
@@ -266,7 +266,7 @@ function renderArticle() {
   imagesLoaded = false; original = false;
   $('article-loading').hidden = true; $('reader-scroll').hidden = false; $('original-frame').hidden = true; $('original-note').hidden = true;
   $('reader-mode').setAttribute('aria-pressed', 'true'); $('original-mode').setAttribute('aria-pressed', 'false');
-  $('window-title').textContent = source?.title || 'Read & note'; document.title = (source?.title || 'Read & note') + ' — SaveNest';
+  $('window-title').textContent = source?.title || 'Read & note'; document.title = (source?.title || 'Read & note') + ' — Savenest';
   let domain = ''; try { domain = new URL(source.url).hostname.replace(/^www\./, ''); } catch {}
   $('source-domain').textContent = domain;
   const article = source?.article;
@@ -306,7 +306,7 @@ async function acceptSource(data) {
   if (source) scrollPositions.set(source.url, { article: $('reader-scroll').scrollTop, note: editor?.scrollDOM.scrollTop || 0 });
   const modeLabel = data.preview ? 'Sample preview' : data.notes?.readerTest ? 'Reader test' : '';
   $('workspace-mode').textContent = modeLabel; $('workspace-mode').hidden = !modeLabel;
-  $('workspace-mode').title = data.preview ? 'Disposable sample vault. Your personal notes stay untouched.' : data.notes?.readerTest ? 'Notes save to the vault you choose. Your installed SaveNest library stays untouched.' : '';
+  $('workspace-mode').title = data.preview ? 'Disposable sample vault. Your personal notes stay untouched.' : data.notes?.readerTest ? 'Notes save to the vault you choose. Your installed Savenest library stays untouched.' : '';
   source = data.source; notes = data.notes || {}; configured = Boolean(notes.configured); documentModel = null; baseline = ''; conflict = null; copiedQuickNote = false;
   switching = false; checking = false; sourceMode = false; notice(''); $('source-toggle').setAttribute('aria-pressed', 'false');
   editor?.destroy(); editor = null; $('editor-host').replaceChildren(); $('editor-host').hidden = true;

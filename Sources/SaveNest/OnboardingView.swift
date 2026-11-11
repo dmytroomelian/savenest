@@ -8,7 +8,7 @@ struct OnboardingView: View {
         VStack(alignment: .leading, spacing: 22) {
             HStack {
                 NestMark().frame(width: 30, height: 30)
-                Text("Welcome to SaveNest").font(.system(size: 13, weight: .medium)).foregroundStyle(Color.muted)
+                Text("Welcome to Savenest").font(.system(size: 13, weight: .medium)).foregroundStyle(Color.muted)
                 Spacer()
             }
             VStack(alignment: .leading, spacing: 10) {
@@ -17,7 +17,7 @@ struct OnboardingView: View {
                     .font(.system(size: 13)).foregroundStyle(Color.muted).lineSpacing(3)
             }
             VStack(spacing: 0) {
-                shortcutRow("Open SaveNest", subtitle: "Search from anywhere on your Mac", icon: "magnifyingglass", action: .search)
+                shortcutRow("Open Savenest", subtitle: "Search from anywhere on your Mac", icon: "magnifyingglass", action: .search)
                 Divider().padding(.leading, 48)
                 shortcutRow("Save current tab", subtitle: "Keep the page and carry on browsing", icon: "bookmark", action: .quick)
                 Divider().padding(.leading, 48)

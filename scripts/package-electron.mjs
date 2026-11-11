@@ -54,7 +54,7 @@ const apps = await packager({
   icon: 'build/AppIcon.icns',
   // Preserve Sparkle's build ordering and EdDSA identity for migration from the native app.
   // Electron still uses Squirrel; neither the outer app nor its helper starts Sparkle.
-  extendInfo: { LSMinimumSystemVersion: '14.0', NSAppleEventsUsageDescription: 'SaveNest reads browser tabs when you save or search them.',
+  extendInfo: { CFBundleDisplayName: 'Savenest', CFBundleName: 'Savenest', LSMinimumSystemVersion: '14.0', NSAppleEventsUsageDescription: 'Savenest reads browser tabs when you save or search them.',
     SUPublicEDKey: nativePublicKey, SaveNestUpdatesEnabled: false,
     CFBundleURLTypes: [{ CFBundleURLName: 'app.savenest.electron.auth', CFBundleURLSchemes: ['savenest'] }] }
 });
@@ -114,7 +114,7 @@ for (const directory of apps) {
     url: `https://github.com/dmytroomelian/savenest/releases/download/v${manifest.version}/${filename}`,
     sha256: hash.digest('hex'), size: (await stat(archive)).size };
   const feed = { currentRelease: manifest.version, releases: [{ version: manifest.version, updateTo: {
-    version: manifest.version, url: artifact.url, name: `SaveNest ${manifest.version}`,
+    version: manifest.version, url: artifact.url, name: `Savenest ${manifest.version}`,
     notes: 'Optional Cloud backup and restore, monthly and yearly subscriptions, and safe local recovery. Local features remain free.',
     pub_date: new Date().toISOString(), sha256: artifact.sha256, size: artifact.size
   } }] };

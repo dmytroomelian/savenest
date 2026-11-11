@@ -1,6 +1,6 @@
-# Contributing to SaveNest
+# Contributing to Savenest
 
-SaveNest is a free Mac app for saving and finding browser pages. Bug reports, documentation, accessibility improvements, and code contributions are welcome. This repository contains the MIT-licensed desktop app; the hosted backend is separate.
+Savenest is a free Mac app for saving and finding browser pages. Bug reports, documentation, accessibility improvements, and code contributions are welcome. This repository contains the MIT-licensed desktop app; the hosted backend is separate.
 
 ## Start here
 
@@ -29,7 +29,7 @@ npm run preview
 
 No account, subscription, server credentials, or Apple signing credentials are needed to contribute. Maintainers handle official releases; contributors do not need to package, sign, notarize, or publish the app.
 
-Use `npm start` only when you need to exercise normal app behavior: it uses your real library. Quit other SaveNest copies and export a backup first. Use a separate macOS account or VM with disposable data for migration, permission, and installed-app checks.
+Use `npm start` only when you need to exercise normal app behavior: it uses your real library. Quit other Savenest copies and export a backup first. Use a separate macOS account or VM with disposable data for migration, permission, and installed-app checks.
 
 ## Find the relevant code
 

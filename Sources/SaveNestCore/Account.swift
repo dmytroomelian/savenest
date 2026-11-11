@@ -58,7 +58,7 @@ public enum AccountAccess {
         return hasCurrentSubscription(account, now: now)
     }
 
-    /// Stripe can have an existing subscription whose price does not grant Cloud.
+    /// Stripe can have an existing subscription whose price does not grant Pro.
     /// Recover or manage that record instead of creating a second subscription.
     public static func blocksNewCheckout(_ account: SaveNestAccount?) -> Bool {
         guard let account else { return false }

@@ -104,8 +104,7 @@ final class CloudLibraryController: ObservableObject {
                 self.status = result
                 self.lastSavedAt = result.snapshots.first(where: { $0.deviceId == self.deviceID })?.createdAt
                 if !result.enabled { self.message = "Cloud backup is temporarily unavailable. Your library stays on this Mac." }
-                else if !result.canUpload && !result.canRestore { self.message = "Cloud backup requires an active Cloud subscription." }
-                else if !result.canUpload { self.message = "Backups are paused. You can still restore during your recovery period." }
+                else if !result.canUpload && result.canRestore { self.message = "Backups are paused. You can still restore during your recovery period." }
             } catch {
                 guard self.isCurrent(user, session, generation), !Task.isCancelled else { return }
                 self.message = self.friendly(error)
@@ -122,7 +121,7 @@ final class CloudLibraryController: ObservableObject {
             }
             guard status?.enabled == true, status?.canUpload == true, !isBusy else { return }
             let alert = NSAlert()
-            alert.messageText = "Back up this library to SaveNest Cloud?"
+            alert.messageText = "Back up this library with Savenest Pro?"
             let review = needsLocalReview ? "The previous local library was missing or could not be opened. This will back up the current \(model.library.links.count) links. " : ""
             alert.informativeText = review + "Your saved links, quick notes, tags, and collections will be uploaded to \(model.account.account?.user.email ?? "this account") and backed up automatically. Obsidian files and offline articles stay on this Mac. This is backup and restore, not live sync between Macs."
             alert.addButton(withTitle: "Turn on backups"); alert.addButton(withTitle: "Cancel")
@@ -177,14 +176,14 @@ final class CloudLibraryController: ObservableObject {
             if !model.account.hasVerifiedSubscription { _ = await model.account.refresh() }
             guard isCurrent(user, session, generation), enabled, !Task.isCancelled else { return }
             guard model.account.hasVerifiedSubscription else {
-                message = "Automatic backups are paused until your Cloud subscription can be verified."
+                message = "Backups paused. Refresh your account to verify Pro."
                 return
             }
             let access: CloudStatus = try await model.account.cloudRequest("api/cloud/status")
             guard isCurrent(user, session, generation), enabled, !Task.isCancelled else { return }
             status = access
             guard access.enabled, access.canUpload else {
-                message = "Automatic backups are paused. Refresh Cloud to check availability and your subscription."
+                message = "Backups paused. Refresh your account to check Pro access."
                 return
             }
             let fingerprint = try CloudLibraryJSON.fingerprint(model.library)
@@ -240,7 +239,7 @@ final class CloudLibraryController: ObservableObject {
             recoveryFile = recovery
             needsLocalReview = false; defaults.set(false, forKey: reviewKey)
             enabled = false; defaults.set(false, forKey: preferenceKey(user)); pending = nil; lastFingerprint = nil
-            message = recovery == nil ? "Library restored. Automatic backups are off." : "Library restored. Your previous library is kept in SaveNest’s Cloud Recovery folder. Automatic backups are off."
+            message = recovery == nil ? "Library restored. Automatic backups are off." : "Library restored. Your previous library is kept in Savenest’s Cloud Recovery folder. Automatic backups are off."
         } catch {
             guard isCurrent(user, session, generation), !Task.isCancelled else { return }
             message = friendly(error)
@@ -251,7 +250,7 @@ final class CloudLibraryController: ObservableObject {
         NSWorkspace.shared.activateFileViewerSelecting([recoveryFile])
     }
     private func friendly(_ error: Error) -> String {
-        if error is URLError { return "Cloud could not connect. Your local library is safe; automatic backups will retry." }
+        if error is URLError { return "Couldn’t connect to backups. Your library is safe; we’ll retry automatically." }
         return error.localizedDescription
     }
 }

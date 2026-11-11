@@ -95,7 +95,7 @@ public enum BrowserHistoryReader {
         return result
     }
 
-    /// Most recent visit wins across profiles. No browser history is persisted by SaveNest.
+    /// Most recent visit wins across profiles. No browser history is persisted by Savenest.
     public static func merged(_ entries: [BrowserHistoryEntry]) -> [BrowserHistoryEntry] {
         var seen = Set<String>()
         return Array(entries.sorted { $0.lastVisited == $1.lastVisited ? $0.id < $1.id : $0.lastVisited > $1.lastVisited }

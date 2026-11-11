@@ -38,8 +38,8 @@ function createUpdater({ app, autoUpdater, dialog, release = false, architecture
     }
     await show({ type: 'warning',
       message: wasInstalling ? 'Couldn’t install the update' : 'Couldn’t check or download the update',
-      detail: wasInstalling ? (recovered ? 'SaveNest is still open. Your work is kept. Try installing the update again.'
-        : 'Your installed app and local library are unchanged. Quit and reopen SaveNest to try again.')
+      detail: wasInstalling ? (recovered ? 'Savenest is still open. Your work is kept. Try installing the update again.'
+        : 'Your installed app and local library are unchanged. Quit and reopen Savenest to try again.')
         : 'Your installed app and local library are unchanged. Check your connection and try again.' });
   }
   async function offerInstall() {
@@ -47,10 +47,10 @@ function createUpdater({ app, autoUpdater, dialog, release = false, architecture
     prompting = true;
     try {
       if (!await safeToRestart()) {
-        await show({ message: 'Update downloaded', detail: 'Finish saving your work and close any open dialogs, then check for updates again to restart. You can also quit SaveNest to install the update.' });
+        await show({ message: 'Update downloaded', detail: 'Finish saving your work and close any open dialogs, then check for updates again to restart. You can also quit Savenest to install the update.' });
         return;
       }
-      const result = await show({ message: 'SaveNest is ready to update',
+      const result = await show({ message: 'Savenest is ready to update',
         detail: 'Your local library and settings will be kept. Install and restart now, or install on your next quit.',
         buttons: ['On next quit', 'Install & restart'], defaultId: 0, cancelId: 0 });
       if (result.response === 1 && await safeToRestart()) {
@@ -67,7 +67,7 @@ function createUpdater({ app, autoUpdater, dialog, release = false, architecture
     autoUpdater.on('update-not-available', () => {
       busy = false;
       report('current');
-      void show({ message: 'You’re up to date', detail: `SaveNest ${app.getVersion()} is the latest available release.` });
+      void show({ message: 'You’re up to date', detail: `Savenest ${app.getVersion()} is the latest available release.` });
     });
     autoUpdater.on('update-downloaded', () => { busy = false; downloaded = true; report('downloaded'); void offerInstall(); });
   }

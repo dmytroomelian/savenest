@@ -1,6 +1,6 @@
 # Glass appearance
 
-SaveNest uses smoked navy glass for the launcher and reading workspace chrome. Reading and note panes use denser surfaces so long passages stay comfortable. The existing launcher interaction, shortcuts, and split reading workflow remain the organizing structure.
+Savenest uses smoked navy glass for the launcher and reading workspace chrome. Reading and note panes use denser surfaces so long passages stay comfortable. The existing launcher interaction, shortcuts, and split reading workflow remain the organizing structure.
 
 ## References
 

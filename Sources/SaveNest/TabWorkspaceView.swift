@@ -80,7 +80,7 @@ struct TabSearchView: View {
                 .onKeyPress(.downArrow) { model.move(1); return .handled }
             if model.loading || model.busy || model.switching { ProgressView().controlSize(.small) }
             Button { escape() } label: { Text("esc").font(.system(size: 10, design: .monospaced)) }
-                .buttonStyle(QuietButton()).help("Close SaveNest")
+                .buttonStyle(QuietButton()).help("Close Savenest")
         }.padding(20)
     }
     private var scopeBar: some View {
@@ -101,7 +101,7 @@ struct TabSearchView: View {
     }
     private var shortcutsBar: some View {
         HStack(spacing: 14) {
-            shortcutHint("Open SaveNest", action: .search)
+            shortcutHint("Open Savenest", action: .search)
             shortcutHint("Save tab", action: .quick)
             shortcutHint("Add note", action: .note)
             Spacer(minLength: 0)
@@ -329,7 +329,7 @@ struct TabSearchView: View {
         list.append(.init("import", "Import library backup…", "square.and.arrow.down") { app.importLibrary() })
         list.append(.init("help", "Quick start & shortcuts", "questionmark.circle") { app.showingOnboarding = true })
         list.append(.init("settings", "Settings…", "gearshape", "⌘,") { app.showSettings?() })
-        list.append(.init("account", "Account & Cloud…", "person.crop.circle") { app.showAccount?() })
+        list.append(.init("account", "Account & Pro…", "person.crop.circle") { app.showAccount?() })
         return list
     }
     private func open(_ item: TabWorkspaceItem) {

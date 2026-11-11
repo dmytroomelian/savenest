@@ -19,11 +19,11 @@
     { id: 'history-sources', title: 'Browser history sources', detail: 'History access, connected profiles and privacy', symbol: 'history', ui: 'sources', keywords: 'history sources privacy access permission pause enable disable' },
     { id: 'settings', title: 'Settings', detail: 'Appearance, shortcuts and capture preferences', symbol: 'settings', command: 'settings', keywords: 'settings preferences hotkey keyboard shortcut theme appearance' },
     { id: 'shortcuts', title: 'Keyboard shortcuts', detail: 'Learn launcher keys and see your capture shortcuts', symbol: 'keyboard', ui: 'shortcuts', keywords: 'keyboard shortcuts keys help learn hotkeys' },
-    { id: 'account', title: 'Account & Cloud', detail: 'Optional Cloud backup · Account and billing', symbol: 'account', command: 'account', keywords: 'account billing sign in login subscription payment' },
+    { id: 'account', title: 'Account & Pro', detail: 'Cloud backup · Account and billing', symbol: 'account', command: 'account', keywords: 'account pro cloud backup billing sign in login subscription payment' },
     { id: 'tags', title: 'Manage tags', detail: 'Rename or remove tags across your library', symbol: 'tag', command: 'tags', keywords: 'tags rename remove organize' },
     { id: 'refresh', title: 'Refresh tabs and history', detail: 'Read the latest browser state', symbol: 'refresh', command: 'refresh', keywords: 'refresh reload rescan sync' },
     { id: 'export', title: 'Export saved links', detail: 'Save a JSON backup of your library', symbol: 'export', command: 'export', keywords: 'export backup library' },
-    { id: 'import', title: 'Import saved links', detail: 'Merge a SaveNest backup', symbol: 'import', command: 'import', keywords: 'import backup restore library' },
+    { id: 'import', title: 'Import saved links', detail: 'Merge a Savenest backup', symbol: 'import', command: 'import', keywords: 'import backup restore library' },
     { id: 'cleanup', title: 'Clean up browser tabs', detail: 'Review tabs from your cleanup websites', symbol: 'tabs', command: 'cleanup', keywords: 'cleanup clean close websites tabs' },
     { id: 'undo', title: 'Undo last library change', detail: 'Restore the previous saved-library state', symbol: 'undo', command: 'undo', keywords: 'undo revert restore last' }
   ];
@@ -53,11 +53,11 @@
     return [...commandsFound, ...(state.rows || []).map(item => ({ ...item, kind: 'page' }))];
   }
   function actionCatalog(state = {}) {
-    const groups = ['SaveNest', 'Search', 'Save & read', 'Library'];
+    const groups = ['Savenest', 'Search', 'Save & read', 'Library'];
     const keys = { settings: '⌘,', shortcuts: '⌘/', 'add-link': '⌘N', refresh: '⌘R' };
     return catalog.filter(item => item.id !== 'undo' || state.canUndo).map(item => ({
       ...item, id: 'command:' + item.id, kind: 'command', key: keys[item.id] || '',
-      group: ['settings', 'shortcuts', 'account'].includes(item.id) ? 'SaveNest' : item.scope ? 'Search'
+      group: ['settings', 'shortcuts', 'account'].includes(item.id) ? 'Savenest' : item.scope ? 'Search'
         : item.home || item.command === 'capture' || item.command === 'saveClipboard' ? 'Save & read' : 'Library'
     })).sort((a, b) => groups.indexOf(a.group) - groups.indexOf(b.group)
       || (a.scope === 'Saved' ? -1 : b.scope === 'Saved' ? 1 : 0));

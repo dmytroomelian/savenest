@@ -29,7 +29,7 @@ enum CaptureError: LocalizedError {
         case .noTabs:
             return CaptureNotice(title: "No tabs to save", message: "Open a web page first. Empty tabs and browser settings can’t be saved.", isError: true)
         case .permission(let name):
-            return CaptureNotice(title: "Browser access needed", message: "Allow SaveNest to read tabs from \(name) in macOS Automation settings.", isError: true, opensAutomationSettings: true)
+            return CaptureNotice(title: "Browser access needed", message: "Allow Savenest to read tabs from \(name) in macOS Automation settings.", isError: true, opensAutomationSettings: true)
         case .unsupported(let name):
             return CaptureNotice(title: "\(name) isn’t supported yet", message: "Copy the page address and use Add link → Paste URL, or open it in Safari or Chrome.", isError: true)
         case .failed:
@@ -38,9 +38,9 @@ enum CaptureError: LocalizedError {
     }
     var errorDescription: String? {
         switch self {
-        case .noBrowser: return "No browser tab found. Open a page in Safari or Chrome, then press your shortcut again. SaveNest will remember that browser for captures from other apps."
+        case .noBrowser: return "No browser tab found. Open a page in Safari or Chrome, then press your shortcut again. Savenest will remember that browser for captures from other apps."
         case .unsupported(let name): return "Direct tab capture isn’t available for \(name) yet. Copy the page address and use Add link → Paste URL, or open it in Safari or Chrome."
-        case .permission(let name): return "Allow SaveNest to read tabs from \(name) in System Settings → Privacy & Security → Automation, then try again."
+        case .permission(let name): return "Allow Savenest to read tabs from \(name) in System Settings → Privacy & Security → Automation, then try again."
         case .failed(let reason): return "Couldn’t read this browser window. \(reason)"
         case .noTabs: return "There are no web pages to save in this window. New tabs, browser settings, and local files are skipped."
         }

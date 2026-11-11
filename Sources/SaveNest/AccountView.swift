@@ -6,31 +6,26 @@ struct AccountView: View {
     var onBack: () -> Void = {}
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
+            VStack(alignment: .leading, spacing: 20) {
                 Button { onBack() } label: { Label("Library", systemImage: "chevron.left") }
                     .buttonStyle(.plain).font(.system(size: 12, weight: .medium)).foregroundStyle(Color.muted)
-                HStack(spacing: 10) { NestMark().frame(width: 30, height: 30); Text("savenest").font(.system(size: 23, weight: .semibold)) }
+                HStack(spacing: 10) { NestMark().frame(width: 30, height: 30); Text("Savenest").font(.system(size: 23, weight: .semibold)) }
                 if AppRuntime.isPrivateBeta {
                     Text("AWS beta · Separate test library").font(.system(size: 12, weight: .medium)).foregroundStyle(Color.sage)
                 }
-                sheetHeading("Free on your Mac.", subtitle: "Every local feature. No account or subscription required.")
-                VStack(alignment: .leading, spacing: 9) {
-                    Label("SaveNest Free", systemImage: "checkmark.circle.fill").foregroundStyle(Color.sage)
-                    Text("Save, search, annotate, organize, import, export, and share your links. Your library stays on this Mac, including when you’re offline or signed out.")
+                VStack(alignment: .leading, spacing: 8) {
+                    Label("Savenest Free", systemImage: "checkmark.circle.fill").foregroundStyle(Color.sage)
+                    Text("All local features. Free, offline, no account needed.")
                         .font(.system(size: 13)).foregroundStyle(Color.muted)
-                }.padding(20).nestSurface()
-                CloudLibraryView(cloud: cloud)
-                cloudSubscription
+                }.frame(maxWidth: .infinity, alignment: .leading).padding(20).nestSurface()
+                proSubscription
                 if let details = account.account {
                     Text(details.user.email).font(.system(size: 13)).textSelection(.enabled)
-                    if account.canManageBilling {
-                        Button("Manage subscription ↗") { Task { await account.openBilling() } }.buttonStyle(QuietButton()).disabled(account.isBusy)
-                    }
                 }
                 if !account.hasLogin {
                     DisclosureGroup("Sign in to your account") {
                         VStack(alignment: .leading, spacing: 12) {
-                            Text("We’ll email a sign-in link. Signing in is optional and does not upload your library.").font(.system(size: 12)).foregroundStyle(Color.muted)
+                            Text("We’ll email you a sign-in link.").font(.system(size: 12)).foregroundStyle(Color.muted)
                             TextField("Email", text: $account.signInEmail).textFieldStyle(.roundedBorder).textContentType(.emailAddress)
                             TextField("Name (optional)", text: $account.signInName).textFieldStyle(.roundedBorder).textContentType(.name)
                             HStack {
@@ -42,9 +37,11 @@ struct AccountView: View {
                     }.font(.system(size: 13))
                 } else {
                     HStack {
-                        Button("Refresh account") { Task { await account.refresh(force: true) } }.buttonStyle(QuietButton()).disabled(account.isBusy)
+                        Button("Refresh account") {
+                            Task { await account.refresh(force: true); cloud.refresh() }
+                        }.buttonStyle(QuietButton()).disabled(account.isBusy || cloud.isBusy)
                         if account.billingStage == .waiting || account.billingStage == .checking { Button("Stop waiting") { account.cancelBilling() }.buttonStyle(.link) }
-                        if account.isBusy { ProgressView().controlSize(.small) }
+                        if account.isBusy || cloud.isBusy { ProgressView().controlSize(.small) }
                         Spacer()
                         Button("Sign out") { account.signOut() }.buttonStyle(.link).disabled(account.isBusy)
                     }
@@ -60,26 +57,37 @@ struct AccountView: View {
         }.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             .background(Color.paper).foregroundStyle(Color.ink).nestAppearance()
     }
-    @ViewBuilder private var cloudSubscription: some View {
+    @ViewBuilder private var proSubscription: some View {
         VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("Savenest Pro").font(.system(size: 17, weight: .semibold))
+                Spacer()
+                if account.hasVerifiedSubscription {
+                    Label("Active", systemImage: "checkmark.circle.fill")
+                        .font(.system(size: 12)).foregroundStyle(Color.sage)
+                }
+            }
+            Text("Automatic cloud backups. Restore when you need to.")
+                .font(.system(size: 13)).foregroundStyle(Color.muted)
             if let subscription = account.account?.subscription, account.hasVerifiedSubscription {
-                Label("Cloud active", systemImage: "checkmark.circle.fill")
-                    .font(.system(size: 15, weight: .medium)).foregroundStyle(Color.sage)
                 Text(subscription.plan == "yearly" ? "Yearly plan" : "Monthly plan")
                     .font(.system(size: 13))
                 if let end = subscription.renewsAt {
                     Text("\(subscription.cancelAtPeriodEnd ? "Access until" : "Renews") \(Date(timeIntervalSince1970: end).formatted(date: .abbreviated, time: .omitted))")
                         .font(.system(size: 12)).foregroundStyle(Color.muted)
                 }
+            } else if account.subscriptionUnavailable {
+                Text("Couldn’t verify Pro. Refresh your account to try again.")
+                    .font(.system(size: 12)).foregroundStyle(Color.muted)
             } else if account.hasExistingSubscription {
-                Text("Review your Cloud subscription").font(.system(size: 15, weight: .medium))
-                Text("Manage your existing subscription to check payment details or restore Cloud access. Local features stay free.")
+                Text(account.account?.subscription.plan == nil
+                     ? "Your existing plan doesn’t include Pro. Manage billing or contact support."
+                     : "Check your billing to restore Pro access.")
                     .font(.system(size: 12)).foregroundStyle(Color.muted)
             } else {
-                Text("Add Cloud backup").font(.system(size: 15, weight: .medium))
                 Text("$4.99 / month or $49.90 / year")
                     .font(.system(size: 14, weight: .medium))
-                Text("USD, plus applicable tax. Renews automatically. Cancel anytime in Manage subscription. Signing in or subscribing does not upload your library; turn on backups when you’re ready.")
+                Text("USD + tax. Auto-renews. Cancel anytime.")
                     .font(.system(size: 12)).foregroundStyle(Color.muted)
                 if account.account?.subscription.billingReady == true && !account.subscriptionUnavailable {
                     HStack(spacing: 10) {
@@ -96,6 +104,12 @@ struct AccountView: View {
             if account.isSandbox {
                 Text("Test mode · No real charge").font(.system(size: 11)).foregroundStyle(Color.muted)
             }
+            if account.canManageBilling {
+                Button("Manage billing ↗") { Task { await account.openBilling() } }
+                    .buttonStyle(QuietButton()).disabled(account.isBusy)
+            }
+            Divider()
+            CloudLibraryView(cloud: cloud)
         }.frame(maxWidth: .infinity, alignment: .leading).padding(20).nestSurface()
     }
 

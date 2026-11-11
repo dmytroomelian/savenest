@@ -159,7 +159,7 @@ struct LibraryView: View {
         HStack(spacing: 11) {
             Image(systemName: "sparkles").font(.system(size: 13, weight: .medium)).foregroundStyle(Color.sage)
             VStack(alignment: .leading, spacing: 2) {
-                Text("Finish setting up SaveNest").font(.system(size: 11, weight: .medium))
+                Text("Finish setting up Savenest").font(.system(size: 11, weight: .medium))
                 Text("Take the 45-second tour to learn the shortcuts and gestures.").font(.system(size: 10)).foregroundStyle(Color.muted)
             }
             Spacer()

@@ -30,9 +30,9 @@ Data lives at `~/Library/Application Support/SaveNest/library.json`. Writes are 
 
 ## Legacy updates
 
-Release builds use Sparkle 2.10.0. **Check for Updates…** is available in the SaveNest application menu, the menu bar icon, and **Settings → App updates**, alongside the version/build and **Automatically check for updates** switch. Sparkle asks for permission for automatic checks on the second launch; it remembers the user's choice and checks daily when enabled. Downloads and installation require user action. Sparkle's system profiling is disabled. Updates do not require sign-in or an active subscription.
+Release builds use Sparkle 2.10.0. **Check for Updates…** is available in the Savenest application menu, the menu bar icon, and **Settings → App updates**, alongside the version/build and **Automatically check for updates** switch. Sparkle asks for permission for automatic checks on the second launch; it remembers the user's choice and checks daily when enabled. Downloads and installation require user action. Sparkle's system profiling is disabled. Updates do not require sign-in or an active subscription.
 
-The feed is `https://savenest.app/downloads/appcast.xml`. Sparkle verifies update archive signatures before installation, replaces the application, and relaunches it. Library data remains in Application Support. Development builds from `build-app.sh`, ad-hoc release previews, and SaveNest Preview disable updates; the preview never creates a Sparkle updater. The build scripts embed and sign the framework and each helper, preserving their entitlements and symlinks.
+The feed is `https://savenest.app/downloads/appcast.xml`. Sparkle verifies update archive signatures before installation, replaces the application, and relaunches it. Library data remains in Application Support. Development builds from `build-app.sh`, ad-hoc release previews, and Savenest Preview disable updates; the preview never creates a Sparkle updater. The build scripts embed and sign the framework and each helper, preserving their entitlements and symlinks.
 
 Version 0.9.3 (build 26) introduces the updater. Users on 0.9.2 or earlier need one manual installation. Publishing a feed alone cannot add an updater to their old app.
 

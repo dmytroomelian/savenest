@@ -43,7 +43,7 @@ class ReadingWorkspace {
     const height = Math.min(area.height - 48, Math.max(480, Number(saved?.height) || 820));
     this.allowClose = false;
     this.window = new BrowserWindow({ width, height, minWidth: 640, minHeight: 480, show: false,
-      title: this.preview ? 'Read & Note — SaveNest Preview' : 'Read & Note — SaveNest',
+      title: this.preview ? 'Read & Note — Savenest Preview' : 'Read & Note — Savenest',
       titleBarStyle: 'hiddenInset', ...glassWindowOptions,
       webPreferences: { preload: path.join(__dirname, 'workspace-preload.cjs'), sandbox: true, nodeIntegration: false, contextIsolation: true, webSecurity: true, webviewTag: false }
     });
@@ -103,7 +103,7 @@ class ReadingWorkspace {
       const created = await this.ensureWindow();
       if (generation !== this.generation || this.destroyed) return false;
       if (!created) this.send({ event: 'source', ...this.payload });
-      this.window.setTitle(`${source.title || 'Read & Note'} — SaveNest${this.preview ? ' Preview' : ''}`);
+      this.window.setTitle(`${source.title || 'Read & Note'} — Savenest${this.preview ? ' Preview' : ''}`);
       this.window.show(); this.window.focus(); this.onOpen();
       return true;
     } catch (error) { this.send({ event: 'flushCancelled' }); throw error; }

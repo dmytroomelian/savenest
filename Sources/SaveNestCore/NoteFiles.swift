@@ -185,7 +185,7 @@ public final class NoteFiles {
         }
         let contents = try disk(candidate)
         guard contents.exists, frontmatter(contents.text)["savenest_id"] == document.id else {
-            throw Failure(message: "This file belongs to another note. Choose the original SaveNest note.")
+            throw Failure(message: "This file belongs to another note. Choose the original Savenest note.")
         }
         document.relativePath = String(candidate.path.dropFirst(root.path.count + 1))
         document.created = true
@@ -220,7 +220,7 @@ public final class NoteFiles {
         let rootURL = URL(fileURLWithPath: root).standardizedFileURL
         var directory: ObjCBool = false
         guard manager.fileExists(atPath: rootURL.appendingPathComponent(".obsidian").path, isDirectory: &directory), directory.boolValue else {
-            throw Failure(message: "This vault is unavailable. Reconnect it before saving; your draft is kept in SaveNest.")
+            throw Failure(message: "This vault is unavailable. Reconnect it before saving; your draft is kept in Savenest.")
         }
         guard rootURL.resolvingSymlinksInPath().path == rootURL.path else {
             throw Failure(message: "The vault location changed. Choose the vault again.")
@@ -240,7 +240,7 @@ public final class NoteFiles {
         }
         let data = try Data(contentsOf: file)
         guard let text = String(data: data, encoding: .utf8), text.count <= Self.maximumCharacters else {
-            throw Failure(message: "This note needs to be opened in Obsidian; SaveNest supports UTF-8 notes up to 100,000 characters.")
+            throw Failure(message: "This note needs to be opened in Obsidian; Savenest supports UTF-8 notes up to 100,000 characters.")
         }
         return (text, SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined(), true)
     }

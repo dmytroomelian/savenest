@@ -5,16 +5,16 @@ public enum CloudLibraryFailure: LocalizedError {
     case invalidSnapshot, tooLarge, libraryChanged, accountChanged, unavailable
     public var errorDescription: String? {
         switch self {
-        case .invalidSnapshot: return "This cloud backup is not a valid SaveNest library. Your local library is unchanged."
+        case .invalidSnapshot: return "This cloud backup is not a valid Savenest library. Your local library is unchanged."
         case .tooLarge: return "This library exceeds the 2 MB cloud backup limit. Your local library is unchanged."
         case .libraryChanged: return "Your library changed while the backup was downloading. Review it and try restore again."
-        case .accountChanged: return "Your account changed. Open Cloud again before continuing."
-        case .unavailable: return "Cloud is unavailable. Your local library is still available."
+        case .accountChanged: return "Your account changed. Open Account & Pro again before continuing."
+        case .unavailable: return "Backup is unavailable. Your local library is still available."
         }
     }
 }
 
-/// Only the library travels to Cloud. Obsidian files, captured articles, browser history,
+/// Only the library travels to cloud storage. Obsidian files, captured articles, browser history,
 /// credentials, and device paths are not part of this versioned format.
 public struct CloudLibrarySnapshot: Codable, Equatable {
     public let version: Int
