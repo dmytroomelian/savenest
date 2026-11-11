@@ -2,14 +2,15 @@ import CryptoKit
 import Foundation
 
 public enum CloudLibraryFailure: LocalizedError {
-    case invalidSnapshot, tooLarge, libraryChanged, accountChanged, unavailable
+    case invalidSnapshot, tooLarge, libraryChanged, accountChanged, unavailable, revisionConflict
     public var errorDescription: String? {
         switch self {
-        case .invalidSnapshot: return "This cloud backup is not a valid Savenest library. Your local library is unchanged."
-        case .tooLarge: return "This library exceeds the 2 MB cloud backup limit. Your local library is unchanged."
+        case .invalidSnapshot: return "This saved copy is not a valid Savenest library. Your local library is unchanged."
+        case .tooLarge: return "This library exceeds the 2 MB Pro library limit. Your local library is unchanged."
         case .libraryChanged: return "Your library changed while the backup was downloading. Review it and try restore again."
         case .accountChanged: return "Your account changed. Open Account & Pro again before continuing."
         case .unavailable: return "Backup is unavailable. Your local library is still available."
+        case .revisionConflict: return "This Mac’s saved copy changed. Refresh your account to continue with this library."
         }
     }
 }
@@ -129,14 +130,101 @@ public struct CloudStatus: Codable, Equatable {
     public let canRestore: Bool
     public let retentionEndsAt: Date?
     public let snapshots: [CloudSnapshotSummary]
+    public let libraries: [CloudLibraryRevisionSummary]?
+}
+
+public struct CloudLibraryRevisionSummary: Codable, Equatable, Identifiable {
+    public let id: UUID
+    public let deviceId: UUID
+    public let updatedAt: Date
+    public let linkCount: Int
+    public let byteCount: Int
+}
+
+/// Tracks acknowledged content separately from an explicitly requested backup.
+/// Failed requests retain their exact ID, content and precondition for safe retry.
+public struct CloudLibraryTransferState {
+    public struct Transfer {
+        public let snapshot: CloudLibrarySnapshot
+        public let fingerprint: String
+        public let previousRevision: UUID?
+        public var ifMatch: String { previousRevision?.uuidString.lowercased() ?? "none" }
+    }
+    public private(set) var lastSyncedFingerprint: String?
+    public private(set) var backupRequested = false
+    private var pendingSync: Transfer?
+    private var pendingBackup: Transfer?
+    public init() {}
+
+    public func needsWork(for library: Library) throws -> Bool {
+        if backupRequested || pendingSync != nil { return true }
+        return try CloudLibraryJSON.fingerprint(library) != lastSyncedFingerprint
+    }
+    public mutating func syncTransfer(for library: Library, deviceID: UUID, previousRevision: UUID?) throws -> Transfer? {
+        let fingerprint = try CloudLibraryJSON.fingerprint(library)
+        // A timed-out edit may already exist on the server. An undo back to the
+        // last acknowledged content still needs a write to reconcile that edit.
+        guard fingerprint != lastSyncedFingerprint || pendingSync != nil else { return nil }
+        if pendingSync?.fingerprint != fingerprint {
+            pendingSync = Transfer(snapshot: CloudLibrarySnapshot(library: library, deviceId: deviceID),
+                                   fingerprint: fingerprint, previousRevision: previousRevision)
+        }
+        return pendingSync
+    }
+    public mutating func didSync(_ transfer: Transfer) {
+        lastSyncedFingerprint = transfer.fingerprint
+        if pendingSync?.snapshot.snapshotId == transfer.snapshot.snapshotId { pendingSync = nil }
+    }
+    public mutating func requestBackup() { backupRequested = true }
+    public mutating func backupTransfer(for library: Library, deviceID: UUID) throws -> Transfer? {
+        guard backupRequested else { return nil }
+        let fingerprint = try CloudLibraryJSON.fingerprint(library)
+        if pendingBackup?.fingerprint != fingerprint {
+            pendingBackup = Transfer(snapshot: CloudLibrarySnapshot(library: library, deviceId: deviceID),
+                                     fingerprint: fingerprint, previousRevision: nil)
+        }
+        return pendingBackup
+    }
+    public mutating func didBackUp(_ transfer: Transfer) {
+        guard pendingBackup?.snapshot.snapshotId == transfer.snapshot.snapshotId else { return }
+        pendingBackup = nil; backupRequested = false
+    }
 }
 
 public enum CloudBackupStartupPolicy {
-    /// Missing storage must never turn a saved opt-in into an empty cloud replacement.
-    /// The review latch survives local file recreation until explicit user action.
-    public static func canResume(optedIn: Bool, fileExistedAtStartup: Bool,
-                                 libraryLoaded: Bool, reviewRequired: Bool) -> Bool {
-        optedIn && fileExistedAtStartup && libraryLoaded && !reviewRequired
+    /// A first install can start automatically; a missing known library cannot.
+    public static func needsReview(knownDevice: Bool, fileExistedAtStartup: Bool, libraryLoaded: Bool) -> Bool {
+        !libraryLoaded || (knownDevice && !fileExistedAtStartup)
+    }
+    public static func canStart(verifiedPro: Bool, libraryLoaded: Bool, reviewRequired: Bool,
+                                serviceAvailable: Bool, canUpload: Bool) -> Bool {
+        verifiedPro && libraryLoaded && !reviewRequired && serviceAvailable && canUpload
+    }
+}
+
+public enum CloudSyncIndicator: String {
+    case hidden, checking, active, offline, attention, restoring
+    public var label: String {
+        switch self {
+        case .hidden: return ""
+        case .checking: return "Checking…"
+        case .active: return "Sync is active"
+        case .offline: return "Offline"
+        case .attention: return "Needs attention"
+        case .restoring: return "Restoring…"
+        }
+    }
+    /// An active label requires a server acknowledgement in this account session.
+    public static func resolve(hasPro: Bool, verified: Bool, enabled: Bool, recentlyChecked: Bool,
+                               acknowledged: Bool, restoring: Bool, needsReview: Bool,
+                               offline: Bool, failed: Bool) -> Self {
+        guard hasPro else { return .hidden }
+        if restoring { return .restoring }
+        if needsReview { return .attention }
+        if offline { return .offline }
+        if failed { return .attention }
+        guard verified, enabled, recentlyChecked, acknowledged else { return .checking }
+        return .active
     }
 }
 

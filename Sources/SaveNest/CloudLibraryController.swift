@@ -10,6 +10,7 @@ final class CloudLibraryController: ObservableObject {
     @Published private(set) var activity: Activity = .idle
     @Published private(set) var message: String?
     @Published private(set) var lastSavedAt: Date?
+    @Published private(set) var lastSyncedAt: Date?
     @Published private(set) var recoveryFile: URL?
     @Published private(set) var needsLocalReview = false
     private weak var model: AppModel?
@@ -19,33 +20,54 @@ final class CloudLibraryController: ObservableObject {
     private var uploadTask: Task<Void, Never>?
     private var refreshTask: Task<Void, Never>?
     private var retryTask: Task<Void, Never>?
-    private var pending: (snapshot: CloudLibrarySnapshot, fingerprint: String)?
-    private var lastFingerprint: String?
+    private var transfers = CloudLibraryTransferState()
+    private var syncConflict = false
+    private var connectionUnavailable = false
+    private var operationFailed = false
+    private var lastCheckedAt: Date?
     private let defaults: UserDefaults
     private let reviewKey = "savenest.cloud.local-library-review-required"
     let deviceID: UUID
     var isBusy: Bool { activity != .idle }
     var snapshots: [CloudSnapshotSummary] { status?.snapshots ?? [] }
     var hasAccount: Bool { model?.account.account != nil }
+    var requiresLocalReview: Bool { needsLocalReview || syncConflict }
+    var indicator: CloudSyncIndicator {
+        guard let account = model?.account else { return .hidden }
+        return CloudSyncIndicator.resolve(
+            hasPro: account.account?.subscription.plan != nil,
+            verified: account.hasVerifiedSubscription,
+            enabled: enabled && status?.enabled == true && status?.canUpload == true,
+            recentlyChecked: lastCheckedAt.map { Date().timeIntervalSince($0) < 150 } ?? false,
+            acknowledged: transfers.lastSyncedFingerprint != nil,
+            restoring: activity == .restoring,
+            needsReview: needsLocalReview || syncConflict,
+            offline: connectionUnavailable,
+            failed: operationFailed || account.subscriptionUnavailable || status?.canUpload == false)
+    }
 
     init(model: AppModel, defaults: UserDefaults = .standard) {
         self.model = model; self.defaults = defaults
-        if let value = defaults.string(forKey: "savenest.cloud.device"), let id = UUID(uuidString: value) { deviceID = id }
+        let savedDevice = defaults.string(forKey: "savenest.cloud.device").flatMap(UUID.init(uuidString:))
+        if let id = savedDevice { deviceID = id }
         else {
             deviceID = UUID()
             if !model.isPreview { defaults.set(deviceID.uuidString, forKey: "savenest.cloud.device") }
         }
         if !model.isPreview {
-            if !model.cloudLibraryExistedAtStartup || !model.canWriteLibrary {
+            // Record a valid first-run library before this device becomes a known install.
+            // A write failure keeps automatic saving blocked until a later successful write.
+            if savedDevice == nil, model.canWriteLibrary {
+                do { try model.prepareLibraryForAutomaticSaving() }
+                catch { operationFailed = true; message = error.localizedDescription }
+            }
+            if CloudBackupStartupPolicy.needsReview(knownDevice: savedDevice != nil,
+                fileExistedAtStartup: model.cloudLibraryExistedAtStartup, libraryLoaded: model.canWriteLibrary) {
                 defaults.set(true, forKey: reviewKey)
-                for key in defaults.dictionaryRepresentation().keys where key.hasPrefix("savenest.cloud.enabled.") {
-                    defaults.set(false, forKey: key)
-                }
             }
             needsLocalReview = defaults.bool(forKey: reviewKey)
         }
     }
-    private func preferenceKey(_ user: String) -> String { "savenest.cloud.enabled.\(user)" }
     private func isCurrent(_ user: String, _ session: UUID, _ generation: UUID) -> Bool {
         self.generation == generation && model?.account.account?.user.id == user
             && model?.account.cloudSessionID == session && identity == user
@@ -56,22 +78,20 @@ final class CloudLibraryController: ObservableObject {
         let user = model.account.account?.user.id
         let session = model.account.cloudSessionID
         if identity != user || sessionID != session {
-            // A deliberate sign-out or account switch revokes this Mac's opt-in.
-            // A fresh process can still resume the same account's saved preference.
-            if let previous = identity, previous != user { defaults.set(false, forKey: preferenceKey(previous)) }
+            // No acknowledgement or pending request may cross an account/session boundary.
             generation = UUID(); uploadTask?.cancel(); refreshTask?.cancel(); retryTask?.cancel()
             uploadTask = nil; refreshTask = nil; retryTask = nil
-            identity = user; sessionID = session; pending = nil; lastFingerprint = nil
-            status = nil; lastSavedAt = nil; recoveryFile = nil; message = nil; activity = .idle
-            enabled = user.map {
-                CloudBackupStartupPolicy.canResume(optedIn: defaults.bool(forKey: preferenceKey($0)),
-                    fileExistedAtStartup: model.cloudLibraryExistedAtStartup,
-                    libraryLoaded: model.canWriteLibrary, reviewRequired: needsLocalReview)
-            } ?? false
+            identity = user; sessionID = session; transfers = CloudLibraryTransferState(); syncConflict = false
+            status = nil; lastSavedAt = nil; lastSyncedAt = nil; recoveryFile = nil; message = nil; activity = .idle
+            enabled = false; connectionUnavailable = false; operationFailed = false; lastCheckedAt = nil
             if user != nil { refresh() }
             startRetryLoop()
         }
-        if enabled && model.account.hasVerifiedSubscription { libraryDidChange() }
+        if !model.account.hasVerifiedSubscription {
+            enabled = false; uploadTask?.cancel(); uploadTask = nil
+        } else if !enabled && !isBusy {
+            refresh()
+        } else if enabled { libraryDidChange() }
     }
 
     private func startRetryLoop() {
@@ -81,7 +101,7 @@ final class CloudLibraryController: ObservableObject {
             while !Task.isCancelled {
                 do { try await Task.sleep(for: .seconds(60)) } catch { return }
                 guard let self, self.identity != nil else { return }
-                if self.enabled && !self.isBusy { self.libraryDidChange() }
+                if !self.isBusy { self.refresh() }
             }
         }
     }
@@ -99,47 +119,51 @@ final class CloudLibraryController: ObservableObject {
                 }
             }
             do {
+                if !model.account.hasVerifiedSubscription { _ = await model.account.refresh() }
+                guard self.isCurrent(user, session, generation), !Task.isCancelled else { return }
                 let result: CloudStatus = try await model.account.cloudRequest("api/cloud/status")
                 guard self.isCurrent(user, session, generation), !Task.isCancelled else { return }
                 self.status = result
                 self.lastSavedAt = result.snapshots.first(where: { $0.deviceId == self.deviceID })?.createdAt
-                if !result.enabled { self.message = "Cloud backup is temporarily unavailable. Your library stays on this Mac." }
-                else if !result.canUpload && result.canRestore { self.message = "Backups are paused. You can still restore during your recovery period." }
+                self.lastSyncedAt = result.libraries?.first(where: { $0.deviceId == self.deviceID })?.updatedAt
+                self.lastCheckedAt = Date(); self.connectionUnavailable = false
+                if (try? self.transfers.needsWork(for: model.library)) == false { self.operationFailed = false }
+                self.enabled = CloudBackupStartupPolicy.canStart(verifiedPro: model.account.hasVerifiedSubscription,
+                    libraryLoaded: model.canWriteLibrary, reviewRequired: self.requiresLocalReview,
+                    serviceAvailable: result.enabled, canUpload: result.canUpload)
+                if !result.enabled { self.operationFailed = true; self.message = "Temporarily unavailable. Your changes are safe on this Mac." }
+                else if !result.canUpload && result.canRestore { self.message = "Pro has ended. You can still restore your library during the recovery period." }
             } catch {
                 guard self.isCurrent(user, session, generation), !Task.isCancelled else { return }
-                self.message = self.friendly(error)
+                self.recordFailure(error)
             }
         }
     }
 
+    /// Explicit recovery choice only; ordinary Pro activation needs no toggle.
     func setEnabled(_ value: Bool) {
-        guard let model, !model.isPreview, let user = model.account.account?.user.id else { return }
-        if value {
-            guard model.canWriteLibrary else {
-                message = "Your local library could not be opened. Restore a cloud backup before enabling automatic backups."
-                return
-            }
-            guard status?.enabled == true, status?.canUpload == true, !isBusy else { return }
+        guard value, let model, !model.isPreview, let user = model.account.account?.user.id,
+              model.account.hasVerifiedSubscription, status?.enabled == true, status?.canUpload == true, !isBusy else { return }
+        guard model.canWriteLibrary else {
+            message = "Your library couldn’t be opened. Restore a saved copy to continue."
+            return
+        }
+        if needsLocalReview || syncConflict {
             let alert = NSAlert()
-            alert.messageText = "Back up this library with Savenest Pro?"
-            let review = needsLocalReview ? "The previous local library was missing or could not be opened. This will back up the current \(model.library.links.count) links. " : ""
-            alert.informativeText = review + "Your saved links, quick notes, tags, and collections will be uploaded to \(model.account.account?.user.email ?? "this account") and backed up automatically. Obsidian files and offline articles stay on this Mac. This is backup and restore, not live sync between Macs."
-            alert.addButton(withTitle: "Turn on backups"); alert.addButton(withTitle: "Cancel")
+            alert.messageText = "Use this library?"
+            alert.informativeText = "Save the current \(model.library.links.count) links to \(model.account.account?.user.email ?? "your Pro account")? This may replace this Mac’s previously saved copy. Restore a previous library first if these links are incomplete."
+            alert.addButton(withTitle: "Use this library"); alert.addButton(withTitle: "Cancel")
             NSApp.activate(ignoringOtherApps: true)
             guard alert.runModal() == .alertFirstButtonReturn, model.account.account?.user.id == user else { return }
-            needsLocalReview = false; defaults.set(false, forKey: reviewKey)
         }
-        enabled = value; defaults.set(value, forKey: preferenceKey(user))
-        message = value ? nil : "Automatic backups are off. Existing cloud backups follow their retention period."
-        if value { libraryDidChange() }
-        else {
-            generation = UUID(); uploadTask?.cancel(); refreshTask?.cancel()
-            uploadTask = nil; refreshTask = nil; pending = nil; activity = .idle
-        }
+        needsLocalReview = false; defaults.set(false, forKey: reviewKey)
+        syncConflict = false; connectionUnavailable = false; operationFailed = false
+        enabled = true; message = nil; transfers = CloudLibraryTransferState()
+        libraryDidChange()
     }
 
     func libraryDidChange() {
-        guard let model, !model.isPreview, enabled, !needsLocalReview, let user = model.account.account?.user.id,
+        guard let model, !model.isPreview, enabled, !needsLocalReview, !syncConflict, let user = model.account.account?.user.id,
               model.canWriteLibrary, activity != .restoring else { return }
         // Never replace an in-flight upload. A newer local revision is sent afterwards.
         guard activity != .uploading else { return }
@@ -153,22 +177,23 @@ final class CloudLibraryController: ObservableObject {
     }
 
     func backUpNow() {
-        guard enabled else { return }
-        lastFingerprint = nil
+        guard enabled, !syncConflict else { return }
+        transfers.requestBackup()
         libraryDidChange()
     }
 
     private struct UploadResponse: Decodable { let snapshot: CloudSnapshotSummary }
+    private struct SyncResponse: Decodable { let library: CloudLibraryRevisionSummary }
     private struct DownloadResponse: Decodable { let snapshot: CloudLibrarySnapshot }
     private func upload(user: String, session: UUID, generation: UUID) async {
         guard let model else { return }
         // Compare only after debounce, so each local edit does not serialize the library.
-        if let lastFingerprint, (try? CloudLibraryJSON.fingerprint(model.library)) == lastFingerprint { return }
+        if (try? transfers.needsWork(for: model.library)) == false { return }
         activity = .uploading; message = nil
         defer {
             if isCurrent(user, session, generation) {
                 activity = .idle; uploadTask = nil
-                if enabled, let current = try? CloudLibraryJSON.fingerprint(model.library), current != lastFingerprint,
+                if enabled, !syncConflict, (try? transfers.needsWork(for: model.library)) == true,
                    message == nil { libraryDidChange() }
             }
         }
@@ -176,38 +201,54 @@ final class CloudLibraryController: ObservableObject {
             if !model.account.hasVerifiedSubscription { _ = await model.account.refresh() }
             guard isCurrent(user, session, generation), enabled, !Task.isCancelled else { return }
             guard model.account.hasVerifiedSubscription else {
-                message = "Backups paused. Refresh your account to verify Pro."
+                enabled = false; operationFailed = true
+                message = "Couldn’t verify Pro. Refresh your account to continue."
                 return
             }
+            try model.prepareLibraryForAutomaticSaving()
             let access: CloudStatus = try await model.account.cloudRequest("api/cloud/status")
             guard isCurrent(user, session, generation), enabled, !Task.isCancelled else { return }
-            status = access
+            status = access; lastCheckedAt = Date()
             guard access.enabled, access.canUpload else {
-                message = "Backups paused. Refresh your account to check Pro access."
+                enabled = false; operationFailed = true
+                message = "Couldn’t verify Pro access. Refresh your account to continue."
                 return
             }
-            let fingerprint = try CloudLibraryJSON.fingerprint(model.library)
-            guard fingerprint != lastFingerprint else { return }
-            // Reuse the ID if a response was lost; the server handles this idempotently.
-            if pending?.fingerprint != fingerprint {
-                pending = (CloudLibrarySnapshot(library: model.library, deviceId: deviceID), fingerprint)
+            if let sending = try transfers.syncTransfer(for: model.library, deviceID: deviceID,
+                previousRevision: access.libraries?.first(where: { $0.deviceId == deviceID })?.id) {
+                let result: SyncResponse = try await model.account.cloudRequest("api/cloud/library", method: "POST",
+                    body: sending.snapshot.encoded(), ifMatch: sending.ifMatch)
+                guard isCurrent(user, session, generation), enabled, !Task.isCancelled else { return }
+                guard result.library.id == sending.snapshot.snapshotId, result.library.deviceId == deviceID else {
+                    throw CloudLibraryFailure.invalidSnapshot
+                }
+                transfers.didSync(sending); lastSyncedAt = result.library.updatedAt
+                connectionUnavailable = false; operationFailed = false
             }
-            guard let sending = pending else { return }
-            let result: UploadResponse = try await model.account.cloudRequest("api/cloud/snapshots", method: "POST", body: sending.snapshot.encoded())
-            guard isCurrent(user, session, generation), enabled, !Task.isCancelled else { return }
-            guard result.snapshot.id == sending.snapshot.snapshotId, result.snapshot.deviceId == deviceID else {
-                throw CloudLibraryFailure.invalidSnapshot
+            // Back up the same acknowledged library, then sync any edits made in flight.
+            // Automatic daily backups run on the server from the current database copy.
+            if transfers.backupRequested,
+               try CloudLibraryJSON.fingerprint(model.library) == transfers.lastSyncedFingerprint,
+               let sending = try transfers.backupTransfer(for: model.library, deviceID: deviceID) {
+                let result: UploadResponse = try await model.account.cloudRequest("api/cloud/snapshots", method: "POST", body: sending.snapshot.encoded())
+                guard isCurrent(user, session, generation), enabled, !Task.isCancelled else { return }
+                guard result.snapshot.id == sending.snapshot.snapshotId, result.snapshot.deviceId == deviceID else {
+                    throw CloudLibraryFailure.invalidSnapshot
+                }
+                transfers.didBackUp(sending); lastSavedAt = result.snapshot.createdAt
             }
-            lastFingerprint = sending.fingerprint; lastSavedAt = result.snapshot.createdAt; pending = nil
-            message = "Library backed up."
-            if let updated: CloudStatus = try? await model.account.cloudRequest("api/cloud/status"),
-               isCurrent(user, session, generation), enabled, !Task.isCancelled { status = updated }
+            message = nil
+            let updated: CloudStatus = try await model.account.cloudRequest("api/cloud/status")
             guard isCurrent(user, session, generation), enabled, !Task.isCancelled else { return }
+            status = updated; lastCheckedAt = Date()
+            lastSavedAt = updated.snapshots.first(where: { $0.deviceId == deviceID })?.createdAt
+            lastSyncedAt = updated.libraries?.first(where: { $0.deviceId == deviceID })?.updatedAt ?? lastSyncedAt
             // Do not let the success message prevent a follow-up for edits made during the upload.
-            if try CloudLibraryJSON.fingerprint(model.library) != lastFingerprint { message = nil }
+            if try transfers.needsWork(for: model.library) { message = nil }
         } catch {
             guard isCurrent(user, session, generation), !Task.isCancelled else { return }
-            message = friendly(error)
+            if case CloudLibraryFailure.revisionConflict = error { syncConflict = true }
+            recordFailure(error)
         }
     }
 
@@ -217,7 +258,12 @@ final class CloudLibraryController: ObservableObject {
         let session = model.account.cloudSessionID, generation = generation
         uploadTask?.cancel(); uploadTask = nil
         activity = .restoring; message = nil
-        defer { if isCurrent(user, session, generation) { activity = .idle } }
+        defer {
+            if isCurrent(user, session, generation) {
+                activity = .idle
+                if enabled && !needsLocalReview { libraryDidChange() }
+            }
+        }
         do {
             let baseline = try model.cloudRestoreBaseline()
             let result: DownloadResponse = try await model.account.cloudRequest("api/cloud/snapshots/\(summary.id.uuidString.lowercased())")
@@ -227,10 +273,10 @@ final class CloudLibraryController: ObservableObject {
             guard snapshot.snapshotId == summary.id, snapshot.deviceId == summary.deviceId else { throw CloudLibraryFailure.invalidSnapshot }
             guard try CloudLibraryJSON.fingerprint(model.library) == baseline.libraryFingerprint else { throw CloudLibraryFailure.libraryChanged }
             let alert = NSAlert()
-            alert.messageText = "Restore this cloud backup?"
+            alert.messageText = "Restore this library?"
             let replacing = baseline.loadFailed ? "Replace the damaged library on this Mac" : "Replace the \(model.library.links.count) links on this Mac"
-            alert.informativeText = "\(replacing) with \(snapshot.library.links.count) links from \(summary.createdAt.formatted(date: .abbreviated, time: .shortened))? A recovery copy of your current library file will be kept on this Mac. Obsidian files and offline articles will not change. Automatic backups will turn off until you enable them again."
-            alert.addButton(withTitle: "Restore backup"); alert.addButton(withTitle: "Cancel")
+            alert.informativeText = "\(replacing) with \(snapshot.library.links.count) links from \(summary.createdAt.formatted(date: .abbreviated, time: .shortened))? A recovery copy of your current library file will be kept on this Mac. Obsidian files and offline articles will not change. Savenest will save the restored library automatically with Pro."
+            alert.addButton(withTitle: "Restore library"); alert.addButton(withTitle: "Cancel")
             NSApp.activate(ignoringOtherApps: true)
             guard alert.runModal() == .alertFirstButtonReturn else { return }
             guard isCurrent(user, session, generation) else { throw CloudLibraryFailure.accountChanged }
@@ -238,19 +284,24 @@ final class CloudLibraryController: ObservableObject {
             let recovery = try model.restoreCloudLibrary(snapshot, baseline: baseline)
             recoveryFile = recovery
             needsLocalReview = false; defaults.set(false, forKey: reviewKey)
-            enabled = false; defaults.set(false, forKey: preferenceKey(user)); pending = nil; lastFingerprint = nil
-            message = recovery == nil ? "Library restored. Automatic backups are off." : "Library restored. Your previous library is kept in Savenest’s Cloud Recovery folder. Automatic backups are off."
+            transfers = CloudLibraryTransferState(); syncConflict = false
+            connectionUnavailable = false; operationFailed = false
+            enabled = model.account.hasVerifiedSubscription && status?.canUpload == true
+            message = recovery == nil ? "Library restored." : "Library restored. Your previous library is kept on this Mac."
         } catch {
             guard isCurrent(user, session, generation), !Task.isCancelled else { return }
-            message = friendly(error)
+            recordFailure(error)
         }
     }
     func revealRecoveryCopy() {
         guard let recoveryFile else { return }
         NSWorkspace.shared.activateFileViewerSelecting([recoveryFile])
     }
-    private func friendly(_ error: Error) -> String {
-        if error is URLError { return "Couldn’t connect to backups. Your library is safe; we’ll retry automatically." }
-        return error.localizedDescription
+    private func recordFailure(_ error: Error) {
+        connectionUnavailable = error is URLError
+        operationFailed = true
+        message = connectionUnavailable
+            ? "You’re offline. Changes are safe on this Mac and will be saved automatically when you reconnect."
+            : error.localizedDescription
     }
 }

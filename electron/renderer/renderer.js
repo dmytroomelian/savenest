@@ -94,7 +94,23 @@ function relativeVisit(value) {
   if (minutes < 60) return minutes < 2 ? 'Just visited' : `${minutes}m ago`;
   const hours = Math.floor(minutes / 60); return hours < 24 ? `${hours}h ago` : `${Math.floor(hours / 24)}d ago`;
 }
+function updateSyncStatus() {
+  const sync = state.syncStatus;
+  const visible = !fatal && !state.shortcutError && typeof sync?.label === 'string' && sync.label.length > 0
+    && ['checking', 'active', 'offline', 'attention', 'restoring'].includes(sync.state);
+  $('sync-status').hidden = !visible;
+  $('status').hidden = visible;
+  document.querySelector('.footer-mark').hidden = visible;
+  if (visible) {
+    $('sync-status').dataset.state = sync.state;
+    if ($('sync-label').textContent !== sync.label) $('sync-label').textContent = sync.label;
+  } else {
+    delete $('sync-status').dataset.state;
+    $('sync-label').textContent = '';
+  }
+}
 function updateFooter() {
+  updateSyncStatus();
   $('open-settings').disabled = fatal;
   $('shortcut-settings').disabled = fatal;
   $('primary').disabled = fatal || editorSaving || state.busy || (route === 'root' && !current());

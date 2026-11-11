@@ -1,18 +1,24 @@
-# Savenest Pro backup and restore
+# Savenest Pro cloud sync, backup and restore
 
-The desktop integration is implemented locally. It is not a published release, and the default production website does not acquire cloud routes from these changes alone. Account migration, server deployment, paid entitlement verification, and a real signed-in end-to-end check are release prerequisites.
+These notes describe automatic Pro saving and recovery prepared for Savenest 0.12.6. They are release preparation, not a publication announcement. The behavior requires backend migration `003-library-sync.sql`, the matching AWS service, and the rebuilt Mac app. Backend deployment, paid entitlement checks, and signed-in end-to-end acceptance must be verified before publishing the app.
 
 ## Product behavior
 
-All local saving, search, organization, import, export, and quick notes continue working offline and without an account. Signing in alone does not upload a library.
+All local saving, search, organization, import, export, and quick notes continue working offline and without an account. Automatic remote saving requires a signed-in, currently verified Pro account and server upload permission.
 
-Savenest Pro cloud backup is explicitly enabled for the signed-in account on each Mac. The confirmation explains which content leaves the device. A verified Pro subscription and server-side upload permission are both required. Saving a local change schedules a backup after a three-second debounce. Failed requests retry while the app remains open; an unchanged pending snapshot keeps its ID, so a lost response does not create a duplicate upload. Unchanged libraries do not generate another backup request.
+Savenest Pro starts automatically when the signed-in account has verified Pro access, the service is available, the server allows uploads, and the local library is healthy and requires no recovery review. There is no normal enable or pause toggle. Adding, editing, deleting, importing, or undoing saved library content schedules a sync after a three-second debounce. The current library is saved atomically in PostgreSQL, separately from the recovery backup. Failed requests retry every minute while the app remains running; the local library persists unsent changes across restart. An unchanged pending request keeps its ID, content, and revision precondition, so a lost response does not create a duplicate write. Unchanged libraries do not repeatedly sync during the same session.
 
-Each Mac has its own stream of snapshots. This is backup and restore, not automatic merging or live multi-Mac sync. The server retains up to 30 daily copies per device and supports up to five devices per account. The latest snapshot's retention is managed by account entitlement, not a blanket object expiration rule. After the subscription expires, the server can allow restoration for 90 days without permitting new uploads.
+Each Mac has its own current cloud library and recovery backup; changes are not merged between Macs. The server creates an initial backup, then replaces it about once every 24 hours from the current database copy, even while the app is closed. The scheduler checks every 15 minutes, so the daily interval is approximate and may be longer after a service failure or backlog. A delayed retry keeps its original capture time, allowing a fresh catch-up backup after a long outage. The immediate-backup endpoint can request a replacement even when the library has not changed; the ordinary app UI does not expose a backup control. The server keeps one successful recovery backup per Mac, across up to five Macs. It uploads and commits the new backup before retiring the previous backup; failed object deletion is retried by cleanup. Existing historical backups are preserved until a successful replacement. Retention is managed by account entitlement, not a blanket object expiration rule. After the subscription expires, restoration remains available for 90 days without permitting new uploads.
 
-Turning backups off stops subsequent uploads; a request already accepted by the server may have completed. Signing out or switching accounts revokes the previous account's local opt-in. Restarting the app with the same account can resume an existing opt-in. Tokens remain in native account transport and macOS Keychain; neither tokens nor database credentials enter the Electron renderer.
+Signing out stops subsequent uploads from this Mac; a request already accepted by the server may have completed. Account or session changes discard acknowledgements and pending requests from the previous session. Signing in with verified Pro access starts saving automatically once the same health and server-permission checks pass. Daily server backups continue from the last saved cloud library while the subscription is active. Tokens remain in native account transport and macOS Keychain; neither tokens nor database credentials enter the Electron renderer.
 
-If the library file is missing or cannot be loaded at startup, saved cloud opt-ins are revoked and a persistent review flag pauses automatic backup. Creating a new local library or restarting the app does not clear that flag. The user must explicitly restore a backup or confirm enabling backups for the current library. This prevents an empty replacement library from silently replacing the last useful cloud copy.
+A first installation may start with a new, healthy empty library. A previously known library that is missing, or any library that cannot be loaded, instead sets a persistent recovery-review flag. Restarting or creating a replacement local file does not clear that flag. The user must restore a saved copy or explicitly confirm **Use this library…** before the current library can replace the previously saved copy. A corrupt library must be successfully loaded or restored first.
+
+## Status indicator
+
+The normal Pro status is **Sync is active** with a green pulse. It appears only after the server acknowledges a current-library send in the current account session, Pro access is freshly verified, and recent service status still permits uploads. The status response must be less than 150 seconds old. Merely signing in, subscribing, or restoring a cached account does not show green.
+
+Checking, offline, failure, recovery review, and restoration states are not green. The pulse respects Reduce Motion. Status is refreshed and eligible failures retried every 60 seconds while the app runs; unsent changes remain in the local library. Recovery details and exceptional **Use this library…** confirmation stay inside **Restore library**, rather than becoming normal sync controls.
 
 ## Included content and limits
 
@@ -30,13 +36,13 @@ Limits reject a backup rather than silently removing links or truncating notes. 
 
 ## Safe restore
 
-The account screen lists available snapshots and identifies this Mac versus another Mac. Selecting Restore downloads and validates the snapshot. A native confirmation shows the backup date and the before/after link counts.
+The account screen keeps recovery actions inside **Restore library**. Available copies identify this Mac versus another Mac. Selecting **Restore…** downloads and validates the copy. A native confirmation shows its date and the before/after link counts.
 
 The restore path rechecks account/session identity and local content after the download and after confirmation. It also compares a fingerprint of the exact on-disk bytes before replacement. A changed library cancels restoration instead of overwriting later edits. Raw-byte checks also protect malformed files that cannot be decoded.
 
 Before the atomic replacement, the exact original library bytes are saved to `~/Library/Application Support/SaveNest/Cloud Recovery/before-restore-<UUID>.json`. The recovery directory is created with mode 0700 and the file with 0600. Failure to preserve the recovery copy aborts replacement. The account screen offers **Show recovery copy** after a successful restore. Undo state is cleared because it belongs to the previous library.
 
-Restoration turns automatic backup off. The user must explicitly enable it again after reviewing the restored library. Obsidian files and offline articles are not changed. A damaged library can be restored through this flow: the exact damaged bytes are preserved first, and the local write restriction clears only after successful replacement. If the file cannot be read at all, restore stops rather than discarding it.
+Restoration suspends uploads while it runs. A successful, explicitly confirmed restore clears the recovery-review flag and automatically saves the restored library when verified Pro access and server upload permission are still available. Restoration during the 90-day recovery period remains local when new uploads are no longer allowed. Obsidian files and offline articles are not changed. A damaged library can be restored through this flow: the exact damaged bytes are preserved first, and the local write restriction clears only after successful replacement. If the file cannot be read at all, restore stops rather than discarding it.
 
 ## Endpoint configuration and contract
 
@@ -44,15 +50,18 @@ Restoration turns automatic backup off. The user must explicitly enable it again
 
 The native client uses these authenticated JSON endpoints:
 
-- `GET /api/cloud/status`: `{ enabled, canUpload, canRestore, retentionEndsAt, snapshots }`.
-- `POST /api/cloud/snapshots`: snapshot body; response `{ snapshot: summary }`.
+- `GET /api/cloud/status`: `{ enabled, canUpload, canRestore, retentionEndsAt, snapshots, libraries }`.
+- `POST /api/cloud/library`: snapshot body with `If-Match: <previous revision UUID>` or `none`; response `{ library: revisionSummary }`. This atomically replaces the current database copy, including deletions.
+- `POST /api/cloud/snapshots`: explicit immediate backup body; response `{ snapshot: summary }`.
 - `GET /api/cloud/snapshots/:id`: response `{ snapshot: payload }`.
+
+A revision summary is `{ id, deviceId, updatedAt, linkCount, byteCount }`. An unchanged retry uses the original request ID and `If-Match`; HTTP 412 holds automatic sync for an explicit review or refresh. The client does not silently overwrite a concurrently changed cloud revision. Status decoding remains compatible with older servers for recovery, but sync requires the new endpoint.
 
 A payload is `{ version: 1, deviceId, snapshotId, createdAt, library }`. A summary is `{ id, deviceId, createdAt, linkCount, byteCount }`; its creation time is authoritative server time. The server must derive ownership and paid access from authentication, never from a client account ID. Server storage keys and signed object URLs are not exposed to the client.
 
 ## Verification
 
-`swift run SaveNestChecks` includes payload boundary checks, supported/unsupported dates and schema versions, duplicate links, unsafe URLs and icons, NUL handling, collection coherence, payload limits, missing-library automatic-backup policy, stale restore rejection, exact recovery-byte preservation, damaged-file recovery, missing-file recovery, recovery permissions, and failure to write a recovery copy.
+`swift run SaveNestChecks` includes add/edit/delete sync state, edits made during an upload, stable retry IDs and preconditions, explicit unchanged-library backups, old/new status response decoding, payload boundary checks, supported/unsupported dates and schema versions, duplicate links, unsafe URLs and icons, NUL handling, collection coherence, payload limits, missing-library automatic-backup policy, stale restore rejection, exact recovery-byte preservation, damaged-file recovery, missing-file recovery, recovery permissions, and failure to write a recovery copy.
 
 For a cross-language contract check, set `SAVENEST_CLOUD_FIXTURE_PATH` to an output path when running the checks. The resulting synthetic snapshot contains Swift-encoded UUIDs, ISO dates, icon and importance metadata, Unicode tags, and a quoted multiline quick note. Validate it with the server's `validateSnapshot` function. It contains no user library data.
 
@@ -72,6 +81,6 @@ Its data is isolated:
 - Preferences: the beta bundle's own defaults domain.
 - Reader notes and icon caches: beta-specific directories.
 
-It does not claim production global shortcuts or start clipboard monitoring at launch. Analytics and automatic updates are disabled. Backups remain off until explicit opt-in. The build script snapshots sources outside the working tree and excludes pre-existing duplicate `* 2.swift` files without deleting them from the checkout.
+It does not claim production global shortcuts or start clipboard monitoring at launch. Analytics and automatic updates are disabled. Pro saving starts automatically after the isolated account passes the same entitlement, server-permission, and local-library checks. The build script snapshots sources outside the working tree and excludes pre-existing duplicate `* 2.swift` files without deleting them from the checkout.
 
-For the November 11 acceptance run, a new beta library was seeded with two synthetic public links, notes, and tags. The production library was not imported. The native build, signature check, 40 core checks, and focused backend-origin/callback isolation checks passed. Actual sign-in, subscription, backup, and restore results must be recorded separately after exercising the app.
+An earlier November 11 acceptance run used two synthetic public links, notes, and tags without importing the production library. Its native build, signature check, 40 core checks, and focused backend-origin/callback isolation checks passed. Those earlier results do not verify the 0.12.6 automatic-saving flow. Record current sign-in, automatic upload, status indicator, failure recovery, daily replacement, and restore acceptance separately before release.

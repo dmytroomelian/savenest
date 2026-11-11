@@ -318,6 +318,12 @@ final class AppModel: ObservableObject {
         do { try file.save(next); apply(); cloud.libraryDidChange(); return true }
         catch { report("Couldn’t write to your library. \(error.localizedDescription)"); return false }
     }
+    /// A new empty library must exist locally before automatic remote persistence.
+    func prepareLibraryForAutomaticSaving() throws {
+        guard !isPreview, !loadFailed else { throw CloudLibraryFailure.unavailable }
+        if !FileManager.default.fileExists(atPath: file.url.path) { try file.save(library) }
+    }
+
     struct CloudRestoreBaseline {
         let libraryFingerprint: String
         let fileFingerprint: String

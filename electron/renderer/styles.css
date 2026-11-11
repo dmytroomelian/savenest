@@ -57,6 +57,15 @@ footer { border-top: 1px solid var(--line); height: 51px; flex-shrink: 0; displa
 #home { display: flex; align-items: center; gap: 9px; flex: 1; min-width: 0; color: var(--muted); padding-left: 5px; }
 .footer-mark { color: var(--accent); font-size: 24px; line-height: 1; flex-shrink: 0; }
 #status { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 335px; }
+#sync-status { display: inline-flex; align-items: center; gap: 8px; min-width: 0; white-space: nowrap; }
+#sync-label { overflow: hidden; text-overflow: ellipsis; }
+.sync-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; background: var(--muted); }
+#sync-status[data-state="active"] .sync-dot { background: #35a96b; animation: sync-pulse 3.2s ease-in-out infinite; }
+#sync-status[data-state="attention"] .sync-dot { background: #bd842a; }
+@keyframes sync-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .45; } }
+@media (prefers-reduced-motion: reduce) {
+  #sync-status[data-state="active"] .sync-dot { animation: none; }
+}
 #preview { color: var(--muted); font-size: 9px; border: 1px solid var(--line); padding: 3px 6px; border-radius: 999px; flex-shrink: 0; }
 .footer-utilities { display: flex; align-items: center; gap: 2px; flex-shrink: 0; }
 .footer-utilities button { font-size: 11px; color: var(--muted); padding: 6px 7px; white-space: nowrap; }
