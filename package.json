@@ -1,7 +1,7 @@
 {
   "name": "savenest-desktop",
   "productName": "Savenest",
-  "version": "0.12.6",
+  "version": "0.13.0",
   "private": true,
   "description": "Savenest Electron desktop with native macOS capture and local storage",
   "main": "electron/main.cjs",
@@ -17,7 +17,8 @@
     "release:electron": "node scripts/package-electron-release.mjs",
     "build:ui": "node scripts/build-ui.mjs",
     "preview:reader": "npm run build:native && electron . --preview --reader",
-    "try:reader": "npm run build:native && electron . --preview --reader-live"
+    "try:reader": "npm run build:native && electron . --preview --reader-live",
+    "test:mcp": "bash scripts/check-automation.sh"
   },
   "devDependencies": {
     "@electron/fuses": "2.1.3",

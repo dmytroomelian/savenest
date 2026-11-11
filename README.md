@@ -2,7 +2,7 @@
 
 Save links. Keep the context. Find them again with **⌘O**.
 
-Savenest is a free, open-source macOS launcher for saved links, notes, open browser tabs, and recent history. Your library stays on your Mac. Local features work without an account or subscription.
+Savenest is a macOS launcher with a free, open-source core for saved links, notes, open browser tabs, and recent history. Local saving, search, reading, and import/export work without an account or subscription. Optional Pro integrations are separate.
 
 [Download](https://savenest.app/download) · [Website](https://savenest.app) · [Contribute](CONTRIBUTING.md) · [Report a bug](https://github.com/dmytro-omelian/savenest/issues/new?template=bug.yml)
 
@@ -21,9 +21,17 @@ Savenest is a free, open-source macOS launcher for saved links, notes, open brow
 
 Press **⌘O** to open the launcher, **Enter** to open a result, and **⌘K** for actions. See the [user guide](docs/user-guide.md) for shortcuts and browser support.
 
+## Pro AI connections — 0.13.0
+
+Use your saved links in Codex and Claude. The local MCP integration exposes selected links and quick notes, library organization, and permitted tab actions. Each connection has its own revocable permissions; closing tabs without saving requires a separate permission. Article text and external Obsidian files are excluded.
+
+In a Pro-enabled build, open **Settings → AI connections** and choose **Connect** on the Codex, Claude Desktop, or Claude Code card. Savenest verifies Pro and installs the local setup with saved-library reading only. Use **Manage** to allow more actions or disconnect. Manual configuration and repair are under **Advanced setup**.
+
+The 0.13.0 release adds MCP with online Pro verification and Savenest running on the same Mac as the AI client. Shared records reach the connected AI provider; AI-client costs are separate. Codex tool calls are verified on sample data. Claude Code connection and tool discovery are verified; a complete AI workflow has not been verified. Claude Desktop setup is available, but its compatibility is unverified. See [MCP setup, compatibility, and release checks](docs/mcp.md).
+
 ## Try the app
 
-Get the current signed app from the [download page](https://savenest.app/download) for **macOS 14+**, on Apple Silicon or Intel. Automatic Pro saving described below is being prepared for **0.12.6** and is not yet a published release.
+Get the current signed app from the [download page](https://savenest.app/download) for **macOS 14+**, on Apple Silicon or Intel. Pro AI connections are included in 0.13.0.
 
 This is still a preview. Installed-app migration, offline import/export, live browser permissions, Intel runtime, and real update checks remain open. See the [acceptance checklist](docs/preview-acceptance.md). Before upgrading, export a backup. Native 0.10.0 can install this preview through **Savenest → Check for Updates…**. Quit the old app first only when installing manually.
 
@@ -60,15 +68,16 @@ For launcher or process-integration changes, also run `npm run test:smoke`. It e
 
 ## Privacy and project scope
 
-The free app keeps saved links and notes local. With Pro, the signed-in app automatically saves your library to your account. Browser history is read without modification and kept in memory. **Anonymous usage counts are on by default** and can be disabled in Settings or the first-use notice. Icons, account services, update checks, and reporting can make network requests. Read the [privacy policy](docs/privacy.md) for details.
+The free app keeps saved links and notes local. With Pro, the signed-in app automatically saves your library to your account. Browser history is read without modification and kept in memory. An enabled Pro MCP connection shares requested records with the AI client, within the permissions you grant. **Anonymous usage counts are on by default** and can be disabled in Settings or the first-use notice. Icons, account services, update checks, and reporting can make network requests. Read the [privacy policy](docs/privacy.md) for details.
 
-This repository contains the Electron app and Swift helper. The hosted backend is separate. In the planned 0.12.6 behavior, Savenest Pro automatically saves changes once the signed-in account, service permissions, and local library pass their checks. There is no sync toggle. **Sync is active** shows a green pulse only after a server acknowledgement in the current session and a recent successful status check. Offline and failure states stay non-green and retry every minute.
+This repository contains the Electron app, Swift helper, and shared automation operations. The hosted backend and private Pro MCP adapter are separate. Public builds remain usable without the private adapter. Savenest Pro automatically saves changes once the signed-in account, service permissions, and local library pass their checks. There is no sync toggle. **Sync is active** shows a green pulse only after a server acknowledgement in the current session and a recent successful status check. Offline and failure states stay non-green and retry every minute.
 
 Each Mac has its own current saved library and latest successful daily recovery copy; changes are not merged between Macs. Recovery remains available for 90 days after Pro access ends. A missing previously known library or corrupt file requires restoration or an explicit **Use this library…** confirmation before automatic saving resumes. A confirmed restore preserves the previous local bytes and saves the restored library automatically when Pro access is active. Signing out stops new uploads. See [Pro saving and recovery](docs/cloud-backup.md) for limits, safety checks, and release prerequisites.
 
 ## Reference
 
 - [User guide](docs/user-guide.md): shortcuts, capture, and browser support.
+- [MCP guide](docs/mcp.md): Pro AI connections, permissions, and setup.
 - [Launcher design](docs/launcher-design.md): interaction and process boundaries.
 - [Preview acceptance](docs/preview-acceptance.md): remaining manual checks.
 - [Security reporting](SECURITY.md): report vulnerabilities privately.
@@ -76,4 +85,6 @@ Each Mac has its own current saved library and latest successful daily recovery 
 
 ## License
 
-[MIT](LICENSE). Bundled dependency licenses are documented in [third-party notices](THIRD_PARTY_NOTICES.md).
+The desktop core and shared automation operations in this repository use [MIT](LICENSE), which permits use, modification, redistribution, and resale when its notice requirements are met. The private adapter has a separate [Pro MCP component license](docs/pro-mcp-license.md), permitting personal and work use of the official bundled executable with valid Pro access. Hosted services have their own applicable terms. These terms do not restrict MIT code or contributions.
+
+Resale of proprietary paid components or paid service access requires a separate written commercial agreement with the rights holder. See the [licensing policy](docs/licensing.md) for the boundary. Bundled dependency licenses are documented in [third-party notices](THIRD_PARTY_NOTICES.md).

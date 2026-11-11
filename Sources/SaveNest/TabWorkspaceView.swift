@@ -416,6 +416,7 @@ private struct WorkspaceLinkEditor: View {
     @State var link: SavedLink
     @State private var tagInput = ""
     @State private var saving = false
+    @State private var originalRevision: String?
     @Environment(\.dismiss) private var dismiss
     @FocusState private var noteFocused: Bool
     var body: some View {
@@ -434,11 +435,14 @@ private struct WorkspaceLinkEditor: View {
                 Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction).buttonStyle(.plain)
                 Button(saving ? "Saving…" : "Save") {
                     link.tags = SavedLink.normalizedTags(link.tags + SavedLink.parseTags(tagInput)); saving = true
-                    Task { if await app.saveWorkspaceLink(link) { dismiss() }; saving = false }
+                    Task { if await app.saveWorkspaceLink(link, expectedRevision: originalRevision) { dismiss() }; saving = false }
                 }.buttonStyle(SageButton()).keyboardShortcut(.return, modifiers: .command).disabled(saving)
             }
         }.padding(26).frame(width: 500).background(Color.paper).foregroundStyle(Color.ink).nestAppearance()
-            .interactiveDismissDisabled().onAppear { noteFocused = true }
+            .interactiveDismissDisabled().onAppear {
+                noteFocused = true
+                if originalRevision == nil { originalRevision = app.library.links.contains(where: { $0.id == link.id }) ? AutomationLibrary.revision(link) : "missing" }
+            }
     }
 }
 private extension View {

@@ -6,6 +6,7 @@ import { createReadStream } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
+import { prepareMCP } from './mcp-package.mjs';
 
 const root = process.cwd();
 const architecture = process.env.ELECTRON_ARCH || process.arch;
@@ -35,6 +36,7 @@ if (helperValue('SaveNestUpdatesEnabled') !== 'false') throw new Error('The embe
 if (helperValue('CFBundleIdentifier') !== 'app.savenest.mac') throw new Error('The helper must preserve the existing library and account identity.');
 execFileSync('lipo', [path.join(helper, 'Contents/MacOS/SaveNest'), '-verify_arch', architecture === 'x64' ? 'x86_64' : 'arm64']);
 const workspace = path.resolve(process.env.PACKAGE_WORK_DIR || 'build');
+const mcp = await prepareMCP({ architecture, workspace });
 const stage = path.join(workspace, `electron-package-${architecture}`);
 await rm(stage, { recursive: true, force: true });
 await mkdir(stage, { recursive: true });
@@ -55,7 +57,7 @@ const apps = await packager({
   // Preserve Sparkle's build ordering and EdDSA identity for migration from the native app.
   // Electron still uses Squirrel; neither the outer app nor its helper starts Sparkle.
   extendInfo: { CFBundleDisplayName: 'Savenest', CFBundleName: 'Savenest', LSMinimumSystemVersion: '14.0', NSAppleEventsUsageDescription: 'Savenest reads browser tabs when you save or search them.',
-    SUPublicEDKey: nativePublicKey, SaveNestUpdatesEnabled: false,
+    SUPublicEDKey: nativePublicKey, SaveNestUpdatesEnabled: false, SaveNestMCPEnabled: Boolean(mcp),
     CFBundleURLTypes: [{ CFBundleURLName: 'app.savenest.electron.auth', CFBundleURLSchemes: ['savenest'] }] }
 });
 for (const directory of apps) {
@@ -69,6 +71,13 @@ for (const directory of apps) {
   await cp('build/reader-third-party-licenses.txt', path.join(notices, 'reader-third-party-licenses.txt'));
   await cp(path.resolve(process.env.SWIFT_SCRATCH_PATH || '.build', 'artifacts/sparkle/Sparkle/LICENSE'), path.join(notices, 'Sparkle-LICENSE.txt'));
 
+  const mcpExecutable = path.join(app, 'Contents/Resources/savenest-mcp');
+  if (mcp) {
+    await cp(mcp.binary, mcpExecutable);
+    await cp(mcp.license, path.join(notices, 'SaveNest-Pro-MCP-LICENSE.txt'));
+    await cp(mcp.thirdParty, path.join(notices, 'SaveNest-Pro-MCP-THIRD-PARTY-NOTICES.txt'));
+  }
+
   await flipFuses(app, { version: FuseVersion.V1,
     [FuseV1Options.RunAsNode]: false,
     [FuseV1Options.EnableNodeOptionsEnvironmentVariable]: false,
@@ -78,17 +87,22 @@ for (const directory of apps) {
   });
   execFileSync('xattr', ['-cr', app]);
   if (distribution) {
+    if (mcp) execFileSync('codesign', ['--force', '--options', 'runtime', '--timestamp', '--sign', identity, mcpExecutable], { stdio: 'inherit' });
     // The Swift helper and its Sparkle framework are already signed inside-out.
     // Do not replace their Automation/installer entitlements with Electron defaults.
     await sign({ app, identity, platform: 'darwin', version: manifest.devDependencies.electron,
       preAutoEntitlements: false, preEmbedProvisioningProfile: false,
-      ignore: file => file === embeddedHelper || file.startsWith(`${embeddedHelper}/`),
+      ignore: file => file === embeddedHelper || file.startsWith(`${embeddedHelper}/`) || (mcp && file === mcpExecutable),
       optionsForFile: file => ({ hardenedRuntime: true,
         entitlements: file === app ? path.join(root, 'Resources/Electron.entitlements') : ['com.apple.security.cs.allow-jit'] })
     });
   } else {
+    // Resources executables are not reliably included by --deep. Intel Swift
+    // binaries also lack the linker's implicit Apple Silicon ad-hoc signature.
+    if (mcp) execFileSync('codesign', ['--force', '--sign', '-', mcpExecutable], { stdio: 'inherit' });
     execFileSync('codesign', ['--force', '--deep', '--preserve-metadata=entitlements', '--sign', '-', app], { stdio: 'inherit' });
   }
+  if (mcp) execFileSync('codesign', ['--verify', '--strict', mcpExecutable], { stdio: 'inherit' });
   execFileSync('codesign', ['--verify', '--deep', '--strict', app], { stdio: 'inherit' });
   console.log(`Built ${app}`);
   if (!distribution) continue;
@@ -115,7 +129,7 @@ for (const directory of apps) {
     sha256: hash.digest('hex'), size: (await stat(archive)).size };
   const feed = { currentRelease: manifest.version, releases: [{ version: manifest.version, updateTo: {
     version: manifest.version, url: artifact.url, name: `Savenest ${manifest.version}`,
-    notes: 'Optional Cloud backup and restore, monthly and yearly subscriptions, and safe local recovery. Local features remain free.',
+    notes: mcp ? 'Connect Codex and Claude to saved links with Pro. Search and organize your library, and save or close tabs with approved permissions. Free local saving and search remain available.' : 'Optional Cloud backup and restore, monthly and yearly subscriptions, and safe local recovery. Free local saving and search remain available.',
     pub_date: new Date().toISOString(), sha256: artifact.sha256, size: artifact.size
   } }] };
   await mkdir(path.join(releaseDirectory, architecture), { recursive: true });

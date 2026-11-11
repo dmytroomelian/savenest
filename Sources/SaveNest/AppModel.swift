@@ -8,6 +8,7 @@ struct CaptureDraft: Identifiable {
     var link: SavedLink
     let action: CaptureAction
     let closeTarget: CapturedTabTarget?
+    var originalRevision: String = "missing"
 }
 
 struct TabSelectionDraft: Identifiable {
@@ -48,6 +49,7 @@ final class AppModel: ObservableObject {
     let updater = AppUpdater()
     let account = AccountController()
     lazy var cloud = CloudLibraryController(model: self)
+    lazy var aiConnections = AutomationController(model: self)
     let analytics = UsageAnalytics()
     let clipboard = ClipboardMonitor()
     @Published var clipboardEnabled = UserDefaults.standard.bool(forKey: "clipboardEnabled") {
@@ -72,7 +74,11 @@ final class AppModel: ObservableObject {
     }
     var dismissClipboardNotice: (() -> Void)?
 
-    @Published private(set) var library = Library()
+    private(set) var automationGeneration = UUID()
+    @Published private(set) var library = Library() { didSet { automationGeneration = UUID() } }
+    #if DEBUG
+    var automationWriteFailsForTesting = false
+    #endif
     @Published var closeAfterQuickSave = UserDefaults.standard.bool(forKey: "closeAfterQuickSave") {
         didSet { if !isPreview { UserDefaults.standard.set(closeAfterQuickSave, forKey: "closeAfterQuickSave") } }
     }
@@ -413,8 +419,9 @@ final class AppModel: ObservableObject {
         guard links.count == tabs.count, !links.isEmpty else { notify(CaptureError.noTabs.notice); return false }
         return saveCaptured(links, autoTag: links.count == 1)
     }
-    @discardableResult func saveWorkspaceLink(_ link: SavedLink) async -> Bool {
-        if library.links.contains(where: { $0.id == link.id }) { return await update(link) }
+    @discardableResult func saveWorkspaceLink(_ link: SavedLink, expectedRevision: String? = nil) async -> Bool {
+        guard matchesEditorRevision(link, expected: expectedRevision) else { return false }
+        if library.links.contains(where: { $0.id == link.id }) { return await update(link, expectedRevision: expectedRevision) }
         guard prepareLocalWrite() else { return false }
         var next = library
         let isNew = !next.links.contains { Library.identity($0.url) == Library.identity(link.url) }
@@ -491,8 +498,18 @@ final class AppModel: ObservableObject {
         notify(added == 0 ? "Already tucked away in your nest" : "Link saved")
         return true
     }
-    @discardableResult func update(_ link: SavedLink) async -> Bool {
+    func matchesEditorRevision(_ link: SavedLink, expected: String?) -> Bool {
+        guard let expected else { return true }
+        let current = library.links.first { $0.id == link.id || Library.identity($0.url) == Library.identity(link.url) }
+        guard (current.map({ AutomationLibrary.revision($0) }) ?? "missing") == expected else {
+            error = "This link changed while you were editing. Your draft is still here. Copy any unsaved text, then reopen the link to review the latest version."
+            return false
+        }
+        return true
+    }
+    @discardableResult func update(_ link: SavedLink, expectedRevision: String? = nil) async -> Bool {
         guard prepareLocalWrite() else { return false }
+        guard matchesEditorRevision(link, expected: expectedRevision) else { return false }
         var next = library
         guard let index = next.links.firstIndex(where: { $0.id == link.id }) else { return false }
         let previous = next.links[index]
@@ -606,12 +623,14 @@ final class AppModel: ObservableObject {
         if autoTaggingEnabled, action == .note, isNew {
             link = LinkAutoTagging.applyingSuggestions(to: link, examples: library.links)
         }
-        let draft = CaptureDraft(link: link, action: action, closeTarget: closeTarget)
+        let originalRevision = library.links.first(where: { Library.identity($0.url) == Library.identity(link.url) }).map { AutomationLibrary.revision($0) } ?? "missing"
+        let draft = CaptureDraft(link: link, action: action, closeTarget: closeTarget, originalRevision: originalRevision)
         self.draft = draft; showCaptureEditor?(draft)
     }
     @discardableResult func saveDraft(_ link: SavedLink) async -> Bool {
         guard prepareLocalWrite() else { return false }
-        let closeTarget = draft?.id == link.id ? draft?.closeTarget : nil
+        guard let draft, draft.id == link.id, matchesEditorRevision(link, expected: draft.originalRevision) else { return false }
+        let closeTarget = draft.closeTarget
         var next = library
         let isNew = !next.links.contains { Library.identity($0.url) == Library.identity(link.url) }
         guard next.saveAnnotated(link) else { notify(CaptureNotice(title: "Couldn’t save this link", message: "The web address is invalid.", isError: true)); return false }
@@ -620,7 +639,7 @@ final class AppModel: ObservableObject {
         if link.browser == "Clipboard" && isNew { analytics.record(.clipboardSaved) }
         if !link.note.isEmpty { analytics.record(.noteSaved) }
         if !link.tags.isEmpty { analytics.record(.tagsSaved) }
-        draft = nil; closeCaptureEditor?()
+        self.draft = nil; closeCaptureEditor?()
         if let closeTarget {
             let closed = await captureService.closeSavedTab(closeTarget)
             notify(CaptureNotice(title: closed ? "Saved & closed" : "Saved · tab left open", message: closed ? "Your note and tags are safely in your library." : "The tab changed or couldn’t be closed safely. Your note and tags are saved."))
@@ -664,6 +683,15 @@ final class AppModel: ObservableObject {
             if commit(next, undoTitle: "Import Links") { analytics.record(.linksSaved, count: added); notify("Imported \(added) links") }
         } catch { self.error = "This backup couldn’t be imported. \(error.localizedDescription)" }
         }
+    }
+    /// All external library writes still pass through the native owner's atomic commit.
+    @discardableResult func automationCommit(_ next: Library) -> Bool {
+        #if DEBUG
+        if automationWriteFailsForTesting { return false }
+        #endif
+        guard prepareLocalWrite(), commit(next, undoTitle: "AI Library Change") else { return false }
+        tabSearch.updateLibrary(library.links)
+        return true
     }
     private func offerClipboard(_ url: URL) {
         guard clipboardEnabled, !isCapturing, draft == nil, tabSelection == nil,

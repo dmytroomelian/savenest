@@ -4,7 +4,7 @@ const model = window.LauncherModel;
 const scopes = ['All', 'Open', 'Saved', 'History', 'Favorites', 'Notes', 'Archive'];
 let state = { rows: [], query: '', scope: 'All', tags: [], loading: true, historySources: [] };
 let items = [], focusedID = null, selected = new Set(), route = 'root', pendingQuery = null, searchTimer;
-let editingID = null, captureID = null, editorBaseline = '', editorSaving = false, lastCaptureID = null, lastSelectionID = null;
+let editingID = null, editingRevision = null, captureID = null, editorBaseline = '', editorSaving = false, lastCaptureID = null, lastSelectionID = null;
 let captureSelected = new Set(), selectionSaving = false, actionItems = [], filteredActions = [], actionIndex = 0, fatal = false;
 let lastNativeMessage = '', noticeSource = '', discardAction = null;
 let shortcutReturnFocus = null;
@@ -63,6 +63,7 @@ function dirty() { return JSON.stringify(formValues()) !== editorBaseline; }
 function openEditor(row = null, captured = false, url = '') {
   if (route === 'editor') { notice('Finish this draft before starting another.'); return; }
   editingID = captured ? null : row?.id || null; captureID = captured ? row.id : null;
+  editingRevision = row?.revision || 'missing';
   $('route-title').textContent = captured ? 'Save current tab with a note' : row ? 'Edit link' : 'Save a link';
   $('edit-url').value = row?.url || url; $('edit-url').readOnly = Boolean(row);
   $('edit-title').value = row?.title || ''; $('edit-note').value = row?.note || '';
@@ -329,7 +330,7 @@ $('editor-form').onsubmit = async event => {
   try {
     const request = { title: values.title, note: values.note, tags };
     if (captureID) Object.assign(request, { command: 'saveDraft', ids: [captureID] });
-    else if (editingID) Object.assign(request, { command: 'edit', ids: [editingID] });
+    else if (editingID) Object.assign(request, { command: 'edit', ids: [editingID], revision: editingRevision });
     else Object.assign(request, { command: 'add', url: values.url });
     const ok = await window.savenest.command(request);
     if (ok) {

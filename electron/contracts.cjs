@@ -12,7 +12,7 @@ function validateCommand(input) {
     throw new Error('Unknown Savenest action.');
   }
   const result = { command: input.command };
-  for (const [key, limit] of Object.entries({ query: 2000, title: 10000, note: 100000, url: 16384, scope: 20, action: 20, view: 20 })) {
+  for (const [key, limit] of Object.entries({ query: 2000, title: 10000, note: 100000, url: 16384, scope: 20, action: 20, view: 20, revision: 128 })) {
     if (input[key] === undefined) continue;
     if (typeof input[key] !== 'string' || input[key].length > limit) throw new Error(`Invalid ${key}.`);
     result[key] = input[key];
