@@ -121,7 +121,7 @@ final class AccountController: NSObject, ObservableObject {
     var hasVerifiedSubscription: Bool { AccountAccess.hasVerifiedSubscription(account, verifiedAt: verifiedAt) }
     var isSandbox: Bool { account?.subscription.mode == "sandbox" }
     var hasExistingSubscription: Bool { AccountAccess.blocksNewCheckout(account) }
-    var canManageBilling: Bool { account?.subscription.plan != nil || account?.subscription.status == "unavailable" }
+    var canManageBilling: Bool { AccountAccess.canManageBilling(account) }
     override init() {
         super.init()
         if AppRuntime.isPrivateBeta { signInEmail = "dima@omelabs.org" }

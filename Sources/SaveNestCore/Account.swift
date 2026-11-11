@@ -58,10 +58,15 @@ public enum AccountAccess {
         return hasCurrentSubscription(account, now: now)
     }
 
-    /// A payment problem should recover the existing subscription, not create another one.
+    /// Stripe can have an existing subscription whose price does not grant Cloud.
+    /// Recover or manage that record instead of creating a second subscription.
     public static func blocksNewCheckout(_ account: SaveNestAccount?) -> Bool {
-        guard let account, account.subscription.plan != nil else { return false }
+        guard let account else { return false }
         return ["active", "past_due", "unpaid", "paused", "trialing", "incomplete"].contains(account.subscription.status)
+    }
+    public static func canManageBilling(_ account: SaveNestAccount?) -> Bool {
+        guard let account else { return false }
+        return account.subscription.plan != nil || ["active", "past_due", "unpaid", "paused", "trialing", "incomplete", "canceled", "incomplete_expired", "unavailable"].contains(account.subscription.status)
     }
 
     /// The callback must match this auth attempt exactly; reject duplicate query keys and other URL forms.
