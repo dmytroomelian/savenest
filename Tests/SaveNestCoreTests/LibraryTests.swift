@@ -455,11 +455,27 @@ final class LibraryTests {
         XCTAssertEqual(LinkTitle.clean(String(repeating: "a", count: 300)).count, 180)
     }
     func testSubscriptionStatusRequiresFreshServerVerification() throws {
+        let oldSubscription = Data(#"{"active":false,"status":"inactive","mode":"live"}"#.utf8)
+        XCTAssertFalse(try JSONDecoder().decode(SaveNestAccount.Subscription.self, from: oldSubscription).billingReady)
+        let readySubscription = Data(#"{"active":false,"status":"inactive","mode":"live","billingReady":true}"#.utf8)
+        XCTAssertTrue(try JSONDecoder().decode(SaveNestAccount.Subscription.self, from: readySubscription).billingReady)
         let now = Date(timeIntervalSince1970: 1_800_000_000)
         let user = SaveNestAccount.User(id: "user", name: "Dima", email: "dima@example.com")
         func account(active: Bool = true, status: String = "active", mode: String = "sandbox", plan: String? = "monthly", end: Double? = 1_800_010_000) -> SaveNestAccount {
             SaveNestAccount(user: user, subscription: .init(active: active, plan: plan, status: status, mode: mode, renewsAt: end))
         }
+        for status in ["active", "past_due", "unpaid", "paused", "trialing", "incomplete"] {
+            let legacy = account(active: false, status: status, plan: nil)
+            XCTAssertTrue(AccountAccess.blocksNewCheckout(legacy))
+            XCTAssertTrue(AccountAccess.canManageBilling(legacy))
+            XCTAssertFalse(AccountAccess.hasCurrentSubscription(legacy, now: now))
+        }
+        for status in ["canceled", "incomplete_expired"] {
+            XCTAssertFalse(AccountAccess.blocksNewCheckout(account(active: false, status: status, plan: nil)))
+            XCTAssertTrue(AccountAccess.canManageBilling(account(active: false, status: status, plan: nil)))
+        }
+        XCTAssertFalse(AccountAccess.canManageBilling(account(active: false, status: "inactive", plan: nil)))
+        XCTAssertTrue(AccountAccess.canManageBilling(account(active: false, status: "unavailable", plan: nil)))
         XCTAssertTrue(AccountAccess.hasVerifiedSubscription(account(), verifiedAt: now, now: now))
         XCTAssertTrue(AccountAccess.hasVerifiedSubscription(account(status: "trialing"), verifiedAt: now, now: now))
         XCTAssertTrue(AccountAccess.hasVerifiedSubscription(account(mode: "live", plan: "yearly"), verifiedAt: now.addingTimeInterval(-119), now: now))
@@ -597,6 +613,7 @@ func XCTAssertThrowsError<T>(_ expression: @autoclosure () throws -> T) {
         checkTabWorkspace()
         try checkBrowserHistory()
         try runNoteFileChecks()
+        try runCloudLibraryChecks()
         let tests = LibraryTests()
         tests.testTabCleanupPlanningIsConservativeAndDomainScoped()
         try tests.testBrowserTabPayloadsDecodeAndSaveTogether()

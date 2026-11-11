@@ -19,7 +19,7 @@ final class ObsidianNotes: ObservableObject {
         if preview {
             storage = FileManager.default.temporaryDirectory.appendingPathComponent("SaveNest-reader-preview-\(ProcessInfo.processInfo.processIdentifier)", isDirectory: true)
         } else {
-            storage = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent(lab ? "SaveNest/ReaderNotes-Lab" : "SaveNest/ReaderNotes", isDirectory: true)
+            storage = AppRuntime.supportDirectory.appendingPathComponent(lab ? "ReaderNotes-Lab" : "ReaderNotes", isDirectory: true)
         }
         do { service = try NoteFiles(storage: storage) }
         catch { startupError = error }

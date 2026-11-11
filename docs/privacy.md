@@ -1,14 +1,14 @@
 # SaveNest privacy policy
 
-Updated November 3, 2026
+Updated November 11, 2026
 
-This policy covers the current free SaveNest 0.11.0 preview. A full Cloud policy will be published before accepting subscriptions or uploading library data.
+This policy covers SaveNest’s free local features and optional Cloud backup and recovery.
 
 ## Your library stays on your Mac
 
-The free SaveNest Mac app works without an account. Saved links, titles, notes, and tags are stored locally. Cloud backup, sync, and Teams are not available yet.
+The free SaveNest Mac app works without an account. Saved links, titles, notes, and tags are stored locally. Optional Cloud backup uploads a copy only after you sign in, subscribe, and turn on backups. Live sync and Teams are not included.
 
-- **Local content:** your library, browser history, and page context are not uploaded to SaveNest.
+- **Local content:** browser history and unsaved page context are not uploaded to SaveNest. Your saved library is uploaded only when you enable Cloud backup.
 - **Optional reporting:** anonymous action counts are on by default. Turn them off in Settings or the first-use notice.
 - **Network requests:** website icons, account services, updates, and usage reporting can contact external servers.
 
@@ -50,13 +50,13 @@ Pending counts stay in memory and are sent in batches, approximately once a minu
 
 The service keeps daily aggregate counts for approximately 90 days and random batch receipts for seven days. Cleanup runs when new batches arrive, so expired records may remain until the next cleanup. These tables do not contain IP addresses. The hosting provider still receives ordinary network information. Because counts have no person or device identifier, we cannot locate one person’s contribution in an aggregate for deletion.
 
-## Optional accounts and earlier subscriptions
+## Optional accounts and subscriptions
 
 If you request a sign-in link, we process your email address, optional name, and authentication records to provide your account. Sign-in does not upload your library. The app keeps its session credential in macOS Keychain. The server stores hashed tokens. A successful browser confirmation can also set a secure, HttpOnly account-session cookie.
 
 Sign-in links expire after 15 minutes; the one-use code exchanged by the app expires after two minutes. Account sessions expire after 30 days. Expired authentication records are removed during later authentication cleanup, rather than by a guaranteed deletion timer. Signing out removes the app’s local credential and, when online, revokes that server session.
 
-Stripe processes payments and existing subscription management. SaveNest stores the associated customer identifier, subscription status, plan, billing-period dates, and payment-event identifiers. Payment-card details are entered on Stripe’s pages and are not stored in SaveNest’s database. New subscriptions and paid referral invitations are currently closed.
+Stripe processes Cloud payments and subscription management. SaveNest stores the associated customer identifier, subscription status, plan, billing-period dates, and payment-event identifiers. Payment-card details are entered on Stripe’s pages and are not stored in SaveNest’s database. Cloud is optional and billed monthly or yearly. Paid referral invitations remain closed.
 
 For earlier referrals, we retain the invited email, inviter/account links, delivery state, and reward state to resolve existing offers and billing. Account, billing, support, and historical referral records are kept while needed to operate the account, resolve requests or disputes, and meet applicable recordkeeping duties. They do not currently have an automatic deletion schedule. Request account deletion by email; we will explain any records that must be retained.
 
@@ -64,9 +64,10 @@ For earlier referrals, we retain the invited email, inviter/account links, deliv
 
 The website does not add advertising trackers. Essential account cookies and hosting/security infrastructure may still process request data. Authentication abuse controls use hashed email/IP-derived keys and expiry times; they do not add raw IP addresses to the usage-count tables.
 
-- [Cloudflare](https://www.cloudflare.com/privacypolicy/) hosts the website, APIs, and account database through the Sites hosting platform.
+- [Cloudflare](https://www.cloudflare.com/privacypolicy/) hosts the website and forwards account and Cloud API requests through the Sites hosting platform.
+- [Amazon Web Services](https://aws.amazon.com/privacy/) hosts the backend, PostgreSQL account database, and encrypted Cloud backup storage in Stockholm, Sweden.
 - [Resend](https://resend.com/legal/privacy-policy) delivers requested account emails and processed earlier referral emails.
-- [Stripe](https://stripe.com/privacy) processes existing billing and payment records.
+- [Stripe](https://stripe.com/privacy) processes billing and payment records.
 - [GitHub](https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement) hosts the public source and desktop downloads. We fetch the public star count from our server, not your browser.
 - [Cal.com](https://cal.com/privacy) handles demo bookings when you follow the booking link. Information you enter there is used to arrange your requested meeting.
 
@@ -80,8 +81,16 @@ You can export or delete local links in the app, revoke browser access in macOS,
 
 Depending on your location, you may have rights to access, correct, erase, or receive personal data, restrict or object to its processing, and complain to your data-protection authority. Email [dima@omelabs.org](mailto:dima@omelabs.org) to make a request. We may need to verify that the account belongs to you. We cannot remotely delete local files on your Mac.
 
-## Future Cloud features and policy changes
+## Optional Cloud backup and recovery
 
-Cloud is planned as a separate, explicitly enabled service with library content encrypted on your devices. It is not running today. We will publish its actual data flows, recovery behavior, storage limits, and retention terms before accepting subscriptions or uploading library data.
+Turning on Cloud backup uploads saved links, URLs, titles, quick notes, tags, collections, favorite/archive state, importance choices, and creation dates. Backups also include a random device identifier to keep each Mac’s backup history separate. Obsidian Markdown files, offline articles, browser history, unsaved page context, browser cookies, credentials, and app preferences are excluded.
 
-We will update this page when practices change and revise the date above. The desktop app’s [source code is available for inspection](https://github.com/dmytro-omelian/savenest).
+Connections use TLS and AWS encrypts the stored database and backup objects. This is server-side encryption, not end-to-end encryption: the SaveNest backend can read backup contents to validate and restore them. Backups are private to the signed-in account and require server-verified Cloud access.
+
+The service keeps up to 30 daily copies per Mac, with up to five Macs and a 2 MiB snapshot limit. Recovery remains available for 90 days after your subscription ends. Superseded and expired data is removed by scheduled cleanup; deletion can be delayed while services are unavailable. Database backups can retain older records for up to seven days. Contact support for an account or backup deletion request; we will explain any billing records that must be retained.
+
+You can turn off automatic backup in Account. Turning it off stops new uploads and does not immediately delete existing recovery copies. Signing out also turns off that Mac’s backup opt-in. Restoring replaces the current local library only after confirmation and preserves the previous file in a local Cloud Recovery folder. Automatic backup stays off after restoration until you enable it again.
+
+## Policy changes
+
+We update this policy when the service’s actual data flows change. Material new data collection or sharing will be explained before it is enabled.

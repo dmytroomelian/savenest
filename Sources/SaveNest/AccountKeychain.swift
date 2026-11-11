@@ -8,7 +8,7 @@ import SaveNestCore
 /// in another copy can prevent its result from installing a new login.
 enum AccountKeychain {
     private static func locked<T>(_ operation: () throws -> T) throws -> T {
-        let directory = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent("SaveNest", isDirectory: true)
+        let directory = AppRuntime.supportDirectory
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let descriptor = Darwin.open(directory.appendingPathComponent("account.lock").path, O_RDWR | O_CREAT | O_NOFOLLOW, S_IRUSR | S_IWUSR)
         guard descriptor >= 0 else { throw AccountFailure.keychain }
@@ -18,7 +18,7 @@ enum AccountKeychain {
         return try operation()
     }
     private static func query(_ item: String) -> [String: Any] {
-        [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: "app.savenest.mac.account", kSecAttrAccount as String: item]
+        [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: AppRuntime.keychainService, kSecAttrAccount as String: item]
     }
     private static func data(_ item: String) throws -> Data? {
         var request = query(item); request[kSecReturnData as String] = true; request[kSecMatchLimit as String] = kSecMatchLimitOne

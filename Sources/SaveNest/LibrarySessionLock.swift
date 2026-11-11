@@ -5,8 +5,7 @@ import Darwin
 final class LibrarySessionLock {
     private let descriptor: Int32
     init() throws {
-        let folder = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("SaveNest", isDirectory: true)
+        let folder = AppRuntime.supportDirectory
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         descriptor = Darwin.open(folder.appendingPathComponent("library-session.lock").path, O_RDWR | O_CREAT | O_NOFOLLOW, S_IRUSR | S_IWUSR)
         guard descriptor >= 0 else { throw Failure() }

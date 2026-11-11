@@ -47,13 +47,14 @@ final class AppModel: ObservableObject {
     lazy var notes = ObsidianNotes(preview: readerPreview, lab: readerLive)
     let updater = AppUpdater()
     let account = AccountController()
+    lazy var cloud = CloudLibraryController(model: self)
     let analytics = UsageAnalytics()
     let clipboard = ClipboardMonitor()
     @Published var clipboardEnabled = UserDefaults.standard.bool(forKey: "clipboardEnabled") {
         didSet {
             guard !isPreview else { return }
             UserDefaults.standard.set(clipboardEnabled, forKey: "clipboardEnabled")
-            if clipboardEnabled { clipboard.start() } else { clipboard.stop(); dismissClipboardNotice?() }
+            if clipboardEnabled && !AppRuntime.isPrivateBeta { clipboard.start() } else { clipboard.stop(); dismissClipboardNotice?() }
         }
     }
     @Published var analyticsEnabled = UserDefaults.standard.object(forKey: "analyticsEnabled") as? Bool ?? true {
@@ -131,6 +132,7 @@ final class AppModel: ObservableObject {
     var shortcutError: String? { shortcutErrors.values.first }
     @Published var toast: CaptureNotice?
     private let file: LibraryFile
+    let cloudLibraryExistedAtStartup: Bool
     private var loadFailed = false
     @Published var hasSeenUsageNotice = UserDefaults.standard.bool(forKey: "hasSeenUsageNotice")
     func dismissUsageNotice(disable: Bool = false) {
@@ -160,8 +162,8 @@ final class AppModel: ObservableObject {
     }
     var readerPreview: Bool { isPreview && !readerLive }
     init() {
-        let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-        file = LibraryFile(url: support.appendingPathComponent("SaveNest/library.json"))
+        file = LibraryFile(url: AppRuntime.supportDirectory.appendingPathComponent("library.json"))
+        cloudLibraryExistedAtStartup = FileManager.default.fileExists(atPath: file.url.path)
         let stored = UserDefaults.standard.data(forKey: "captureShortcuts").flatMap { try? JSONDecoder().decode([String: CaptureShortcut].self, from: $0) } ?? [:]
         let legacy = UserDefaults.standard.data(forKey: "captureShortcut").flatMap { try? JSONDecoder().decode(CaptureShortcut.self, from: $0) }
         shortcuts = Dictionary(uniqueKeysWithValues: CaptureAction.allCases.map { action in
@@ -219,22 +221,25 @@ final class AppModel: ObservableObject {
         #endif
         do { library = try file.load() }
         catch { loadFailed = true; self.error = "Your saved library couldn’t be opened. The original file has been kept untouched at \(file.url.path). Restore a valid backup there, then restart SaveNest. \(error.localizedDescription)" }
-        if !isPreview && !loadFailed {
+        if !isPreview && !loadFailed && !AppRuntime.isPrivateBeta {
             onboardingCompleted = UserDefaults.standard.bool(forKey: "hasCompletedOnboarding")
             showingOnboarding = !onboardingCompleted
         }
         tabSearch.updateLibrary(library.links)
         account.onChange = { [weak self] in
             guard let self else { return }
+            self.cloud.accountDidChange()
             self.showOnboardingIfNeededForActiveAccount()
             self.objectWillChange.send()
         }
         analytics.configure(enabled: analyticsEnabled)
         analytics.record(.appOpened)
         clipboard.onLink = { [weak self] url in self?.offerClipboard(url) }
-        if clipboardEnabled { clipboard.start() }
+        if clipboardEnabled && !AppRuntime.isPrivateBeta { clipboard.start() }
         hotkey.action = { [weak self] action in self?.capture(action: action) }
-        for action in hotkey.register(shortcuts) { shortcutErrors[action] = "Already in use. Choose another shortcut." }
+        if !AppRuntime.isPrivateBeta {
+            for action in hotkey.register(shortcuts) { shortcutErrors[action] = "Already in use. Choose another shortcut." }
+        }
     }
     var visibleLinks: [SavedLink] {
         let searchingEverywhere = !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && searchEverywhere
@@ -310,8 +315,29 @@ final class AppModel: ObservableObject {
         // The preview owns an in-memory fixture and never loads or writes the user's library.
         if isPreview { apply(); return true }
         guard !loadFailed else { report("Your library couldn’t be opened. Restore a valid backup and restart SaveNest. Your original file is unchanged."); return false }
-        do { try file.save(next); apply(); return true }
+        do { try file.save(next); apply(); cloud.libraryDidChange(); return true }
         catch { report("Couldn’t write to your library. \(error.localizedDescription)"); return false }
+    }
+    struct CloudRestoreBaseline {
+        let libraryFingerprint: String
+        let fileFingerprint: String
+        let loadFailed: Bool
+    }
+    func cloudRestoreBaseline() throws -> CloudRestoreBaseline {
+        guard !isPreview else { throw CloudLibraryFailure.unavailable }
+        return CloudRestoreBaseline(libraryFingerprint: try CloudLibraryJSON.fingerprint(library),
+                                    fileFingerprint: try CloudLibraryRestore.fileFingerprint(file), loadFailed: loadFailed)
+    }
+    @discardableResult func restoreCloudLibrary(_ snapshot: CloudLibrarySnapshot, baseline: CloudRestoreBaseline) throws -> URL? {
+        guard !isPreview else { throw CloudLibraryFailure.unavailable }
+        guard loadFailed == baseline.loadFailed,
+              try CloudLibraryJSON.fingerprint(library) == baseline.libraryFingerprint else { throw CloudLibraryFailure.libraryChanged }
+        let recovery = try CloudLibraryRestore.apply(snapshot, to: file, expectedFileFingerprint: baseline.fileFingerprint)
+        loadFailed = false
+        library = snapshot.library; lastLibraryUndo = nil; archiveUndo = nil
+        selectedID = nil; swipedLinkID = nil; error = nil
+        tabSearch.updateLibrary(library.links)
+        return recovery
     }
     func undoLastAction() {
         guard let undo = lastLibraryUndo else { return }
@@ -530,7 +556,7 @@ final class AppModel: ObservableObject {
     }
 
     private func showOnboardingIfNeededForActiveAccount() {
-        guard !isPreview, !loadFailed else { return }
+        guard !isPreview, !loadFailed, !AppRuntime.isPrivateBeta else { return }
         let completed = if let accountID = account.account?.user.id {
             UserDefaults.standard.bool(forKey: onboardingKey(for: accountID))
         } else {
@@ -545,7 +571,7 @@ final class AppModel: ObservableObject {
         if commit(next, undoTitle: "Delete Link") { selectedID = nil; notify("Link deleted") }
     }
     func configureShortcut(_ value: CaptureShortcut?, for action: CaptureAction) {
-        if isPreview { if let value { shortcuts[action] = value }; return }
+        if isPreview || AppRuntime.isPrivateBeta { if let value { shortcuts[action] = value }; return }
         guard let value else { restoreShortcuts(); return }
         if let duplicate = shortcuts.first(where: { $0.key != action && $0.value.keyCode == value.keyCode && $0.value.modifiers == value.modifiers }) {
             restoreShortcuts(); shortcutErrors[action] = "Already used by ‘\(duplicate.key.title)’."; return
@@ -564,6 +590,7 @@ final class AppModel: ObservableObject {
         }
     }
     private func restoreShortcuts() {
+        guard !AppRuntime.isPrivateBeta else { return }
         for action in hotkey.register(shortcuts) { shortcutErrors[action] = "Unavailable. Choose another shortcut." }
     }
     func beginDraft(_ link: SavedLink, action: CaptureAction, closeTarget: CapturedTabTarget? = nil) {
@@ -679,7 +706,7 @@ final class AppModel: ObservableObject {
         guard Set(all.map { "\($0.keyCode):\($0.modifiers)" }).count == all.count else {
             error = "The preset conflicts with another SaveNest shortcut. Change that shortcut first."; return
         }
-        if isPreview { shortcuts = candidate; return }
+        if isPreview || AppRuntime.isPrivateBeta { shortcuts = candidate; return }
         let failed = hotkey.register(candidate)
         guard failed.isEmpty else {
             _ = hotkey.register(previous); error = "One of the preset shortcuts is unavailable. Your shortcuts are unchanged."; return

@@ -15,10 +15,12 @@ public struct SaveNestAccount: Codable, Equatable {
         /// Stripe's billing-period end, in Unix seconds.
         public let renewsAt: Double?
         public let cancelAtPeriodEnd: Bool
-        public init(active: Bool, plan: String?, status: String, mode: String, renewsAt: Double?, cancelAtPeriodEnd: Bool = false) {
-            self.active = active; self.plan = plan; self.status = status; self.mode = mode; self.renewsAt = renewsAt; self.cancelAtPeriodEnd = cancelAtPeriodEnd
+        /// Old or unavailable backends must not expose a new checkout action.
+        public let billingReady: Bool
+        public init(active: Bool, plan: String?, status: String, mode: String, renewsAt: Double?, cancelAtPeriodEnd: Bool = false, billingReady: Bool = false) {
+            self.active = active; self.plan = plan; self.status = status; self.mode = mode; self.renewsAt = renewsAt; self.cancelAtPeriodEnd = cancelAtPeriodEnd; self.billingReady = billingReady
         }
-        enum CodingKeys: String, CodingKey { case active, plan, status, mode, renewsAt, cancelAtPeriodEnd }
+        enum CodingKeys: String, CodingKey { case active, plan, status, mode, renewsAt, cancelAtPeriodEnd, billingReady }
         public init(from decoder: Decoder) throws {
             let values = try decoder.container(keyedBy: CodingKeys.self)
             active = try values.decode(Bool.self, forKey: .active)
@@ -27,6 +29,7 @@ public struct SaveNestAccount: Codable, Equatable {
             mode = try values.decode(String.self, forKey: .mode)
             renewsAt = try values.decodeIfPresent(Double.self, forKey: .renewsAt)
             cancelAtPeriodEnd = try values.decodeIfPresent(Bool.self, forKey: .cancelAtPeriodEnd) ?? false
+            billingReady = try values.decodeIfPresent(Bool.self, forKey: .billingReady) ?? false
         }
     }
     public let user: User
@@ -55,10 +58,15 @@ public enum AccountAccess {
         return hasCurrentSubscription(account, now: now)
     }
 
-    /// A payment problem should recover the existing subscription, not create another one.
+    /// Stripe can have an existing subscription whose price does not grant Cloud.
+    /// Recover or manage that record instead of creating a second subscription.
     public static func blocksNewCheckout(_ account: SaveNestAccount?) -> Bool {
-        guard let account, account.subscription.plan != nil else { return false }
+        guard let account else { return false }
         return ["active", "past_due", "unpaid", "paused", "trialing", "incomplete"].contains(account.subscription.status)
+    }
+    public static func canManageBilling(_ account: SaveNestAccount?) -> Bool {
+        guard let account else { return false }
+        return account.subscription.plan != nil || ["active", "past_due", "unpaid", "paused", "trialing", "incomplete", "canceled", "incomplete_expired", "unavailable"].contains(account.subscription.status)
     }
 
     /// The callback must match this auth attempt exactly; reject duplicate query keys and other URL forms.

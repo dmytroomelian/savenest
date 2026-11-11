@@ -15,7 +15,7 @@ actor SiteIconLoader {
     private let session: URLSession
 
     init() {
-        directory = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0].appendingPathComponent("app.savenest.mac/SiteIcons")
+        directory = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0].appendingPathComponent(AppRuntime.isPrivateBeta ? "app.savenest.aws-beta/SiteIcons" : "app.savenest.mac/SiteIcons")
         let configuration = URLSessionConfiguration.ephemeral
         configuration.httpCookieStorage = nil; configuration.urlCredentialStorage = nil
         configuration.httpShouldSetCookies = false; configuration.urlCache = nil

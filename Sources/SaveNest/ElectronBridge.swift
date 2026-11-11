@@ -44,6 +44,7 @@ final class ElectronBridge {
         model.objectWillChange.sink { [weak self] in self?.scheduleSnapshot() }.store(in: &subscriptions)
         model.updater.objectWillChange.sink { [weak self] in self?.scheduleSnapshot() }.store(in: &subscriptions)
         model.notes.objectWillChange.sink { [weak self] in self?.scheduleSnapshot() }.store(in: &subscriptions)
+        model.cloud.objectWillChange.sink { [weak self] in self?.scheduleSnapshot() }.store(in: &subscriptions)
         model.tabSearch.objectWillChange.sink { [weak self] in self?.scheduleSnapshot() }.store(in: &subscriptions)
         model.$library.dropFirst().receive(on: DispatchQueue.main).sink { [weak self] library in
             self?.model.tabSearch.updateLibrary(library.links)
@@ -86,7 +87,7 @@ final class ElectronBridge {
             && model.draft == nil && model.tabSelection == nil
             && !model.showingAdd && !model.showingTags && model.sharingLink == nil
             && model.cleanupReview == nil && !model.isCapturing && !model.isCleaningTabs
-            && !search.busy && !model.account.isBusy && !model.account.isSigningIn
+            && !search.busy && !model.account.isBusy && !model.account.isSigningIn && !model.cloud.isBusy
         let rows: [[String: Any]] = search.results.prefix(200).map { item in
             var row: [String: Any] = [
                 "id": item.id, "title": item.title, "url": item.url, "domain": item.domain,
