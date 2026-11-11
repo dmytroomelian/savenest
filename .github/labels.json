@@ -1,0 +1,152 @@
+[
+  {
+    "name": "bug",
+    "color": "d73a4a",
+    "description": "Existing behavior is broken; include expected behavior and reproduction evidence."
+  },
+  {
+    "name": "enhancement",
+    "color": "a2eeef",
+    "description": "New or improved user-facing behavior; does not imply a delivery commitment."
+  },
+  {
+    "name": "documentation",
+    "color": "0075ca",
+    "description": "Documentation-only work with no product behavior change."
+  },
+  {
+    "name": "task",
+    "color": "bfdadc",
+    "description": "Maintenance, infrastructure, release, or operational work."
+  },
+  {
+    "name": "research",
+    "color": "d4c5f9",
+    "description": "Discovery or design that must produce evidence and a decision before implementation."
+  },
+  {
+    "name": "epic",
+    "color": "5319e7",
+    "description": "An outcome tracked through linked child issues; not a single implementation task."
+  },
+  {
+    "name": "question",
+    "color": "d876e3",
+    "description": "A support or usage question; not a substitute for missing information on a bug."
+  },
+  {
+    "name": "area:launcher",
+    "color": "c5def5",
+    "description": "Launcher UI, keyboard interaction, search presentation, and navigation."
+  },
+  {
+    "name": "area:capture",
+    "color": "c5def5",
+    "description": "Browser or share-sheet capture, tabs, history, and capture permissions."
+  },
+  {
+    "name": "area:library",
+    "color": "c5def5",
+    "description": "Local data, indexing, organization, import/export, and backup/restore."
+  },
+  {
+    "name": "area:reading",
+    "color": "c5def5",
+    "description": "Article reader, offline copies, highlights, Markdown notes, and Obsidian."
+  },
+  {
+    "name": "area:cloud",
+    "color": "c5def5",
+    "description": "Optional sync, hosted backup, trusted devices, and shared libraries."
+  },
+  {
+    "name": "area:website",
+    "color": "c5def5",
+    "description": "Public website, downloads page, and hosted presentation."
+  },
+  {
+    "name": "area:accounts",
+    "color": "c5def5",
+    "description": "Sign-in, account access, billing, pricing, and subscription transitions."
+  },
+  {
+    "name": "area:release",
+    "color": "c5def5",
+    "description": "Builds, CI, packaging, signing, updates, and distribution."
+  },
+  {
+    "name": "area:privacy",
+    "color": "c5def5",
+    "description": "Data handling, analytics, consent, and privacy disclosures."
+  },
+  {
+    "name": "priority:critical",
+    "color": "b60205",
+    "description": "Immediate response: active data loss or a widespread unusable release."
+  },
+  {
+    "name": "priority:high",
+    "color": "d93f0b",
+    "description": "Confirmed release gate or major user impact; address before normal backlog."
+  },
+  {
+    "name": "priority:normal",
+    "color": "fbca04",
+    "description": "Default triaged backlog; no release date or delivery commitment."
+  },
+  {
+    "name": "priority:low",
+    "color": "e4e669",
+    "description": "Explicitly deferred work, later discovery, or optional polish."
+  },
+  {
+    "name": "status:triage",
+    "color": "ededed",
+    "description": "Awaiting maintainer classification and a decision on the next action."
+  },
+  {
+    "name": "status:needs-info",
+    "color": "fff2cc",
+    "description": "A specific unanswered information request prevents further assessment."
+  },
+  {
+    "name": "status:blocked",
+    "color": "f9d0c4",
+    "description": "No useful next step until a named dependency or external condition changes."
+  },
+  {
+    "name": "status:needs-validation",
+    "color": "fef2c0",
+    "description": "Implementation or preview exists; explicit acceptance checks remain unverified."
+  },
+  {
+    "name": "accessibility",
+    "color": "f143ab",
+    "description": "A concrete barrier affecting people with disabilities; combine with a primary type."
+  },
+  {
+    "name": "good first issue",
+    "color": "7057ff",
+    "description": "Small, scoped, unblocked task with clear acceptance checks and maintainer support."
+  },
+  {
+    "name": "help wanted",
+    "color": "008672",
+    "description": "Ready for a contributor with clear scope and verification steps."
+  },
+  {
+    "name": "duplicate",
+    "color": "cfd3d7",
+    "description": "Closed because a linked canonical issue already tracks the same work."
+  },
+  {
+    "name": "invalid",
+    "color": "cfd3d7",
+    "description": "Closed because the report is out of scope or demonstrably not applicable."
+  },
+  {
+    "name": "wontfix",
+    "color": "cfd3d7",
+    "description": "Closed after an explicit decision not to pursue the request."
+  }
+]

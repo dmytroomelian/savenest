@@ -8,6 +8,8 @@ Check [open issues](https://github.com/dmytro-omelian/savenest/issues) for exist
 
 Keep discussions respectful and focused on the work. Report security problems privately using [SECURITY.md](SECURITY.md).
 
+Maintainers classify issues by type, area, priority, and any outstanding triage or acceptance needs. See the [issue label policy](docs/issue-labels.md) for definitions and maintenance rules. Reporters do not need to choose labels.
+
 ## Set up a development copy
 
 You need macOS 14+, Apple's command-line tools with Swift 5.9+, and Node.js 22.12+ with npm. Install Apple's tools with `xcode-select --install` if they are missing.

@@ -1,5 +1,6 @@
 name: Feature request
 description: Describe a workflow and the problem you need to solve.
+labels: ["enhancement", "status:triage"]
 body:
   - type: markdown
     attributes:
