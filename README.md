@@ -62,7 +62,7 @@ For launcher or process-integration changes, also run `npm run test:smoke`. It e
 
 Saved links and notes stay local. Browser history is read without modification and kept in memory. **Anonymous usage counts are on by default** and can be disabled in Settings or the first-use notice. Icons, account services, update checks, and reporting can make network requests. Read the [privacy policy](docs/privacy.md) for details.
 
-This repository contains the Electron app and Swift helper. The hosted backend is separate. Cloud backup, sync, and Teams are planned and are not available yet.
+This repository contains the Electron app and Swift helper. The hosted backend is separate. Optional Cloud subscriptions provide automatic library backup and recovery. Each Mac keeps separate backups; live sync and Teams are not included. See [Cloud backup](docs/cloud-backup.md) for limits and recovery behavior.
 
 ## Reference
 

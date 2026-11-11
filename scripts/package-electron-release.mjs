@@ -26,6 +26,8 @@ for (const architecture of ['arm64', 'x64']) {
     DISTRIBUTION: '1', ELECTRON_ARCH: architecture, HELPER_APP_PATH: helper }, stdio: 'inherit' });
   artifacts.push(JSON.parse(await readFile(`build/releases/electron/${manifest.version}/${architecture}/artifact.json`, 'utf8')));
 }
+execFileSync(process.execPath, ['scripts/package-electron-universal.mjs', releaseDirectory], { stdio: 'inherit' });
+artifacts.push(JSON.parse(await readFile(path.join(releaseDirectory, 'universal/artifact.json'), 'utf8')));
 const release = { version: manifest.version, minimumSystemVersion: '14.0',
   architectures: Object.fromEntries(artifacts.map(artifact => [artifact.architecture, artifact])) };
 await writeFile(`build/releases/electron/${manifest.version}/release.json`, JSON.stringify(release, null, 2) + '\n');

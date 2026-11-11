@@ -455,6 +455,10 @@ final class LibraryTests {
         XCTAssertEqual(LinkTitle.clean(String(repeating: "a", count: 300)).count, 180)
     }
     func testSubscriptionStatusRequiresFreshServerVerification() throws {
+        let oldSubscription = Data(#"{"active":false,"status":"inactive","mode":"live"}"#.utf8)
+        XCTAssertFalse(try JSONDecoder().decode(SaveNestAccount.Subscription.self, from: oldSubscription).billingReady)
+        let readySubscription = Data(#"{"active":false,"status":"inactive","mode":"live","billingReady":true}"#.utf8)
+        XCTAssertTrue(try JSONDecoder().decode(SaveNestAccount.Subscription.self, from: readySubscription).billingReady)
         let now = Date(timeIntervalSince1970: 1_800_000_000)
         let user = SaveNestAccount.User(id: "user", name: "Dima", email: "dima@example.com")
         func account(active: Bool = true, status: String = "active", mode: String = "sandbox", plan: String? = "monthly", end: Double? = 1_800_010_000) -> SaveNestAccount {
@@ -597,6 +601,7 @@ func XCTAssertThrowsError<T>(_ expression: @autoclosure () throws -> T) {
         checkTabWorkspace()
         try checkBrowserHistory()
         try runNoteFileChecks()
+        try runCloudLibraryChecks()
         let tests = LibraryTests()
         tests.testTabCleanupPlanningIsConservativeAndDomainScoped()
         try tests.testBrowserTabPayloadsDecodeAndSaveTogether()

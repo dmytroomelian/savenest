@@ -93,7 +93,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             model.tabSearch.close = { [weak self] in self?.electronBridge?.event("hide"); self?.model.tabSearch.suspend() }
             electronBridge?.start()
         } else {
-            setupStatusItem(); openLibrary()
+            setupStatusItem(); if AppRuntime.isPrivateBeta { openAccount() } else { openLibrary() }
             model.updater.start()
         }
         let launchURLs = pendingURLs

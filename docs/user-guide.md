@@ -80,3 +80,13 @@ Browsers may block this unless **Allow JavaScript from Apple Events** is enabled
 Saved data lives at `~/Library/Application Support/SaveNest/library.json`. Use Settings to export or merge-import JSON backups. Writes are atomic; an unreadable or newer-format library is preserved and further writes are blocked. Keep a backup before testing changes with real data.
 
 The [native interface reference](legacy-native.md) describes the retained Swift UI.
+
+## Optional Cloud backup
+
+Open **Account & Cloud**, sign in using the email link, and choose **monthly ($4.99 USD)** or **yearly ($49.90 USD)**. Stripe opens in your browser; return to SaveNest after checkout. Account shows your verified plan and billing date. Use **Manage subscription** to review payment details or cancel automatic renewal. Local saving and search remain free.
+
+Choose **Turn on backups** and confirm the library/account shown. Signing in or subscribing alone never uploads a library. **Back up now** saves the current library; automatic backup handles later changes. Each Mac keeps its own backup history rather than synchronizing live edits.
+
+To recover, open **Available backups**, choose **Restore…**, and review the backup date and link counts. SaveNest preserves the previous local file before replacing it. Use **Show recovery copy** to find that file. Automatic backups remain off after restore until you review the recovered library and enable them again.
+
+Backups include saved links, quick notes, tags, and collections. They exclude Obsidian Markdown and offline articles. Limits: 2 MiB per library backup, five Macs, up to 30 daily copies per Mac, and 90 days of recovery after a subscription ends. See [Cloud backup](cloud-backup.md) for details.

@@ -16,7 +16,7 @@ struct AppRootView: View {
                 Button("Open SaveNest") { model.showLibrary?() }.buttonStyle(SageButton())
             }.padding(.horizontal, 26).padding(.top, 28).padding(.bottom, 12)
             if model.section == .account {
-                AccountView(account: model.account) { model.showLibrary?() }
+                AccountView(account: model.account, cloud: model.cloud) { model.showLibrary?() }
             } else {
                 SettingsView(model: model) { model.showLibrary?() }
             }

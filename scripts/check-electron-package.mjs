@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import { extractFile } from '@electron/asar';
 
 const [archive, architecture] = process.argv.slice(2);
-if (!archive || !['arm64', 'x64'].includes(architecture)) throw new Error('Usage: node scripts/check-electron-package.mjs ARCHIVE arm64|x64');
+if (!archive || !['arm64', 'x64', 'universal'].includes(architecture)) throw new Error('Usage: node scripts/check-electron-package.mjs ARCHIVE arm64|x64|universal');
 const temporary = await mkdtemp(path.join(tmpdir(), 'savenest-package-check-'));
 const run = (command, args) => execFileSync(command, args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
 try {
@@ -32,9 +32,19 @@ try {
     assert.equal(plist(bundle, 'SUPublicEDKey'), publicKey, 'Outer app, helper and native source must preserve the Sparkle public key.');
     assert.equal(plist(bundle, 'SaveNestUpdatesEnabled'), 'false', 'The Electron app and embedded helper must not activate Sparkle.');
   }
-  const cpu = architecture === 'x64' ? 'x86_64' : 'arm64';
-  run('lipo', [path.join(app, 'Contents/MacOS/SaveNest'), '-verify_arch', cpu]);
-  run('lipo', [path.join(helper, 'Contents/MacOS/SaveNest'), '-verify_arch', cpu]);
+  const cpus = architecture === 'universal' ? ['arm64', 'x86_64'] : [architecture === 'x64' ? 'x86_64' : 'arm64'];
+  for (const cpu of cpus) {
+    run('lipo', [path.join(app, 'Contents/MacOS/SaveNest'), '-verify_arch', cpu]);
+    run('lipo', [path.join(helper, 'Contents/MacOS/SaveNest'), '-verify_arch', cpu]);
+  }
+  if (architecture === 'universal') {
+    const files = run('find', [app, '-type', 'f']).split('\n');
+    for (const file of files) {
+      if (run('file', ['-b', file]).includes('Mach-O')) {
+        for (const cpu of cpus) run('lipo', [file, '-verify_arch', cpu]);
+      }
+    }
+  }
   run('codesign', ['--verify', '--deep', '--strict', app]);
   run('xcrun', ['stapler', 'validate', app]);
   run('spctl', ['--assess', '--type', 'execute', app]);

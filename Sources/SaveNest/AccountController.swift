@@ -75,7 +75,47 @@ final class AccountController: NSObject, ObservableObject {
         config.httpShouldSetCookies = false; config.requestCachePolicy = .reloadIgnoringLocalCacheData
         return URLSession(configuration: config, delegate: transport, delegateQueue: nil)
     }()
-    private let baseURL = URL(string: "https://savenest.app")!
+    private let baseURL = AppRuntime.accountOrigin
+    /// Only a trusted application bundle can choose the cloud service origin.
+    /// User defaults, imported libraries, and renderer messages cannot redirect credentials.
+    private var cloudBaseURL: URL {
+        guard let raw = Bundle.main.object(forInfoDictionaryKey: "SaveNestCloudBaseURL") as? String,
+              let url = URL(string: raw), url.scheme == "https", url.host != nil,
+              url.user == nil, url.password == nil, url.query == nil, url.fragment == nil,
+              url.path.isEmpty || url.path == "/" else { return baseURL }
+        return url
+    }
+    var cloudSessionID: UUID { sessionGeneration }
+
+    /// Native credentials never leave this controller or cross the Electron bridge.
+    func cloudRequest<T: Decodable>(_ path: String, method: String = "GET", body: Data? = nil) async throws -> T {
+        guard path == "api/cloud/status" || path == "api/cloud/snapshots"
+                || (path.hasPrefix("api/cloud/snapshots/") && UUID(uuidString: String(path.dropFirst("api/cloud/snapshots/".count))) != nil),
+              let token = accessToken, let user = account?.user.id else { throw AccountFailure.signIn }
+        let generation = sessionGeneration
+        var request = URLRequest(url: cloudBaseURL.appendingPathComponent(path))
+        request.httpMethod = method; request.timeoutInterval = 30
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        if let body {
+            guard body.count <= CloudLibraryJSON.maximumBytes else { throw CloudLibraryFailure.tooLarge }
+            request.httpBody = body; request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        }
+        let (data, response) = try await session.data(for: request)
+        guard accessToken == token, sessionGeneration == generation, account?.user.id == user else {
+            throw CloudLibraryFailure.accountChanged
+        }
+        guard let response = response as? HTTPURLResponse else { throw AccountFailure.invalidResponse }
+        guard data.count <= CloudLibraryJSON.maximumBytes + 65_536 else { throw CloudLibraryFailure.tooLarge }
+        if response.statusCode == 401 { throw AccountFailure.signIn }
+        guard (200..<300).contains(response.statusCode) else {
+            let reason = (try? JSONDecoder().decode(ErrorResponse.self, from: data))?.error
+            throw AccountFailure.service(reason.flatMap { $0.count <= 400 ? $0 : nil }
+                ?? "Cloud backup is not available right now. Your local library is unchanged.")
+        }
+        do { return try CloudLibraryJSON.decoder().decode(T.self, from: data) }
+        catch { throw AccountFailure.invalidResponse }
+    }
     var isBusy: Bool { isRefreshing || billingStage == .preparing || billingStage == .checking }
     var isSigningIn: Bool { signInStage != .idle }
     var hasVerifiedSubscription: Bool { AccountAccess.hasVerifiedSubscription(account, verifiedAt: verifiedAt) }
@@ -84,6 +124,7 @@ final class AccountController: NSObject, ObservableObject {
     var canManageBilling: Bool { account?.subscription.plan != nil || account?.subscription.status == "unavailable" }
     override init() {
         super.init()
+        if AppRuntime.isPrivateBeta { signInEmail = "dima@omelabs.org" }
         guard !AppLaunch.isPreview else { return }
         do {
             accessToken = try AccountKeychain.token(); hasLogin = accessToken != nil
@@ -232,7 +273,8 @@ final class AccountController: NSObject, ObservableObject {
         pendingSignIn = nil; signInStage = .idle; resendAvailableAt = nil; message = nil
         do { try AccountKeychain.cancelSignIn(id: id) } catch { message = friendly(error) }
     }
-    func handleIncomingURL(_ url: URL) {
+    func handleIncomingURL(_ receivedURL: URL) {
+        guard let url = AppRuntime.canonicalCallback(receivedURL) else { return }
         if AccountAccess.referralCode(url) != nil {
             clearReferralCode()
             message = "SaveNest is now free on your Mac. Paid referral offers are paused while Cloud is being developed."
@@ -311,7 +353,16 @@ final class AccountController: NSObject, ObservableObject {
         } catch { if sessionGeneration == generation { message = friendly(error) } }
     }
     func checkout(plan: String) async {
-        message = "SaveNest is free on your Mac. Cloud is coming soon; new subscriptions are not available."
+        guard ["monthly", "yearly"].contains(plan) else { return }
+        guard hasLogin else { message = "Sign in before choosing a Cloud plan."; showAccount(); return }
+        _ = await refresh(force: true)
+        guard !subscriptionUnavailable, account?.subscription.billingReady == true else {
+            message = "Cloud checkout is temporarily unavailable. Try Refresh account again."; return
+        }
+        guard !hasExistingSubscription else {
+            message = "You already have a subscription. Use Manage subscription to update it."; return
+        }
+        await startBilling(flow: .checkout, plan: plan)
     }
     func openBilling() async { await startBilling(flow: .billing, plan: nil) }
     private func startBilling(flow: NativeBillingFlow, plan: String?) async {
@@ -346,7 +397,7 @@ final class AccountController: NSObject, ObservableObject {
         guard let userID = account?.user.id, let token = accessToken else { message = "Sign in to the account you used for payment, then refresh your account here."; showAccount(); return }
         do {
             guard let result = try AccountKeychain.claimBilling(url, userID: userID) else {
-                message = hasVerifiedSubscription ? "Your account is up to date. All local features are free." : "This billing return has expired, was already used, or belongs to another account. You can refresh your account here safely."
+                message = hasVerifiedSubscription ? "Your Cloud subscription is active. Turn on backups when you’re ready." : "This billing return has expired, was already used, or belongs to another account. You can refresh your account here safely."
                 showAccount(); return
             }
             pendingBilling = nil; startAccessCheck(result, token: token); showAccount()
@@ -368,7 +419,7 @@ final class AccountController: NSObject, ObservableObject {
                 if active && !waitingForPortal {
                     if let pendingID { try? AccountKeychain.cancelBilling(id: pendingID) }
                     self.pendingBilling = nil
-                    self.message = "Your account is up to date. All local features are free."
+                    self.message = "Your Cloud subscription is active. Turn on backups when you’re ready."
                     return true
                 }
                 if returned?.status == .cancelled {

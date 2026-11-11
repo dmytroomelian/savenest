@@ -111,11 +111,11 @@ for (const directory of apps) {
   const hash = createHash('sha256');
   for await (const chunk of createReadStream(archive)) hash.update(chunk);
   const artifact = { architecture, file: filename,
-    url: `https://github.com/dmytro-omelian/savenest/releases/download/v${manifest.version}/${filename}`,
+    url: `https://github.com/dmytroomelian/savenest/releases/download/v${manifest.version}/${filename}`,
     sha256: hash.digest('hex'), size: (await stat(archive)).size };
   const feed = { currentRelease: manifest.version, releases: [{ version: manifest.version, updateTo: {
     version: manifest.version, url: artifact.url, name: `SaveNest ${manifest.version}`,
-    notes: 'Glass appearance, global Actions, visible Settings, and a keyboard shortcut guide. Includes the save-with-note dismissal fix.',
+    notes: 'Optional Cloud backup and restore, monthly and yearly subscriptions, and safe local recovery. Local features remain free.',
     pub_date: new Date().toISOString(), sha256: artifact.sha256, size: artifact.size
   } }] };
   await mkdir(path.join(releaseDirectory, architecture), { recursive: true });

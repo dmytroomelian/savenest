@@ -11,7 +11,7 @@ final class UsageAnalytics {
     private var session: URLSession?
     private var enabled = false
     func configure(enabled requested: Bool) {
-        let enabled = requested && !AppLaunch.isPreview
+        let enabled = requested && !AppLaunch.isPreview && !AppRuntime.isPrivateBeta
         self.enabled = enabled
         accumulator.configure(enabled: enabled)
         timer?.invalidate(); timer = nil
