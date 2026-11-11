@@ -81,6 +81,11 @@ public enum AccountAccess {
     public static func referralCode(_ url: URL) -> String? {
         guard let values = NativeCallback.parameters(url, host: "invite", path: "/redeem", keys: ["code"]),
               let raw = values["code"] else { return nil }
+        return normalizedReferralCode(raw)
+    }
+
+    /// Pasted codes and native invitation links must accept the same format.
+    public static func normalizedReferralCode(_ raw: String) -> String? {
         let code = raw.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
         guard code.range(of: #"^SN[A-Z0-9]{8}$"#, options: .regularExpression) != nil else { return nil }
         return code

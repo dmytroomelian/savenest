@@ -530,6 +530,12 @@ final class LibraryTests {
             "savenest://user@auth/callback?code=\(code)&state=\(state)"
         ] { XCTAssertNil(AccountAccess.callbackCode(URL(string: raw)!, expectedState: state), raw) }
     }
+    func testPastedReferralCodeUsesTheInvitationFormat() {
+        XCTAssertEqual(AccountAccess.normalizedReferralCode("  snabc23456\n"), "SNABC23456")
+        for raw in ["", "SNABC2345", "SNABC234567", "SNABC 3456", "SNABC-3456", "https://savenest.app/invite/SNABC23456", "SNABC23456&other=value"] {
+            XCTAssertNil(AccountAccess.normalizedReferralCode(raw), raw)
+        }
+    }
     func testReferralCallbackAcceptsOnlyOneSafeCode() {
         XCTAssertEqual(AccountAccess.referralCode(URL(string: "savenest://invite/redeem?code=snabc23456")!), "SNABC23456")
         for raw in [
@@ -635,6 +641,7 @@ func XCTAssertThrowsError<T>(_ expression: @autoclosure () throws -> T) {
         try tests.testSubscriptionStatusRequiresFreshServerVerification()
         tests.testSignInCallbackRejectsForgedOrAmbiguousURLs()
         tests.testReferralCallbackAcceptsOnlyOneSafeCode()
+        tests.testPastedReferralCodeUsesTheInvitationFormat()
         tests.testPendingNativeCallbacksAreSingleUseAndBoundToStateAndAccount()
         tests.testCheckoutUsesExistingSubscriptionForPaymentRecovery()
         await tests.testBillingPollFindsDelayedPaymentWithoutCallback()

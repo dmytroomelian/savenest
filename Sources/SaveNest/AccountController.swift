@@ -211,18 +211,51 @@ final class AccountController: NSObject, ObservableObject {
 
     func loadReferrals() async {
         guard let token = accessToken, account != nil else { referral = nil; return }
+        let generation = sessionGeneration
         do {
             let result: ReferralSummaryResponse = try await request("api/referrals", token: token)
-            guard accessToken == token else { return }
+            guard sessionGeneration == generation, accessToken == token else { return }
             referral = result.referral
         } catch {
-            guard accessToken == token else { return }
+            guard sessionGeneration == generation, accessToken == token else { return }
             referral = nil
         }
     }
 
+    var validInviteEmail: Bool {
+        guard let ownEmail = account?.user.email,
+              let email = NativeCallback.normalizedEmail(inviteEmail) else { return false }
+        return email != ownEmail.lowercased()
+    }
     func sendReferralInvite() async {
-        referralMessage = "Paid referral offers are paused. Savenest is free on your Mac."
+        guard !isSendingInvite, let token = accessToken else { return }
+        guard validInviteEmail, let email = NativeCallback.normalizedEmail(inviteEmail) else {
+            referralMessage = "Enter your friend’s valid email address."; return
+        }
+        guard referral?.eligible == true, (referral?.remaining ?? 0) > 0 else {
+            referralMessage = "Invitations aren’t available for this account right now. Refresh your account to check again."; return
+        }
+        let generation = sessionGeneration
+        isSendingInvite = true; referralMessage = nil
+        defer { if sessionGeneration == generation { isSendingInvite = false } }
+        do {
+            let result: ReferralResponse = try await request("api/referrals", method: "POST", body: ["email": email], token: token, timeout: 30)
+            guard sessionGeneration == generation, accessToken == token else { return }
+            referral = result.referral
+            referralMessage = "Invitation sent to \(result.email). Their promo code is in the email."
+            inviteEmail = ""
+        } catch {
+            guard sessionGeneration == generation, accessToken == token else { return }
+            referralMessage = friendly(error)
+        }
+    }
+    func setReferralCode(_ raw: String) {
+        guard let code = AccountAccess.normalizedReferralCode(raw) else {
+            message = "Enter the promo code from your invitation."; return
+        }
+        pendingReferralCode = code
+        UserDefaults.standard.set(code, forKey: "savenest.pending-referral-code")
+        message = "Invitation saved. Choose monthly Pro using the invited email. Eligibility is checked at checkout."
     }
 
     func clearReferralCode() {
@@ -277,9 +310,8 @@ final class AccountController: NSObject, ObservableObject {
     }
     func handleIncomingURL(_ receivedURL: URL) {
         guard let url = AppRuntime.canonicalCallback(receivedURL) else { return }
-        if AccountAccess.referralCode(url) != nil {
-            clearReferralCode()
-            message = "Savenest is free on your Mac. Paid referral offers are paused."
+        if let code = AccountAccess.referralCode(url) {
+            setReferralCode(code)
             showAccount(); return
         }
         guard url.scheme == "savenest", ["auth", "billing"].contains(url.host ?? "") else { return }
@@ -462,6 +494,7 @@ final class AccountController: NSObject, ObservableObject {
     }
     private func clearLocalLogin() {
         sessionGeneration = UUID(); accessToken = nil; hasLogin = false; account = nil; verifiedAt = nil; subscriptionUnavailable = false; referral = nil; referralMessage = nil
+        isSendingInvite = false; inviteEmail = ""
         refreshFlight?.task.cancel(); refreshFlight = nil; isRefreshing = false
         billingPollID = UUID(); billingPoll?.cancel(); billingPoll = nil; pendingBilling = nil; billingStage = .idle
         onChange?()

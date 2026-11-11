@@ -104,3 +104,11 @@ Pro starts saving automatically after account, service-permission, and local-lib
 To recover, expand **Restore library**, choose **Restore…**, and confirm the date and link counts. Savenest preserves the previous local file before replacing it. **Show recovery copy** reveals that file. The restored library saves automatically when verified Pro access and upload permission remain available.
 
 Saved copies include links, quick notes, tags, and collections. Obsidian files and offline articles stay on this Mac. Limits: 2 MiB per library copy, five Macs, one latest successful daily recovery copy per Mac, and 90 days of recovery after Pro ends. See [Pro saving and recovery](cloud-backup.md) for details.
+
+## Invite a friend
+
+In 0.13.1, open **Account & Pro → Invite a friend**, sign in, enter your friend's email, and choose **Send invitation**. Your friend must sign in with that invited address, open the invitation link or enter its promo code under **Have an invitation code?**, and choose monthly Pro.
+
+A friend new to paid Savenest pays **$1.99 for the first monthly payment**, then **$4.99/month**, before applicable tax. After they pay, you get one **$3 discount** on your first eligible monthly checkout or a later monthly renewal. Yearly plans are excluded. Each account gets at most one discounted month across both roles, even when it sends several invitations. Monthly Pro renews automatically until cancelled.
+
+Invitations expire 30 days after sending. A reward for a new checkout expires 30 days after qualification. The [privacy policy](privacy.md) explains invitation email delivery and referral records.
