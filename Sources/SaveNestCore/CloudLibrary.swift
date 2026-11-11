@@ -191,6 +191,16 @@ public struct CloudLibraryTransferState {
     }
 }
 
+/// Shared by recovery and revision-conflict holds; survives process and account changes.
+public struct CloudLibraryReviewHold {
+    private let defaults: UserDefaults
+    private let key = "savenest.cloud.local-library-review-required"
+    public init(defaults: UserDefaults = .standard) { self.defaults = defaults }
+    public var isRequired: Bool { defaults.bool(forKey: key) }
+    public func require() { defaults.set(true, forKey: key) }
+    public func clear() { defaults.set(false, forKey: key) }
+}
+
 public enum CloudBackupStartupPolicy {
     /// A first install can start automatically; a missing known library cannot.
     public static func needsReview(knownDevice: Bool, fileExistedAtStartup: Bool, libraryLoaded: Bool) -> Bool {
