@@ -6,7 +6,9 @@
   <title>Savenest</title>
   <link rel="stylesheet" href="glass.css">
   <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="features.css">
   <script src="launcher-model.js" defer></script>
+  <script src="features.js" defer></script>
   <script src="renderer.js" defer></script>
 </head>
 <body>
@@ -47,7 +49,7 @@
     <footer>
       <button id="home" aria-label="Back to root search"><span class="footer-mark" aria-hidden="true">≋</span><span id="status">Starting Savenest…</span><span id="sync-status" role="status" aria-live="polite" aria-atomic="true" hidden><span class="sync-dot" aria-hidden="true"></span><span id="sync-label"></span></span></button>
       <span id="preview" hidden>Preview</span>
-      <div class="footer-utilities"><button id="open-settings" title="Settings (⌘,)">Settings</button><button id="show-shortcuts" title="Keyboard shortcuts (⌘/)" aria-haspopup="dialog" aria-controls="shortcuts-dialog">Shortcuts</button></div>
+      <div class="footer-utilities"><button id="show-features" title="Explore Savenest features" aria-haspopup="dialog" aria-controls="features-dialog">Explore features</button><button id="open-settings" title="Settings (⌘,)">Settings</button><button id="show-shortcuts" title="Keyboard shortcuts (⌘/)" aria-haspopup="dialog" aria-controls="shortcuts-dialog">Shortcuts</button></div>
       <div class="footer-actions"><button id="primary">Open <kbd>↵</kbd></button><span class="separator"></span><button id="actions" title="Browse all actions (⌘K)" aria-haspopup="dialog" aria-controls="action-dialog">Actions <kbd>⌘K</kbd></button></div>
     </footer>
     <div id="notice" role="status" hidden><span id="notice-text"></span><button id="dismiss-notice" aria-label="Dismiss message">×</button></div>
@@ -57,6 +59,18 @@
     <div class="shortcuts-header"><h2 id="shortcuts-title">Keyboard shortcuts</h2><button id="shortcuts-close" aria-label="Close keyboard shortcuts" autofocus>×</button></div>
     <div id="shortcut-list"></div>
     <div class="shortcuts-footer"><button id="shortcut-settings">Customize in Settings</button><span><kbd>esc</kbd> close</span></div>
+  </dialog>
+  <dialog id="features-dialog" aria-labelledby="features-title">
+    <div class="features-header">
+      <div><h2 id="features-title">Explore features</h2><p id="features-subtitle">What Savenest can do, including Pro and Beta features.</p></div>
+      <button id="features-close" aria-label="Close Explore features">×</button>
+    </div>
+    <div class="features-search-row">
+      <input id="features-search" type="search" placeholder="Find a feature…" aria-label="Search features" aria-controls="features-list" autocomplete="off" spellcheck="false">
+      <span id="features-count" aria-live="polite"></span>
+    </div>
+    <div id="features-list" role="region" aria-label="Feature catalog"></div>
+    <div class="features-footer"><span id="features-hint"><kbd>↑</kbd><kbd>↓</kbd> move</span><span><kbd>esc</kbd> close</span></div>
   </dialog>
   <dialog id="discard-dialog" aria-labelledby="discard-title"><h2 id="discard-title">Discard this draft?</h2><p>Your changes haven’t been saved.</p><div class="dialog-buttons"><button id="keep-editing" autofocus>Keep editing</button><button id="discard" class="danger">Discard draft</button></div></dialog>
 </body>

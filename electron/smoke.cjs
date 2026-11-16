@@ -198,6 +198,19 @@ exports.run = async ({ win, native, root, show, toggle }) => {
   await key('Escape');
   native.emit('event', { event: 'state', state: { ...state, appearance: initialAppearance } });
 
+  assert.equal(state.socialCapture.enabled, false, 'preview must never enable social capture');
+  assert.equal(state.socialCapture.available, false, 'preview must never observe other apps');
+  assert.equal(state.socialCapture.enabledCount, 0, 'capture starts with no selected sources');
+  await js("document.getElementById('show-features').click()");
+  await wait(() => js("document.getElementById('features-dialog').open"), 'feature catalog');
+  assert.equal(await js("document.querySelector('[data-feature-id=social-capture] .social-cta').textContent"), 'Set up capture');
+  await painted();
+  await fs.writeFile(path.join(root, 'build/launcher-features.png'), (await win.webContents.capturePage()).toPNG());
+  await js("document.getElementById('features-search').value='Obsidian'; document.getElementById('features-search').dispatchEvent(new Event('input'))");
+  assert.equal(await js("document.querySelectorAll('#features-list .feature-card').length"), 1);
+  await key('Escape');
+  assert.equal(await js("document.getElementById('features-dialog').open"), false);
+
   await type('raycast'); await key('k', { metaKey: true });
   await wait(() => js("document.getElementById('action-dialog').open"), 'actions screenshot');
   await painted();

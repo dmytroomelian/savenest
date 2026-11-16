@@ -45,6 +45,7 @@ final class ElectronBridge {
         model.updater.objectWillChange.sink { [weak self] in self?.scheduleSnapshot() }.store(in: &subscriptions)
         model.notes.objectWillChange.sink { [weak self] in self?.scheduleSnapshot() }.store(in: &subscriptions)
         model.cloud.objectWillChange.sink { [weak self] in self?.scheduleSnapshot() }.store(in: &subscriptions)
+        model.socialCapture.objectWillChange.sink { [weak self] in self?.scheduleSnapshot() }.store(in: &subscriptions)
         model.tabSearch.objectWillChange.sink { [weak self] in self?.scheduleSnapshot() }.store(in: &subscriptions)
         model.$library.dropFirst().receive(on: DispatchQueue.main).sink { [weak self] library in
             self?.model.tabSearch.updateLibrary(library.links)
@@ -88,6 +89,7 @@ final class ElectronBridge {
             && !model.showingAdd && !model.showingTags && model.sharingLink == nil
             && model.cleanupReview == nil && !model.isCapturing && !model.isCleaningTabs
             && !search.busy && !model.account.isBusy && !model.account.isSigningIn && !model.cloud.isBusy
+            && !model.socialCapture.isBusy
         let rows: [[String: Any]] = search.results.prefix(200).map { item in
             var row: [String: Any] = [
                 "id": item.id, "title": item.title, "url": item.url, "domain": item.domain,
@@ -169,6 +171,7 @@ final class ElectronBridge {
         state["captureSelection"] = captureSelection
         state["tags"] = model.allTags
         state["notesStatus"] = model.notes.status()
+        state["socialCapture"] = model.socialCapture.snapshot
         Self.write(["event": "state", "state": state])
     }
 
@@ -367,6 +370,9 @@ final class ElectronBridge {
         case "saveClipboard": if !model.isPreview { model.saveCurrentClipboard() }
         case "account": model.showAccount?()
         case "settings": model.showSettings?()
+        case "socialCaptureSettings":
+            model.requestedSettingsTab = "Capture"
+            model.showSettings?()
         case "tags": model.showSettings?(); model.showingTags = true
         case "share":
             guard let link = links.first else { return }

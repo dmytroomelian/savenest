@@ -19,6 +19,7 @@
     { id: 'history-sources', title: 'Browser history sources', detail: 'History access, connected profiles and privacy', symbol: 'history', ui: 'sources', keywords: 'history sources privacy access permission pause enable disable' },
     { id: 'settings', title: 'Settings', detail: 'Appearance, shortcuts and capture preferences', symbol: 'settings', command: 'settings', keywords: 'settings preferences hotkey keyboard shortcut theme appearance' },
     { id: 'shortcuts', title: 'Keyboard shortcuts', detail: 'Learn launcher keys and see your capture shortcuts', symbol: 'keyboard', ui: 'shortcuts', keywords: 'keyboard shortcuts keys help learn hotkeys' },
+    { id: 'explore', title: 'Explore features', detail: 'Browse capture, search, reading, organization and Pro capabilities', symbol: 'compass', ui: 'features', keywords: 'explore features guide catalog capabilities pro beta social capture slack linkedin x help', home: true },
     { id: 'account', title: 'Account & Pro', detail: 'Automatic saving · Account and billing', symbol: 'account', command: 'account', keywords: 'account pro cloud backup billing sign in login subscription payment' },
     { id: 'tags', title: 'Manage tags', detail: 'Rename or remove tags across your library', symbol: 'tag', command: 'tags', keywords: 'tags rename remove organize' },
     { id: 'refresh', title: 'Refresh tabs and history', detail: 'Read the latest browser state', symbol: 'refresh', command: 'refresh', keywords: 'refresh reload rescan sync' },
@@ -57,7 +58,7 @@
     const keys = { settings: '⌘,', shortcuts: '⌘/', 'add-link': '⌘N', refresh: '⌘R' };
     return catalog.filter(item => item.id !== 'undo' || state.canUndo).map(item => ({
       ...item, id: 'command:' + item.id, kind: 'command', key: keys[item.id] || '',
-      group: ['settings', 'shortcuts', 'account'].includes(item.id) ? 'Savenest' : item.scope ? 'Search'
+      group: ['settings', 'shortcuts', 'account', 'explore'].includes(item.id) ? 'Savenest' : item.scope ? 'Search'
         : item.home || item.command === 'capture' || item.command === 'saveClipboard' ? 'Save & read' : 'Library'
     })).sort((a, b) => groups.indexOf(a.group) - groups.indexOf(b.group)
       || (a.scope === 'Saved' ? -1 : b.scope === 'Saved' ? 1 : 0));

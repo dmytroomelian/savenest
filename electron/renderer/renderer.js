@@ -8,6 +8,7 @@ let editingID = null, editingRevision = null, captureID = null, editorBaseline =
 let captureSelected = new Set(), selectionSaving = false, actionItems = [], filteredActions = [], actionIndex = 0, fatal = false;
 let lastNativeMessage = '', noticeSource = '', discardAction = null;
 let shortcutReturnFocus = null;
+let featuresReturnFocus = null;
 const symbols = {
   keyboard: 'M3 6h18v12H3zM6 9h.01M9 9h.01M12 9h.01M15 9h.01M18 9h.01M6 12h.01M9 12h.01M12 12h.01M15 12h.01M18 12h.01M8 15h8',
   reader: 'M3 4h18v16H3zM13 4v16M6 8h4M6 12h4M16 8h2M16 12h2',
@@ -20,7 +21,8 @@ const symbols = {
   account: 'M12 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8M4 21v-2a8 8 0 0 1 16 0v2',
   tag: 'M3 3h9l9 9-9 9-9-9zM8 8h.01', refresh: 'M3 11a9 9 0 0 1 16-5l2 3M21 3v6h-6M21 13a9 9 0 0 1-16 5l-2-3M3 21v-6h6',
   export: 'M12 16V3M7 8l5-5 5 5M4 14v7h16v-7', import: 'M12 3v13M7 11l5 5 5-5M4 16v5h16v-5',
-  undo: 'M3 10h10a7 7 0 0 1 7 7M3 10l6-6M3 10l6 6', search: 'M10 3a7 7 0 1 0 0 14 7 7 0 0 0 0-14M15 15l6 6'
+  undo: 'M3 10h10a7 7 0 0 1 7 7M3 10l6-6M3 10l6 6', search: 'M10 3a7 7 0 1 0 0 14 7 7 0 0 0 0-14M15 15l6 6',
+  compass: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18M15.5 8.5l-2 5-5 2 2-5z'
 };
 function el(tag, className, text) {
   const node = document.createElement(tag); if (className) node.className = className;
@@ -212,6 +214,7 @@ function renderState() {
   $('home').title = `${state.launcherShortcut || '⌘O'} opens Savenest · History stays on this Mac`;
   $('home').setAttribute('aria-label', state.shortcutError ? 'Open Settings to fix the launcher shortcut' : 'Back to root search');
   if ($('shortcuts-dialog').open) renderShortcuts();
+  if ($('features-dialog').open) renderFeatures(true);
   if (state.message !== lastNativeMessage) {
     lastNativeMessage = state.message;
     if (state.message) notice(state.message, state.error, 'native');
@@ -239,6 +242,7 @@ async function execute(item) {
   if (item.ui === 'add') openEditor(null, false, item.url || '');
   else if (item.ui === 'sources') openSources();
   else if (item.ui === 'shortcuts') showShortcuts();
+  else if (item.ui === 'features') showFeatures();
   else if (item.scope) setScope(item.scope);
   else if (item.command) await run(item.command, item.action ? { action: item.action } : {});
 }
@@ -322,6 +326,101 @@ function showShortcuts() {
   if (!$('shortcuts-dialog').open) $('shortcuts-dialog').showModal();
   $('shortcuts-close').focus();
 }
+function featureBadge(label) { return el('span', 'feature-badge' + (label === 'Beta' ? ' beta' : ''), label); }
+function featureActionButton(item, className = 'feature-action') {
+  const button = el('button', className, item.action.label); button.type = 'button'; button.dataset.featureAction = item.id;
+  button.onclick = () => { closeFeatures(); void invokeFeatureAction(item.action); };
+  return button;
+}
+function featureKey(item) {
+  if (!item.shortcut) return '';
+  const binding = (state.shortcuts || []).find(entry => entry.id === item.shortcut);
+  return binding && binding.assigned !== false && binding.key ? binding.key : '';
+}
+function featureCard(item) {
+  const card = el('article', 'feature-card'); card.dataset.featureId = item.id;
+  const head = el('div', 'feature-head'); head.append(el('h4', 'feature-title', item.title));
+  for (const badge of item.badges || []) head.append(featureBadge(badge));
+  const key = featureKey(item);
+  if (key) head.append(el('span', 'feature-key', key));
+  card.append(head, el('p', 'feature-description', item.description));
+  if (item.action) card.append(featureActionButton(item));
+  return card;
+}
+function socialFeatureCard(catalog) {
+  const item = catalog.socialCapture, status = catalog.statusFor(state.socialCapture, state.preview);
+  const card = el('article', 'feature-card social-capture'); card.dataset.featureId = item.id;
+  const head = el('div', 'feature-head'); head.append(el('h4', 'feature-title', item.title));
+  for (const badge of item.badges || []) head.append(featureBadge(badge));
+  card.append(head, el('p', 'feature-description', item.summary));
+  const points = el('ul', 'social-points');
+  for (const point of item.points) points.append(el('li', '', point));
+  card.append(points, el('p', 'social-evidence', item.evidence));
+  const row = el('div', 'social-status-row');
+  row.append(el('span', 'feature-status ' + status.tone, status.label), el('span', 'social-status-detail', status.detail));
+  row.append(featureActionButton(item, 'feature-action social-cta'));
+  card.append(row);
+  return card;
+}
+function renderFeatures(preserve = false) {
+  const catalog = window.FeaturesCatalog;
+  if (!catalog) { $('features-list').replaceChildren(el('p', 'feature-empty', 'Feature guide unavailable.')); return; }
+  const list = $('features-list');
+  const focusedAction = preserve ? document.activeElement?.dataset?.featureAction : null;
+  const scrollTop = preserve ? list.scrollTop : 0;
+  const search = $('features-search');
+  const searchFocused = document.activeElement === search;
+  const selection = searchFocused ? {
+    start: search.selectionStart, end: search.selectionEnd, direction: search.selectionDirection
+  } : null;
+  const restoreSearch = () => {
+    if (document.activeElement !== search) search.focus();
+    if (selection && (search.selectionStart !== selection.start || search.selectionEnd !== selection.end || search.selectionDirection !== selection.direction)) {
+      search.setSelectionRange(selection.start, selection.end, selection.direction);
+    }
+  };
+  const words = search.value.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const matches = (item, extra = '') => {
+    const haystack = `${item.title} ${item.description || item.summary || ''} ${item.keywords || ''} ${(item.badges || []).join(' ')} ${extra}`.toLowerCase();
+    return words.every(word => haystack.includes(word));
+  };
+  const nodes = []; let count = 0;
+  if (matches(catalog.socialCapture, 'save from other apps beta pro')) { nodes.push(socialFeatureCard(catalog)); count += 1; }
+  for (const group of catalog.groups) {
+    const cards = group.items.filter(item => matches(item, group.title)).map(featureCard);
+    if (!cards.length) continue;
+    const section = el('section', 'feature-group'); section.setAttribute('aria-labelledby', 'feature-group-' + group.id);
+    const title = el('h3', 'feature-group-title', group.title); title.id = 'feature-group-' + group.id;
+    section.append(title, ...cards); nodes.push(section); count += cards.length;
+  }
+  if (!nodes.length) nodes.push(el('p', 'feature-empty', words.length ? 'No matching features. Try “save”, “search”, “Pro”, or “social”.' : 'No features to show.'));
+  list.replaceChildren(...nodes);
+  $('features-count').textContent = count ? `${count} ${count === 1 ? 'feature' : 'features'}` : '';
+  list.scrollTop = preserve ? scrollTop : 0;
+  if (!preserve) return;
+  if (focusedAction) {
+    const next = [...list.querySelectorAll('.feature-action')].find(node => node.dataset.featureAction === focusedAction);
+    if (next) next.focus(); else restoreSearch();
+  } else if (searchFocused) restoreSearch();
+}
+function showFeatures() {
+  if (fatal) return;
+  const catalog = window.FeaturesCatalog;
+  if (!catalog) { notice('The feature guide is unavailable.', true); return; }
+  featuresReturnFocus = document.activeElement;
+  if ($('action-dialog').open) $('action-dialog').close();
+  $('features-search').value = ''; renderFeatures();
+  if (!$('features-dialog').open) $('features-dialog').showModal();
+  $('features-search').focus();
+}
+function closeFeatures() { if ($('features-dialog').open) $('features-dialog').close(); }
+async function invokeFeatureAction(action) {
+  if (!action) return;
+  if (action.ui === 'add') { openEditor(null, false, action.url || ''); return; }
+  if (action.ui === 'shortcuts') { showShortcuts(); return; }
+  if (action.scope) { setScope(action.scope); return; }
+  if (action.command) await run(action.command, action.action ? { action: action.action } : {});
+}
 $('editor-form').onsubmit = async event => {
   event.preventDefault(); if (editorSaving) return;
   editorSaving = true; $('editor-error').textContent = ''; updateFooter();
@@ -354,6 +453,21 @@ $('home').onclick = () => { if (state.shortcutError) void run('settings'); else 
 $('actions').onclick = showActions;
 $('open-settings').onclick = () => void run('settings');
 $('show-shortcuts').onclick = showShortcuts;
+$('show-features').onclick = showFeatures;
+$('features-close').onclick = closeFeatures;
+$('features-search').oninput = () => renderFeatures();
+$('features-dialog').onkeydown = event => {
+  if (!['ArrowDown', 'ArrowUp'].includes(event.key) || event.metaKey || event.ctrlKey || event.altKey) return;
+  if (event.target === $('features-search') && event.key === 'ArrowUp') return;
+  const stops = [$('features-search'), ...$('features-dialog').querySelectorAll('.feature-action:not(:disabled)')];
+  const index = stops.indexOf(document.activeElement); if (index < 0) return;
+  const next = index + (event.key === 'ArrowDown' ? 1 : -1);
+  if (next >= 0 && next < stops.length) { event.preventDefault(); stops[next].focus(); }
+};
+$('features-dialog').onclose = () => {
+  if (featuresReturnFocus?.isConnected && !featuresReturnFocus.closest('dialog')) featuresReturnFocus.focus();
+  else focusSearch();
+};
 $('shortcuts-close').onclick = () => $('shortcuts-dialog').close();
 $('shortcut-settings').onclick = () => { $('shortcuts-dialog').close(); void run('settings'); };
 $('shortcuts-dialog').onclose = () => { if (shortcutReturnFocus?.isConnected && !shortcutReturnFocus.closest('dialog')) shortcutReturnFocus.focus(); else focusSearch(); };
@@ -383,6 +497,11 @@ document.addEventListener('keydown', event => {
   if (event.isComposing || event.keyCode === 229) return;
   if ($('shortcuts-dialog').open) {
     if (event.key === 'Escape' || (event.metaKey && event.key === '/')) { event.preventDefault(); $('shortcuts-dialog').close(); }
+    return;
+  }
+  if ($('features-dialog').open) {
+    if (event.key === 'Escape') { event.preventDefault(); closeFeatures(); }
+    else if (event.metaKey && event.key === '/') event.preventDefault();
     return;
   }
   if ($('discard-dialog').open) return;

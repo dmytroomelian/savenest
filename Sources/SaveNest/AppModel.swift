@@ -50,13 +50,15 @@ final class AppModel: ObservableObject {
     let account = AccountController()
     lazy var cloud = CloudLibraryController(model: self)
     lazy var aiConnections = AutomationController(model: self)
+    lazy var socialCapture = SocialCaptureController(model: self)
+    @Published var requestedSettingsTab: String?
     let analytics = UsageAnalytics()
     let clipboard = ClipboardMonitor()
     @Published var clipboardEnabled = UserDefaults.standard.bool(forKey: "clipboardEnabled") {
         didSet {
             guard !isPreview else { return }
             UserDefaults.standard.set(clipboardEnabled, forKey: "clipboardEnabled")
-            if clipboardEnabled && !AppRuntime.isPrivateBeta { clipboard.start() } else { clipboard.stop(); dismissClipboardNotice?() }
+            if clipboardEnabled && !AppRuntime.isPrivateBeta && !socialCapture.suppressesClipboardOffers { clipboard.start() } else { clipboard.stop(); dismissClipboardNotice?() }
         }
     }
     @Published var analyticsEnabled = UserDefaults.standard.object(forKey: "analyticsEnabled") as? Bool ?? true {
@@ -235,6 +237,7 @@ final class AppModel: ObservableObject {
         account.onChange = { [weak self] in
             guard let self else { return }
             self.cloud.accountDidChange()
+            self.socialCapture.accountDidChange()
             self.showOnboardingIfNeededForActiveAccount()
             self.objectWillChange.send()
         }
@@ -246,6 +249,7 @@ final class AppModel: ObservableObject {
         if !AppRuntime.isPrivateBeta {
             for action in hotkey.register(shortcuts) { shortcutErrors[action] = "Already in use. Choose another shortcut." }
         }
+        socialCapture.start()
     }
     var visibleLinks: [SavedLink] {
         let searchingEverywhere = !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && searchEverywhere
@@ -470,6 +474,18 @@ final class AppModel: ObservableObject {
     func cancelTabSelection() { tabSelection = nil; closeTabSelection?() }
     // Local capabilities never depend on an account, subscription, or network lease.
     var canWriteLibrary: Bool { !loadFailed }
+    /// Social capture shares the native owner's atomic write, undo and cloud path.
+    /// Re-saving a URL never replaces a person's notes, tags or archive state.
+    @discardableResult func saveSocialCapture(_ capture: SocialSaveCapture, includeText: Bool) -> Bool {
+        guard account.hasVerifiedSubscription, !isPreview, !AppRuntime.isPrivateBeta,
+              prepareLocalWrite(), (try? capture.validated()) != nil else { return false }
+        guard let next = try? SocialCapturePolicy.inserting(capture, into: library, includeText: includeText) else { return false }
+        if next == library { return true }
+        guard commit(next, undoTitle: "Save from another app") else { return false }
+        tabSearch.updateLibrary(library.links)
+        analytics.record(.linksSaved, count: 1)
+        return true
+    }
     private func prepareLocalWrite() -> Bool {
         guard canWriteLibrary else {
             error = "Your library couldn’t be opened. Restore a valid backup and restart Savenest. Your original file is unchanged."
@@ -694,7 +710,7 @@ final class AppModel: ObservableObject {
         return true
     }
     private func offerClipboard(_ url: URL) {
-        guard clipboardEnabled, !isCapturing, draft == nil, tabSelection == nil,
+        guard clipboardEnabled, !socialCapture.suppressesClipboardOffers, !isCapturing, draft == nil, tabSelection == nil,
               !library.links.contains(where: { Library.identity($0.url) == Library.identity(url.absoluteString) }) else { return }
         notify(CaptureNotice(title: "Save copied link?", message: url.host ?? "Copied web link", clipboardURL: url))
     }

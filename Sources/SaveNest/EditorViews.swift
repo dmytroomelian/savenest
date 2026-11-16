@@ -178,6 +178,8 @@ struct SettingsView: View {
         }.padding(32) }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(Color.paper).foregroundStyle(Color.ink).nestAppearance()
+        .onAppear { applyRequestedTab() }
+        .onChange(of: model.requestedSettingsTab) { _, _ in applyRequestedTab() }
         .alert(archiveIDs.map { "Archive \($0.count) \($0.count == 1 ? "link" : "links")?" } ?? "", isPresented: Binding(get: { archiveIDs != nil }, set: { if !$0 { archiveIDs = nil } }), presenting: archiveIDs) { ids in
             Button("Cancel", role: .cancel) { archiveIDs = nil }
             Button("Archive all") {
@@ -222,6 +224,11 @@ struct SettingsView: View {
         }
     }
 
+    private func applyRequestedTab() {
+        guard let name = model.requestedSettingsTab, let tab = SettingsTab(rawValue: name) else { return }
+        selectedTab = tab; model.requestedSettingsTab = nil
+    }
+
     private func select(_ tab: SettingsTab) {
         guard tab != selectedTab else { return }
         let tabs = SettingsTab.allCases
@@ -248,6 +255,7 @@ struct SettingsView: View {
             Link("Read the privacy policy ↗", destination: URL(string: "https://savenest.app/privacy")!).font(.system(size: 12))
             Button("Account & Pro…") { model.showAccount?() }.buttonStyle(QuietButton())
         case .capture:
+            SocialCaptureSettingsView(controller: model.socialCapture, account: model.account) { model.showAccount?() }
             VStack(alignment: .leading, spacing: 12) {
                 fieldLabel("CLIPBOARD")
                 Toggle("Offer to save copied links", isOn: $model.clipboardEnabled)
@@ -293,7 +301,7 @@ struct SettingsView: View {
             }.padding(20).nestSurface()
             VStack(alignment: .leading, spacing: 10) {
                 fieldLabel("BROWSERS & PRIVACY")
-                Text("Savenest reads browser tabs only when you use a capture or tab tool.")
+                Text("Tab tools read browser tabs when used. Optional Save from other apps observes enabled apps while they are in front.")
                     .font(.system(size: 11)).foregroundStyle(Color.muted)
                 Button("Open Automation Settings ↗") { NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Automation")!) }.buttonStyle(.link).font(.system(size: 11))
             }

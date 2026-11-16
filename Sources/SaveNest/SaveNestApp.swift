@@ -5,6 +5,10 @@ import SwiftUI
 @MainActor
 enum SaveNestApp {
     static func main() {
+        if ProcessInfo.processInfo.arguments.contains("--print-build-capabilities") {
+            print(SocialCaptureBuild.capabilityMarker)
+            return
+        }
         let application = NSApplication.shared
         let delegate = AppDelegate()
         application.delegate = delegate
@@ -132,7 +136,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         if model != nil && !model.isPreview { Task { await model.account.synchronizeLogin() } }
     }
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
-    func applicationWillTerminate(_ notification: Notification) { model?.aiConnections.stop(); electronBridge?.event("quit") }
+    func applicationWillTerminate(_ notification: Notification) { model?.socialCapture.stop(); model?.aiConnections.stop(); electronBridge?.event("quit") }
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool { openLibrary(); return true }
     @objc func openLibrary() {
         if electronBridge != nil && model.cleanupReview != nil { openSettings(); return }

@@ -1,6 +1,6 @@
 # Savenest privacy policy
 
-Updated November 11, 2026
+Updated November 16, 2026
 
 This policy describes free local features, automatic saving and recovery with Pro, the Pro MCP connection in 0.13.0, and friend invitations in 0.13.1. See the [MCP guide](mcp.md) for client compatibility and release verification.
 
@@ -28,6 +28,16 @@ History search reads supported browsers’ local history databases without chang
 Clipboard offers are off by default. If you enable them, Savenest watches for a newly copied web URL and offers to save it. Clipboard contents are not uploaded. You can turn this off in Settings.
 
 ## Connections made by the app
+
+### Save from other apps — Pro beta, 0.14.0
+
+This optional feature starts off, with every source unselected. After you turn it on, choose Slack, LinkedIn, or X, and grant macOS Accessibility access, Savenest reads the enabled app's accessible controls while it is in front to detect new saves. It does not import bookmark history, connect a social account, install an extension, or collect typed keystrokes. Slack for Mac and Safari were tested in the capture prototype; Chrome remains experimental.
+
+Captured permalinks and titles enter your ordinary saved library. Visible post or message text is added as a note only if you separately enable that option; it starts off. These saved records follow the same Pro cloud saving and AI connection permissions as other library records. Private Slack links still require the original workspace's access when opened. Local detection does not mean captured records stay only on this Mac when cloud saving or AI access is enabled.
+
+LinkedIn requires an additional option allowing Savenest to reopen the same post menu, copy its link, and restore the prior clipboard. Clipboard data is held in memory for that operation and never included in reporting. If another copy or an interruption makes ownership uncertain, Savenest leaves the newer clipboard content intact and may miss the save. Slack and X do not need this link-copy step. Turning capture off or pausing it stops observation; an operation already in progress may finish its bounded clipboard cleanup.
+
+Capture requires recently verified Pro access and pauses if access cannot be verified online. You can disable each source, pause all capture, or turn it off in Settings → Capture. Disabling capture does not delete previously saved library records.
 
 ### Read & note
 

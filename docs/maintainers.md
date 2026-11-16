@@ -10,6 +10,10 @@ These notes cover official Savenest distribution. Contributors only need the [de
 
 Keep local libraries, signing material, credentials, generated archives, and local staging paths out of Git.
 
+Official 0.14.0 builds require `SAVENEST_PRO_CAPTURE_PACKAGE` pointing to a reviewed private `SaveNestProCapture` package, including its `LICENSE` and `THIRD_PARTY_NOTICES.txt`. Set `SAVENEST_MCP_PACKAGE_PATH` or `SAVENEST_MCP_BINARY` for the existing Pro MCP adapter. An existing released MCP binary may be reused with its original notices after verifying its archive checksum and signature. Record both public and private source revisions and component hashes with the staged release. Never commit the private module or capture experiments to this public repository.
+
+The helper carries a compiled capture capability marker. Packaging rejects a stale helper whose marker disagrees with the requested module, and archive validation checks every architecture against the outer `SaveNestSocialCaptureEnabled` flag. Free public builds continue to work without either private component.
+
 ## Official Electron distribution
 
 1. Complete the relevant checks in [CONTRIBUTING.md](../CONTRIBUTING.md) and review the [preview acceptance checklist](preview-acceptance.md). Passing build checks does not establish installed-app migration, Intel runtime, or update behavior.

@@ -10,6 +10,7 @@ const { glassWindowOptions, updateWindowMaterial } = require('./window-material.
 
 const preview = !app.isPackaged && process.argv.includes('--preview');
 const smoke = preview && process.argv.includes('--smoke-test');
+const reviewUI = preview && process.argv.includes('--review-ui');
 const readerLive = preview && !smoke && process.argv.includes('--reader-live');
 const root = path.join(__dirname, '..');
 app.setName(readerLive ? 'Savenest Reader Test' : preview ? 'Savenest Preview' : 'Savenest');
@@ -92,7 +93,7 @@ function createLauncherWindow() {
     clearTimeout(blurTimer);
     blurTimer = setTimeout(() => {
       if (launcher !== win || launcher.isDestroyed() || quitting) return;
-      if (!smoke && !modalDepth && !launcher.isFocused()) hide();
+      if (!smoke && !reviewUI && !modalDepth && !launcher.isFocused()) hide();
     }, 120);
   });
   launcher.on('focus', () => {

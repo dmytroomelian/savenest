@@ -6,6 +6,9 @@ import { tmpdir } from 'node:os';
 if (!process.env.SIGNING_IDENTITY || !process.env.NOTARY_PROFILE) {
   throw new Error('Set SIGNING_IDENTITY and NOTARY_PROFILE to existing release credentials.');
 }
+if (!process.env.SAVENEST_PRO_CAPTURE_PACKAGE || !(process.env.SAVENEST_MCP_PACKAGE_PATH || process.env.SAVENEST_MCP_BINARY)) {
+  throw new Error('Official releases require the reviewed Pro capture and MCP components. Public builds use npm run build.');
+}
 execFileSync('xcrun', ['notarytool', 'history', '--keychain-profile', process.env.NOTARY_PROFILE], { stdio: 'ignore' });
 const manifest = JSON.parse(await readFile('package.json', 'utf8'));
 const releaseDirectory = path.resolve(`build/releases/electron/${manifest.version}`);

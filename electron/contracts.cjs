@@ -4,7 +4,7 @@ const APP_URL = 'savenest-ui://app/index.html';
 const commands = new Set(['snapshot', 'search', 'refresh', 'suspend', 'retryContext', 'open', 'copy',
   'save', 'saveClose', 'close', 'favorite', 'archive', 'restore', 'delete', 'undo', 'edit', 'add',
   'account', 'settings', 'tags', 'share', 'cleanup', 'export', 'import', 'capture', 'synchronize', 'onboardingDone', 'privacy', 'analyticsEnabled', 'usageNoticeDismiss', 'dismissMessage',
-  'dismiss', 'view', 'historyEnabled', 'historyAccess', 'saveDraft', 'cancelDraft', 'saveSelection', 'cancelSelection', 'saveClipboard', 'readerCurrent', 'readerOpen']);
+  'dismiss', 'view', 'historyEnabled', 'historyAccess', 'saveDraft', 'cancelDraft', 'saveSelection', 'cancelSelection', 'saveClipboard', 'readerCurrent', 'readerOpen', 'socialCaptureSettings']);
 const scopes = new Set(['All', 'Open', 'Saved', 'History', 'Favorites', 'Notes', 'Archive']);
 
 function validateCommand(input) {
@@ -45,7 +45,7 @@ function assetName(raw) {
     const url = new URL(raw);
     if (url.protocol !== 'savenest-ui:' || url.hostname !== 'app' || url.port || url.username || url.password) return null;
     const name = url.pathname.slice(1);
-    return ['index.html', 'launcher-model.js', 'renderer.js', 'styles.css', 'glass.css', 'workspace.html', 'workspace.js', 'workspace.css'].includes(name) ? name : null;
+    return ['index.html', 'launcher-model.js', 'renderer.js', 'styles.css', 'glass.css', 'features.js', 'features.css', 'workspace.html', 'workspace.js', 'workspace.css'].includes(name) ? name : null;
   } catch { return null; }
 }
 

@@ -36,9 +36,18 @@ test('local protocol serves only fixed launcher assets', () => {
   assert.equal(assetName(APP_URL), 'index.html');
   assert.equal(assetName('savenest-ui://app/styles.css'), 'styles.css');
   assert.equal(assetName('savenest-ui://app/launcher-model.js'), 'launcher-model.js');
+  assert.equal(assetName('savenest-ui://app/features.js'), 'features.js');
+  assert.equal(assetName('savenest-ui://app/features.css'), 'features.css');
   for (const url of ['file:///etc/passwd', 'savenest-ui://elsewhere/index.html', 'savenest-ui://app/../../main.cjs',
     'savenest-ui://app/%2e%2e%2fmain.cjs', 'savenest-ui://app/preload.cjs', 'savenest-ui://user@app/index.html',
-    'savenest-ui://app:123/index.html', 'invalid']) assert.equal(assetName(url), null);
+    'savenest-ui://app:123/index.html', 'savenest-ui://app/features.json', 'invalid']) assert.equal(assetName(url), null);
+});
+
+test('social capture setup is an allowed launcher command', () => {
+  assert.deepEqual(validateCommand({ command: 'socialCaptureSettings' }), { command: 'socialCaptureSettings' });
+  assert.deepEqual(validateCommand({ command: 'socialCaptureSettings', executable: '/bin/sh', enabled: true }), { command: 'socialCaptureSettings', enabled: true });
+  assert.throws(() => validateCommand({ command: 'socialCapture' }));
+  assert.throws(() => validateCommand({ command: 'startSocialCapture' }));
 });
 
 test('privacy actions cannot supply a destination or enable analytics with a non-boolean', () => {

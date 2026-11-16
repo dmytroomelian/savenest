@@ -7,6 +7,7 @@ import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import { prepareMCP } from './mcp-package.mjs';
+import { prepareSocialCapture } from './social-capture-package.mjs';
 
 const root = process.cwd();
 const architecture = process.env.ELECTRON_ARCH || process.arch;
@@ -37,6 +38,7 @@ if (helperValue('CFBundleIdentifier') !== 'app.savenest.mac') throw new Error('T
 execFileSync('lipo', [path.join(helper, 'Contents/MacOS/SaveNest'), '-verify_arch', architecture === 'x64' ? 'x86_64' : 'arm64']);
 const workspace = path.resolve(process.env.PACKAGE_WORK_DIR || 'build');
 const mcp = await prepareMCP({ architecture, workspace });
+const socialCapture = await prepareSocialCapture({ binary: path.join(helper, 'Contents/MacOS/SaveNest') });
 const stage = path.join(workspace, `electron-package-${architecture}`);
 await rm(stage, { recursive: true, force: true });
 await mkdir(stage, { recursive: true });
@@ -57,7 +59,7 @@ const apps = await packager({
   // Preserve Sparkle's build ordering and EdDSA identity for migration from the native app.
   // Electron still uses Squirrel; neither the outer app nor its helper starts Sparkle.
   extendInfo: { CFBundleDisplayName: 'Savenest', CFBundleName: 'Savenest', LSMinimumSystemVersion: '14.0', NSAppleEventsUsageDescription: 'Savenest reads browser tabs when you save or search them.',
-    SUPublicEDKey: nativePublicKey, SaveNestUpdatesEnabled: false, SaveNestMCPEnabled: Boolean(mcp),
+    SUPublicEDKey: nativePublicKey, SaveNestUpdatesEnabled: false, SaveNestMCPEnabled: Boolean(mcp), SaveNestSocialCaptureEnabled: socialCapture.enabled,
     CFBundleURLTypes: [{ CFBundleURLName: 'app.savenest.electron.auth', CFBundleURLSchemes: ['savenest'] }] }
 });
 for (const directory of apps) {
@@ -70,6 +72,10 @@ for (const directory of apps) {
   await cp('node_modules/electron/dist/LICENSES.chromium.html', path.join(notices, 'LICENSES.chromium.html'));
   await cp('build/reader-third-party-licenses.txt', path.join(notices, 'reader-third-party-licenses.txt'));
   await cp(path.resolve(process.env.SWIFT_SCRATCH_PATH || '.build', 'artifacts/sparkle/Sparkle/LICENSE'), path.join(notices, 'Sparkle-LICENSE.txt'));
+  if (socialCapture.enabled) {
+    await cp(socialCapture.license, path.join(notices, 'SaveNest-Pro-Capture-LICENSE.txt'));
+    await cp(socialCapture.thirdParty, path.join(notices, 'SaveNest-Pro-Capture-THIRD-PARTY-NOTICES.txt'));
+  }
 
   const mcpExecutable = path.join(app, 'Contents/Resources/savenest-mcp');
   if (mcp) {

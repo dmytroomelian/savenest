@@ -42,6 +42,12 @@ The private adapter must not be included in a public source archive under this r
 
 ## Contributions and future releases
 
+### Pro Capture boundary
+
+The 0.14.0 capture observers, saved-state detection, and clipboard transaction handling are a separate private `SaveNestProCapture` module under the [Pro Capture component license](pro-capture-license.md). Public settings, the validated event contract, the optional adapter, and shared library insertion remain MIT. Public builds omit the private module unless `SAVENEST_PRO_CAPTURE_PACKAGE` explicitly selects it. The private module receives no account tokens and cannot write the library itself.
+
+Official distributions identify the included capture capability and bundle its commercial license and dependency notices. Private sources and experimental capture code must not enter public source archives. Existing MIT permissions and free local features remain unchanged.
+
 Public contributions use MIT, as described in [CONTRIBUTING.md](../CONTRIBUTING.md). They do not become subject to paid resale restrictions simply because a commercial build uses them. Any separately contributed proprietary code needs explicit contribution terms for that component.
 
 Each proprietary distribution must identify its covered components and rights holder and include the applicable component terms and dependency notices. Publishing those terms does not announce that the component has passed compatibility checks or been released.

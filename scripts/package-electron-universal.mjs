@@ -43,6 +43,8 @@ assert.equal(plist(apps.arm64, 'CFBundleVersion'), plist(apps.x64, 'CFBundleVers
 const mcpFlag = bundle => { try { return plist(bundle, 'SaveNestMCPEnabled') === 'true'; } catch { return false; } };
 const hasMCP = mcpFlag(apps.arm64);
 assert.equal(hasMCP, mcpFlag(apps.x64), 'Both release architectures must contain the same MCP component choice.');
+assert.equal(plist(apps.arm64, 'SaveNestSocialCaptureEnabled'), plist(apps.x64, 'SaveNestSocialCaptureEnabled'),
+  'Both release architectures must contain the same social capture component choice.');
 assert.equal(await sha256(path.join(apps.arm64, 'Contents/Resources/app.asar')),
   await sha256(path.join(apps.x64, 'Contents/Resources/app.asar')), 'Release app code must match across architectures');
 

@@ -1,5 +1,19 @@
 # Using Savenest
 
+## Explore features
+
+Choose **Explore features** in the launcher footer, root search, or Actions. Search for a capability and use its button to open the matching tool or settings. Closing the guide returns to your previous search and selection. Pro and Beta labels identify paid features and features still being tested.
+
+## Save from other apps — Pro beta
+
+In **Settings → Capture**, turn on **Save from other apps**, then choose Slack for Mac, LinkedIn, or X. Grant Savenest Accessibility access when requested. Capture requires active, recently verified Pro access and starts off with no sources selected. **How it works** explains setup and limitations. Use **Pause capture** to stop observation temporarily.
+
+Use the source app's normal Save for later, Save, or Bookmark button while it is in front. Savenest adds the detected permalink to your usual library. Existing saved notes, tags, favorites, and archive state are preserved. It does not import older saves or saves made on other devices. Slack must show the message before and after saving.
+
+For LinkedIn, also enable automatic link copying. Savenest briefly reopens the saved post's menu, copies its link, and restores your clipboard. Input, scrolling, switching apps, or another copy can cancel capture. X exposes the post link directly. Slack for Mac and Safari were tested in the prototype; Chrome is experimental. Site changes and incomplete views can cause missed saves.
+
+**Include visible post or message text as a note** is optional and off initially. Captured links, titles, and optional notes follow your usual library cloud saving and AI permissions. A Slack link still needs workspace access to open. Capture pauses if Pro cannot be verified; manual local saving remains available.
+
 [Back to the project](../README.md) · [Privacy](privacy.md)
 
 Local saving, search, reading, browser tools, and import/export remain free. The optional [Pro MCP connection](mcp.md), included in 0.13.0, lets Codex or Claude use selected links and quick notes, organize the library, and manage permitted tabs. Claude Desktop setup is available, but its compatibility is unverified.

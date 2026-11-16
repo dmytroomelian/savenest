@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import assert from 'node:assert/strict';
 import { extractFile } from '@electron/asar';
+import { captureCapability } from './social-capture-package.mjs';
 
 const [archive, architecture] = process.argv.slice(2);
 if (!archive || !['arm64', 'x64', 'universal'].includes(architecture)) throw new Error('Usage: node scripts/check-electron-package.mjs ARCHIVE arm64|x64|universal');
@@ -33,6 +34,18 @@ try {
     assert.equal(plist(bundle, 'SaveNestUpdatesEnabled'), 'false', 'The Electron app and embedded helper must not activate Sparkle.');
   }
   const cpus = architecture === 'universal' ? ['arm64', 'x86_64'] : [architecture === 'x64' ? 'x86_64' : 'arm64'];
+  const hasSocialCapture = plist(app, 'SaveNestSocialCaptureEnabled') === 'true';
+  for (const cpu of cpus) {
+    const thin = path.join(temporary, `capture-capability-${cpu}`);
+    const binary = path.join(helper, 'Contents/MacOS/SaveNest');
+    if (architecture === 'universal') run('lipo', [binary, '-thin', cpu, '-output', thin]);
+    assert.equal(captureCapability(architecture === 'universal' ? thin : binary), hasSocialCapture, 'Every helper architecture must match capture capability metadata.');
+  }
+  if (hasSocialCapture) {
+    for (const name of ['SaveNest-Pro-Capture-LICENSE.txt', 'SaveNest-Pro-Capture-THIRD-PARTY-NOTICES.txt']) {
+      assert.ok((await readFile(path.join(app, 'Contents/Resources/licenses', name))).length > 50);
+    }
+  }
   const mcpExecutable = path.join(app, 'Contents/Resources/savenest-mcp');
   let hasMCP = false;
   try { hasMCP = plist(app, 'SaveNestMCPEnabled') === 'true'; } catch { /* Older public releases have no MCP component. */ }
@@ -74,6 +87,6 @@ try {
   let rejected = false;
   try { run('codesign', ['--verify', '--deep', '--strict', app]); } catch { rejected = true; }
   assert.equal(rejected, true, 'A modified app archive must fail signature verification.');
-  console.log(JSON.stringify({ archive: path.resolve(archive), architecture, version, build, sha256, mcp: hasMCP,
+  console.log(JSON.stringify({ archive: path.resolve(archive), architecture, version, build, sha256, mcp: hasMCP, socialCapture: hasSocialCapture,
     checks: ['matching versions and numeric builds', 'Sparkle public-key continuity', 'correct architectures', 'signature', 'stapled notarization', 'Gatekeeper', 'native updater disabled', 'licenses', 'tamper rejection'] }, null, 2));
 } finally { await rm(temporary, { recursive: true, force: true }); }

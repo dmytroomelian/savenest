@@ -616,6 +616,7 @@ func XCTAssertThrowsError<T>(_ expression: @autoclosure () throws -> T) {
 }
 @main enum Checks {
     @MainActor static func main() async throws {
+        try runSocialCapturePolicyChecks()
         checkTabWorkspace()
         try checkBrowserHistory()
         try runNoteFileChecks()
