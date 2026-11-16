@@ -40,7 +40,7 @@ const mcp = await prepareMCP({ architecture, workspace });
 const stage = path.join(workspace, `electron-package-${architecture}`);
 await rm(stage, { recursive: true, force: true });
 await mkdir(stage, { recursive: true });
-await cp('electron', path.join(stage, 'electron'), { recursive: true, filter: source => !source.includes('/tests') && !source.endsWith('smoke.cjs') });
+await cp('electron', path.join(stage, 'electron'), { recursive: true, filter: source => !source.includes('/tests') && !source.includes('/native/') && !source.endsWith('/native') && !source.endsWith('smoke.cjs') });
 for (const name of ['LICENSE', 'THIRD_PARTY_NOTICES.md']) {
   try { await cp(name, path.join(stage, name)); }
   catch (error) { if (distribution) throw new Error(`${name} is required for a public release.`, { cause: error }); }
@@ -58,16 +58,28 @@ const apps = await packager({
   // Electron still uses Squirrel; neither the outer app nor its helper starts Sparkle.
   extendInfo: { CFBundleDisplayName: 'Savenest', CFBundleName: 'Savenest', LSMinimumSystemVersion: '14.0', NSAppleEventsUsageDescription: 'Savenest reads browser tabs when you save or search them.',
     SUPublicEDKey: nativePublicKey, SaveNestUpdatesEnabled: false, SaveNestMCPEnabled: Boolean(mcp),
+    NSServices: [{
+      NSMenuItem: { default: 'Add to SaveNest…' },
+      NSMessage: 'addToSaveNest',
+      NSPortName: 'Savenest',
+      NSRequiredContext: { NSTextContent: 'URL' },
+      NSSendTypes: ['public.url', 'public.utf8-plain-text', 'NSStringPboardType']
+    }],
     CFBundleURLTypes: [{ CFBundleURLName: 'app.savenest.electron.auth', CFBundleURLSchemes: ['savenest'] }] }
 });
 for (const directory of apps) {
   const app = path.join(directory, 'SaveNest.app');
   const embeddedHelper = path.join(app, 'Contents/Resources/SaveNest.app');
   await cp(helper, embeddedHelper, { recursive: true, verbatimSymlinks: true });
+  const servicesAdapter = path.join(app, 'Contents/Resources/native/savenest-services.node');
+  await mkdir(path.dirname(servicesAdapter), { recursive: true });
+  await cp(path.resolve('build/services', architecture, 'savenest-services.node'), servicesAdapter);
+  execFileSync('lipo', [servicesAdapter, '-verify_arch', architecture === 'x64' ? 'x86_64' : 'arm64']);
   const notices = path.join(app, 'Contents/Resources/licenses');
   await mkdir(notices, { recursive: true });
   await cp('node_modules/electron/dist/LICENSE', path.join(notices, 'Electron-LICENSE.txt'));
   await cp('node_modules/electron/dist/LICENSES.chromium.html', path.join(notices, 'LICENSES.chromium.html'));
+  await cp('node_modules/node-api-headers/LICENSE', path.join(notices, 'Node-API-LICENSE.txt'));
   await cp('build/reader-third-party-licenses.txt', path.join(notices, 'reader-third-party-licenses.txt'));
   await cp(path.resolve(process.env.SWIFT_SCRATCH_PATH || '.build', 'artifacts/sparkle/Sparkle/LICENSE'), path.join(notices, 'Sparkle-LICENSE.txt'));
 
@@ -86,6 +98,8 @@ for (const directory of apps) {
     [FuseV1Options.OnlyLoadAppFromAsar]: true
   });
   execFileSync('xattr', ['-cr', app]);
+  execFileSync('codesign', ['--force', ...(distribution ? ['--options', 'runtime', '--timestamp'] : []),
+    '--sign', distribution ? identity : '-', servicesAdapter], { stdio: 'inherit' });
   if (distribution) {
     if (mcp) execFileSync('codesign', ['--force', '--options', 'runtime', '--timestamp', '--sign', identity, mcpExecutable], { stdio: 'inherit' });
     // The Swift helper and its Sparkle framework are already signed inside-out.

@@ -387,6 +387,11 @@ final class ElectronBridge {
                 return
             }
             model.capture(action: action, sourceApplication: panelVisible ? previousApplication : nil)
+        case "serviceCapture":
+            guard let raw = request.url, let url = ClipboardLink.parse(raw) else {
+                throw Failure(message: "Select one complete http:// or https:// web address.")
+            }
+            if let message = model.beginServicesCapture(url) { throw Failure(message: message) }
         case "callback":
             guard !model.isPreview, let raw = request.url, let url = URL(string: raw), url.scheme == "savenest" else { return }
             model.account.handleIncomingURL(url)

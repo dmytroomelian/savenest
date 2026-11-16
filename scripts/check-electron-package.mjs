@@ -16,6 +16,7 @@ try {
   const app = path.join(temporary, 'SaveNest.app');
   const helper = path.join(app, 'Contents/Resources/SaveNest.app');
   const plist = (bundle, key) => run('/usr/libexec/PlistBuddy', ['-c', `Print :${key}`, path.join(bundle, 'Contents/Info.plist')]);
+  const info = bundle => JSON.parse(run('/usr/bin/plutil', ['-convert', 'json', '-o', '-', path.join(bundle, 'Contents/Info.plist')]));
   const nativeValue = key => run('/usr/libexec/PlistBuddy', ['-c', `Print :${key}`, 'Resources/Info.plist']);
   const version = plist(app, 'CFBundleShortVersionString');
   const build = nativeValue('CFBundleVersion');
@@ -27,12 +28,26 @@ try {
   assert.equal(plist(app, 'CFBundleIdentifier'), 'app.savenest.electron');
   assert.equal(plist(helper, 'CFBundleIdentifier'), 'app.savenest.mac');
   assert.equal(plist(helper, 'CFBundleShortVersionString'), version);
+  const outerInfo = info(app), helperInfo = info(helper);
+  assert.equal(outerInfo.NSServices?.length, 1, 'The outer Electron app must advertise exactly one Services entry.');
+  const service = outerInfo.NSServices[0];
+  assert.equal(service.NSPortName, 'Savenest', 'Services must target the outer application.');
+  assert.equal(service.NSMessage, 'addToSaveNest', 'Services must call the provider selector.');
+  assert.deepEqual(service.NSSendTypes, ['public.url', 'public.utf8-plain-text', 'NSStringPboardType'], 'Services must accept URL and text input.');
+  assert.equal(service.NSRequiredContext?.NSTextContent, 'URL', 'Services must require URL text context.');
+  assert.equal(service.NSMenuItem?.default, 'Add to SaveNest…', 'Services must expose one menu item.');
+  assert.equal(service.NSReturnTypes, undefined, 'Services must not declare output types.');
+  assert.equal(service.NSKeyEquivalent, undefined, 'Services must not declare a keyboard binding.');
+  assert.equal(helperInfo.NSServices, undefined, 'The embedded native helper must not duplicate the Services declaration.');
   for (const bundle of [app, helper]) {
     assert.equal(plist(bundle, 'CFBundleVersion'), build, 'Outer app, helper and native source must use the same numeric build.');
     assert.equal(plist(bundle, 'SUPublicEDKey'), publicKey, 'Outer app, helper and native source must preserve the Sparkle public key.');
     assert.equal(plist(bundle, 'SaveNestUpdatesEnabled'), 'false', 'The Electron app and embedded helper must not activate Sparkle.');
   }
   const cpus = architecture === 'universal' ? ['arm64', 'x86_64'] : [architecture === 'x64' ? 'x86_64' : 'arm64'];
+  const servicesAdapter = path.join(app, 'Contents/Resources/native/savenest-services.node');
+  for (const cpu of cpus) run('lipo', [servicesAdapter, '-verify_arch', cpu]);
+  run('codesign', ['--verify', '--strict', servicesAdapter]);
   const mcpExecutable = path.join(app, 'Contents/Resources/savenest-mcp');
   let hasMCP = false;
   try { hasMCP = plist(app, 'SaveNestMCPEnabled') === 'true'; } catch { /* Older public releases have no MCP component. */ }
@@ -63,7 +78,7 @@ try {
   const asar = path.join(app, 'Contents/Resources/app.asar');
   const manifest = JSON.parse(extractFile(asar, 'package.json').toString());
   assert.equal(manifest.version, version); assert.equal(manifest.saveNestRelease, true);
-  for (const name of ['Electron-LICENSE.txt', 'LICENSES.chromium.html', 'Sparkle-LICENSE.txt']) {
+  for (const name of ['Electron-LICENSE.txt', 'LICENSES.chromium.html', 'Sparkle-LICENSE.txt', 'Node-API-LICENSE.txt']) {
     assert.ok((await readFile(path.join(app, 'Contents/Resources/licenses', name))).length > 50);
   }
   const hash = createHash('sha256');
@@ -75,5 +90,5 @@ try {
   try { run('codesign', ['--verify', '--deep', '--strict', app]); } catch { rejected = true; }
   assert.equal(rejected, true, 'A modified app archive must fail signature verification.');
   console.log(JSON.stringify({ archive: path.resolve(archive), architecture, version, build, sha256, mcp: hasMCP,
-    checks: ['matching versions and numeric builds', 'Sparkle public-key continuity', 'correct architectures', 'signature', 'stapled notarization', 'Gatekeeper', 'native updater disabled', 'licenses', 'tamper rejection'] }, null, 2));
+    checks: ['matching versions and numeric builds', 'Sparkle public-key continuity', 'correct architectures', 'signature', 'stapled notarization', 'Gatekeeper', 'native updater disabled', 'Services declaration only on the outer app', 'licenses', 'tamper rejection'] }, null, 2));
 } finally { await rm(temporary, { recursive: true, force: true }); }

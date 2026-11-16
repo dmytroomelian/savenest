@@ -112,3 +112,9 @@ In 0.13.1, open **Account & Pro → Invite a friend**, sign in, enter your frien
 A friend new to paid Savenest pays **$1.99 for the first monthly payment**, then **$4.99/month**, before applicable tax. After they pay, you get one **$3 discount** on your first eligible monthly checkout or a later monthly renewal. Yearly plans are excluded. Each account gets at most one discounted month across both roles, even when it sends several invitations. Monthly Pro renews automatically until cancelled.
 
 Invitations expire 30 days after sending. A reward for a new checkout expires 30 days after qualification. The [privacy policy](privacy.md) explains invitation email delivery and referral records.
+
+### Save selected URLs with Services
+
+Select a complete `https://` or `http://` URL, including text in your browser's address bar. Control-click and choose **Services → Add to SaveNest…**. You can also use the current app's **Services** menu. SaveNest opens its existing editor, where you can add an optional note and tags before choosing **Save**. Cancel leaves your library unchanged. Existing links open with their saved notes and tags; browser tabs stay open.
+
+This ships inside SaveNest and needs no browser extension. Availability depends on the source app supporting Services for its selection. If the entry is missing, open SaveNest once and check **System Settings → Keyboard → Keyboard Shortcuts → Services**. Select **Add to SaveNest…** there if it is disabled. Finish or cancel an existing editor before sending another URL. Services accepts one complete URL at a time, not prose containing URLs or a selection of several links.
