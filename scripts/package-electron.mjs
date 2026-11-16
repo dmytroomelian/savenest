@@ -131,11 +131,11 @@ for (const directory of apps) {
   const hash = createHash('sha256');
   for await (const chunk of createReadStream(archive)) hash.update(chunk);
   const artifact = { architecture, file: filename,
-    url: `https://github.com/dmytroomelian/savenest/releases/download/v${manifest.version}/${filename}`,
+    url: `https://github.com/dmytro-omelian/savenest/releases/download/v${manifest.version}/${filename}`,
     sha256: hash.digest('hex'), size: (await stat(archive)).size };
   const feed = { currentRelease: manifest.version, releases: [{ version: manifest.version, updateTo: {
     version: manifest.version, url: artifact.url, name: `Savenest ${manifest.version}`,
-    notes: mcp ? 'Connect Codex and Claude to saved links with Pro. Search and organize your library, and save or close tabs with approved permissions. Free local saving and search remain available.' : 'Optional Cloud backup and restore, monthly and yearly subscriptions, and safe local recovery. Free local saving and search remain available.',
+    notes: socialCapture.enabled ? 'Explore 26 features from the launcher. New Pro beta: capture saves from Slack, LinkedIn and X without an extension. Turn it on and read How it works in Settings → Capture. Capture starts off; Chrome is experimental.' : 'Explore Savenest features from the launcher. Free local saving, reading, search and organization remain available.',
     pub_date: new Date().toISOString(), sha256: artifact.sha256, size: artifact.size
   } }] };
   await mkdir(path.join(releaseDirectory, architecture), { recursive: true });

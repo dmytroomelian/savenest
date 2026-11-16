@@ -106,7 +106,7 @@ run('codesign', ['--verify', '--deep', '--strict', app]);
 run('ditto', ['-c', '-k', '--sequesterRsrc', '--keepParent', app, archive]);
 await mkdir(path.join(releaseDirectory, 'universal'), { recursive: true });
 const artifact = { architecture: 'universal', file: filename,
-  url: `https://github.com/dmytroomelian/savenest/releases/download/v${manifest.version}/${filename}`,
+  url: `https://github.com/dmytro-omelian/savenest/releases/download/v${manifest.version}/${filename}`,
   sha256: await sha256(archive), size: (await stat(archive)).size };
 await writeFile(path.join(releaseDirectory, 'universal/artifact.json'), JSON.stringify(artifact, null, 2) + '\n');
 await writeFile(path.join(releaseDirectory, 'universal/SHA256SUMS.txt'), `${artifact.sha256}  ${filename}\n`);
