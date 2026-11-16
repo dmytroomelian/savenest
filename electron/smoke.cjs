@@ -36,7 +36,8 @@ exports.run = async ({ win, native, root, show, toggle }) => {
     await new Promise(resolve => setTimeout(resolve, 120));
   };
   await native.request({ command: 'snapshot' });
-  await wait(() => state?.preview && state.rows.length >= 10, 'native preview fixture');
+  try { await wait(() => state?.preview && state.rows.length >= 10, 'native preview fixture'); }
+  catch (error) { throw new Error(`${error.message}: ${JSON.stringify({preview:state?.preview, rows:state?.rows?.length, query:state?.query, scope:state?.scope, loading:state?.loading})}`); }
   await wait(() => js("document.querySelectorAll('.row').length >= 10"), 'launcher results');
   assert.equal(win.isAlwaysOnTop(), true);
   assert.equal(win.getBounds().width, 760);
