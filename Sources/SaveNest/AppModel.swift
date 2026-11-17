@@ -101,8 +101,13 @@ final class AppModel: ObservableObject {
     @Published private(set) var onboardingCompleted = true
     @Published private(set) var archiveUndo: ArchiveUndo?
     struct ArchiveUndo {
+        struct PreviousState {
+            let isArchived: Bool
+            let archiveHistory: [Date]
+        }
         let ids: Set<UUID>
         let archived: Bool
+        let previous: [UUID: PreviousState]
         var message: String { "\(ids.count) " + (ids.count == 1 ? "link " : "links ") + (archived ? "archived" : "restored") }
     }
     private struct LibraryUndo {
@@ -540,13 +545,19 @@ final class AppModel: ObservableObject {
         return true
     }
     func favorite(_ link: SavedLink) {
-        Task { @MainActor in
-            guard prepareLocalWrite() else { return }
-            var next = library
-            guard let index = next.links.firstIndex(where: { $0.id == link.id }) else { return }
-            next.links[index].isFavorite.toggle()
-            _ = commit(next, undoTitle: next.links[index].isFavorite ? "Favorite Link" : "Remove Favorite")
+        toggleFavorites(ids: [link.id])
+    }
+    func toggleFavorites(ids: Set<UUID>) {
+        guard prepareLocalWrite() else { return }
+        let targets = library.links.filter { ids.contains($0.id) }
+        guard !targets.isEmpty else { return }
+        let favorite = !targets.allSatisfy(\.isFavorite)
+        var next = library
+        for index in next.links.indices where ids.contains(next.links[index].id) {
+            next.links[index].isFavorite = favorite
         }
+        let title = favorite ? (targets.count == 1 ? "Favorite Link" : "Favorite Links") : (targets.count == 1 ? "Remove Favorite" : "Remove Favorites")
+        _ = commit(next, undoTitle: title)
     }
     @discardableResult func archive(_ link: SavedLink) -> Bool {
         setArchived(!link.isArchived, ids: [link.id])
@@ -555,16 +566,24 @@ final class AppModel: ObservableObject {
         var next = library
         let changed = next.setArchived(archived, ids: ids)
         let noun = changed.count == 1 ? "Link" : "Links"
-        guard !changed.isEmpty, commit(next, undoTitle: archived ? "Archive \(noun)" : "Restore \(noun)", clearsArchiveUndo: true) else { return false }
+        guard !changed.isEmpty else { return false }
+        let previous = Dictionary(uniqueKeysWithValues: library.links
+            .filter { changed.contains($0.id) }
+            .map { ($0.id, ArchiveUndo.PreviousState(isArchived: $0.isArchived, archiveHistory: $0.archiveHistory)) })
+        guard commit(next, undoTitle: archived ? "Archive \(noun)" : "Restore \(noun)", clearsArchiveUndo: true) else { return false }
         selectedID = nil; swipedLinkID = nil
-        archiveUndo = ArchiveUndo(ids: changed, archived: archived)
+        archiveUndo = ArchiveUndo(ids: changed, archived: archived, previous: previous)
         if archived { analytics.record(.linksArchived, count: changed.count) }
         return true
     }
     func undoArchive() {
         guard let undo = archiveUndo else { return }
         var next = library
-        next.setArchived(!undo.archived, ids: undo.ids)
+        for index in next.links.indices where undo.ids.contains(next.links[index].id) {
+            guard let previous = undo.previous[next.links[index].id] else { continue }
+            next.links[index].isArchived = previous.isArchived
+            next.links[index].archiveHistory = previous.archiveHistory
+        }
         if commit(next, undoTitle: nil) { archiveUndo = nil; lastLibraryUndo = nil }
     }
     func dismissArchiveUndo() { archiveUndo = nil }

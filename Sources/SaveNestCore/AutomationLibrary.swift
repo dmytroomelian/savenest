@@ -12,7 +12,7 @@ public enum AutomationLibrary {
     public static let maximumMutationItems = 20
     public static let maximumReadItems = 100
 
-    public static func execute(tool: String, arguments: [String: AutomationValue], library: Library) throws -> AutomationLibraryResult {
+    public static func execute(tool: String, arguments: [String: AutomationValue], library: Library, now: Date = Date()) throws -> AutomationLibraryResult {
         if tool == "search_links" {
             return .init(library: library, result: try search(records: library.links.map { record($0) }, arguments: arguments), changed: false)
         }
@@ -96,7 +96,9 @@ public enum AutomationLibrary {
                         }
                         if let tags = try optionalTags(fields, key: "add_tags") { link.tags = SavedLink.normalizedTags(link.tags + tags) }
                         if let value = try optionalBool(fields, key: "favorite") { link.isFavorite = value }
-                        if let value = try optionalBool(fields, key: "archived") { link.isArchived = value }
+                        if let value = try optionalBool(fields, key: "archived") {
+                            Library.applyArchiveTransition(value, to: &link, at: now)
+                        }
                         let changed = link != next.links[index]
                         next.links[index] = link
                         if !next.collections.contains(link.collection) { next.collections.append(link.collection) }

@@ -6,9 +6,29 @@ let state = { rows: [], query: '', scope: 'All', tags: [], loading: true, histor
 let items = [], focusedID = null, selected = new Set(), route = 'root', pendingQuery = null, searchTimer;
 let editingID = null, editingRevision = null, captureID = null, editorBaseline = '', editorSaving = false, lastCaptureID = null, lastSelectionID = null;
 let captureSelected = new Set(), selectionSaving = false, actionItems = [], filteredActions = [], actionIndex = 0, fatal = false;
+let activity;
 let lastNativeMessage = '', noticeSource = '', discardAction = null;
 let shortcutReturnFocus = null;
 let featuresReturnFocus = null;
+let selectionAnchorID = null, rangeSelectionBase = null;
+const pageShortcuts = {
+  select: { key: ' ', shift: true, label: '⇧Space' },
+  selectAll: { key: 'a', meta: true, shift: true, label: '⇧⌘A' },
+  readerOpen: { key: 'Enter', meta: true, label: '⌘↵' },
+  save: { key: 's', meta: true, label: '⌘S' },
+  edit: { key: 'e', meta: true, label: '⌘E' },
+  copy: { key: 'c', meta: true, shift: true, label: '⇧⌘C' },
+  favorite: { key: 'f', meta: true, shift: true, label: '⇧⌘F' },
+  archive: { key: 'e', meta: true, shift: true, label: '⇧⌘E' },
+  delete: { key: 'Backspace', meta: true, label: '⌘⌫' },
+  undo: { key: 'z', meta: true, alt: true, label: '⌥⌘Z' }
+};
+function matchesShortcut(event, shortcut) {
+  return shortcut && (event.key.toLowerCase() === shortcut.key.toLowerCase()
+    || (shortcut.alt && event.code === 'Key' + shortcut.key.toUpperCase()))
+    && event.metaKey === Boolean(shortcut.meta) && event.shiftKey === Boolean(shortcut.shift)
+    && event.altKey === Boolean(shortcut.alt) && event.ctrlKey === Boolean(shortcut.ctrl);
+}
 const symbols = {
   keyboard: 'M3 6h18v12H3zM6 9h.01M9 9h.01M12 9h.01M15 9h.01M18 9h.01M6 12h.01M9 12h.01M12 12h.01M15 12h.01M18 12h.01M8 15h8',
   reader: 'M3 4h18v16H3zM13 4v16M6 8h4M6 12h4M16 8h2M16 12h2',
@@ -22,7 +42,9 @@ const symbols = {
   tag: 'M3 3h9l9 9-9 9-9-9zM8 8h.01', refresh: 'M3 11a9 9 0 0 1 16-5l2 3M21 3v6h-6M21 13a9 9 0 0 1-16 5l-2-3M3 21v-6h6',
   export: 'M12 16V3M7 8l5-5 5 5M4 14v7h16v-7', import: 'M12 3v13M7 11l5 5 5-5M4 16v5h16v-5',
   undo: 'M3 10h10a7 7 0 0 1 7 7M3 10l6-6M3 10l6 6', search: 'M10 3a7 7 0 1 0 0 14 7 7 0 0 0 0-14M15 15l6 6',
-  compass: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18M15.5 8.5l-2 5-5 2 2-5z'
+  compass: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18M15.5 8.5l-2 5-5 2 2-5z',
+  globe: 'M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0M3 12h18M12 3c-5 5-5 13 0 18M12 3c5 5 5 13 0 18',
+  activity: 'M4 5h16v16H4zM4 10h16M9 3v4M15 3v4M8 14h2M12 14h2M16 14h2M8 17h2M12 17h2'
 };
 function el(tag, className, text) {
   const node = document.createElement(tag); if (className) node.className = className;
@@ -33,7 +55,30 @@ function icon(name) {
   for (const [key, value] of Object.entries({ viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '1.6', 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'aria-hidden': 'true' })) svg.setAttribute(key, value);
   const path = document.createElementNS(svg.namespaceURI, 'path'); path.setAttribute('d', symbols[name] || symbols.bookmark); svg.append(path); return svg;
 }
+const siteIcons = new Map();
+const iconObserver = typeof IntersectionObserver === 'function' ? new IntersectionObserver(entries => {
+  for (const entry of entries) {
+    if (!entry.isIntersecting) continue;
+    const tile = entry.target;
+    iconObserver.unobserve(tile);
+    const url = tile.dataset.url;
+    if (!siteIcons.has(url)) {
+      if (siteIcons.size >= 512) siteIcons.delete(siteIcons.keys().next().value);
+      siteIcons.set(url, window.savenest.command({ command: 'siteIcon', url }).catch(() => null));
+    }
+    void siteIcons.get(url).then(result => {
+      if (!tile.isConnected || !result?.dataURL?.startsWith('data:image/png;base64,')) return;
+      const image = el('img'); image.alt = ''; image.src = result.dataURL;
+      image.onload = () => tile.replaceChildren(image);
+    });
+  }
+}) : { observe() {}, unobserve() {}, disconnect() {} };
+function pageIcon(tile, item) {
+  tile.append(icon('globe')); tile.dataset.url = item.url;
+  tile.setAttribute('aria-hidden', 'true'); iconObserver.observe(tile);
+}
 $('nest-mark').append(icon('nest'));
+activity = window.SavenestActivity ? window.SavenestActivity.create({ command: request => window.savenest.command(request) }) : null;
 function notice(message, error = false, source = 'local') {
   noticeSource = source; $('notice-text').textContent = message; $('notice').dataset.error = String(error); $('notice').hidden = !message;
 }
@@ -45,15 +90,50 @@ function cleanError(error) { return error.message.replace(/^Error invoking remot
 function focusSearch() { if (route === 'root' && !document.querySelector('dialog[open]')) $('search').focus(); }
 function current() { return items.find(item => item.id === focusedID); }
 function chosen() { return selected.size ? items.filter(item => item.kind === 'page' && selected.has(item.id)) : current() ? [current()] : []; }
+function clearSelection() {
+  selected.clear(); selectionAnchorID = null; rangeSelectionBase = null; updateSelection();
+}
+function toggleSelection(item = current()) {
+  if (item?.kind !== 'page') return;
+  selected.has(item.id) ? selected.delete(item.id) : selected.add(item.id);
+  focusedID = item.id; selectionAnchorID = item.id; rangeSelectionBase = null; updateSelection();
+}
+function selectAllPages() {
+  selected = new Set(items.filter(item => item.kind === 'page').map(item => item.id));
+  selectionAnchorID = null; rangeSelectionBase = null; updateSelection();
+}
+function selectRange(id) {
+  if (!rangeSelectionBase) {
+    rangeSelectionBase = new Set(selected);
+    selectionAnchorID = selectionAnchorID || focusedID || id;
+  }
+  const anchor = items.findIndex(item => item.id === selectionAnchorID), end = items.findIndex(item => item.id === id);
+  selected = new Set(rangeSelectionBase);
+  for (const item of items.slice(Math.max(0, Math.min(anchor, end)), Math.max(anchor, end) + 1)) {
+    if (item.kind === 'page') selected.add(item.id);
+  }
+  focusedID = id; updateSelection(true);
+}
 function changeQuery(query, scope = state.scope) {
-  clearTimeout(searchTimer); $('search').value = query; pendingQuery = query; focusedID = null; selected.clear();
+  clearTimeout(searchTimer); $('search').value = query; pendingQuery = query; focusedID = null; clearSelection();
   void run('search', { query, scope });
 }
 function setScope(scope) { state.scope = scope; changeQuery('', scope); renderRoot(); focusSearch(); }
+function activityAvailable() {
+  return !fatal && route !== 'editor' && route !== 'selection' && !state.captureDraft && !state.captureSelection;
+}
+function openActivity() {
+  if (!activity || !activityAvailable() || route === 'activity') return;
+  $('route-title').textContent = 'Activity';
+  setRoute('activity');
+  activity.open();
+  $('route-back').focus();
+}
 function setRoute(value) {
+  if (route === 'activity' && value !== 'activity' && activity) activity.close();
   route = value; document.body.dataset.view = value;
   $('search-header').hidden = value !== 'root'; $('route-header').hidden = value === 'root';
-  for (const name of ['root', 'editor', 'sources', 'selection']) $(name + '-view').hidden = value !== name;
+  for (const name of ['root', 'editor', 'sources', 'selection', 'activity']) $(name + '-view').hidden = value !== name;
   $('onboarding').hidden = value !== 'root' || !state.onboarding;
   $('usage-notice').hidden = value !== 'root' || !state.showUsageNotice;
   $('actions').hidden = value !== 'root';
@@ -64,6 +144,7 @@ function formValues() { return { url: $('edit-url').value, title: $('edit-title'
 function dirty() { return JSON.stringify(formValues()) !== editorBaseline; }
 function openEditor(row = null, captured = false, url = '') {
   if (route === 'editor') { notice('Finish this draft before starting another.'); return; }
+  if (route === 'activity') activity?.close();
   editingID = captured ? null : row?.id || null; captureID = captured ? row.id : null;
   editingRevision = row?.revision || 'missing';
   $('route-title').textContent = captured ? 'Save current tab with a note' : row ? 'Edit link' : 'Save a link';
@@ -79,7 +160,8 @@ async function leaveEditor() {
 }
 function back() {
   if ($('action-dialog').open) { $('action-dialog').close(); return; }
-  if (route === 'editor') {
+  if (route === 'activity') { activity?.close(); setRoute('root'); renderRoot(); focusSearch(); }
+  else if (route === 'editor') {
     if (editorSaving) return;
     if (dirty()) { discardAction = leaveEditor; $('discard-dialog').showModal(); }
     else void leaveEditor();
@@ -88,6 +170,7 @@ function back() {
     void run('cancelSelection'); setRoute('root'); focusSearch();
   }
   else if (route !== 'root') { setRoute('root'); renderRoot(); focusSearch(); }
+  else if (selected.size) clearSelection();
   else if (state.scope !== 'All') setScope('All');
   else void run('dismiss');
 }
@@ -116,44 +199,64 @@ function updateFooter() {
   updateSyncStatus();
   $('open-settings').disabled = fatal;
   $('shortcut-settings').disabled = fatal;
+  $('open-activity').disabled = !activityAvailable();
   $('primary').disabled = fatal || editorSaving || state.busy || (route === 'root' && !current());
+  if (route === 'activity') {
+    $('primary').disabled = fatal;
+    $('primary').replaceChildren(el('span', '', 'Back to search'), el('kbd', '', 'esc'));
+    return;
+  }
   if (route === 'editor') { $('primary').replaceChildren(el('span', '', editorSaving ? 'Saving…' : 'Save link'), el('kbd', '', '⌘↵')); return; }
   if (route === 'selection') { $('primary').replaceChildren(el('span', '', selectionSaving ? 'Saving…' : `Save ${captureSelected.size} tabs`), el('kbd', '', '⌘↵')); $('primary').disabled = fatal || selectionSaving || !captureSelected.size; return; }
   if (route === 'sources') { $('primary').replaceChildren(el('span', '', 'Back to search'), el('kbd', '', 'esc')); return; }
   $('primary').replaceChildren(el('span', '', model.primaryLabel(current())), el('kbd', '', '↵'));
   $('actions').replaceChildren(el('span', '', selected.size ? `Actions · ${selected.size}` : 'Actions'), el('kbd', '', '⌘K'));
   $('actions').disabled = fatal;
+  $('selection-bar').hidden = !items.some(item => item.kind === 'page');
+  $('selection-count').textContent = selected.size ? `${selected.size} selected` : '↑ ↓ to move';
+  $('toggle-selection').hidden = current()?.kind !== 'page';
+  $('toggle-selection').replaceChildren(el('span', '', selected.has(focusedID) ? 'Deselect link' : 'Select link'), el('kbd', '', pageShortcuts.select.label));
+  $('clear-selection').hidden = !selected.size;
+  $('select-all').disabled = fatal;
+  $('toggle-selection').disabled = fatal;
 }
 function updateSelection(scroll = false) {
   for (const node of document.querySelectorAll('.row')) {
     const active = node.dataset.id === focusedID; node.classList.toggle('selected', active);
-    node.setAttribute('aria-selected', String(active || selected.has(node.dataset.id)));
+    node.classList.toggle('checked', selected.has(node.dataset.id));
+    node.setAttribute('aria-selected', String(selected.size ? selected.has(node.dataset.id) : active));
     if (node.querySelector('.row-check')) node.querySelector('.row-check').checked = selected.has(node.dataset.id);
     if (active) { $('search').setAttribute('aria-activedescendant', node.id); if (scroll) node.scrollIntoView({ block: 'nearest' }); }
   }
   if (!focusedID) $('search').removeAttribute('aria-activedescendant');
   updateFooter();
 }
-function navigate(offset) {
+function navigate(offset, extend = false) {
   if (!items.length) return;
   const index = items.findIndex(item => item.id === focusedID);
-  focusedID = items[Math.max(0, Math.min(items.length - 1, index + offset))].id; updateSelection(true);
+  const id = items[Math.max(0, Math.min(items.length - 1, index + offset))].id;
+  if (extend) selectRange(id);
+  else { focusedID = id; selectionAnchorID = id; rangeSelectionBase = null; updateSelection(true); }
 }
 function renderRoot() {
   const query = $('search').value;
   const ready = (state.resultsQuery ?? state.query) === query && (state.resultsScope ?? state.scope) === state.scope;
-  items = model.rows({ ...state, rows: ready ? state.rows : [] }, query);
+  const previousIndex = Math.max(0, items.findIndex(item => item.id === focusedID));
+  items = model.rows({ ...state, canOpenActivity: activityAvailable(), rows: ready ? state.rows : [] }, query);
   const valid = new Set(items.map(item => item.id)); selected = new Set([...selected].filter(id => valid.has(id)));
-  if (!valid.has(focusedID)) focusedID = items[0]?.id || null;
+  if (!valid.has(selectionAnchorID)) { selectionAnchorID = null; rangeSelectionBase = null; }
+  if (rangeSelectionBase) rangeSelectionBase = new Set([...rangeSelectionBase].filter(id => valid.has(id)));
+  if (!valid.has(focusedID)) focusedID = items[Math.min(previousIndex, items.length - 1)]?.id || null;
   $('scope').value = state.scope; $('back').hidden = state.scope === 'All'; $('nest-mark').hidden = state.scope !== 'All';
   $('search').placeholder = { All: 'Search tabs, saved links, history, or commands…', Open: 'Search open browser tabs…', Saved: 'Search saved links, notes, or #tags…', History: 'Search pages you visited…', Favorites: 'Search favorites…', Notes: 'Search notes…', Archive: 'Search archived links…' }[state.scope];
+  iconObserver.disconnect();
   const nodes = []; let group = '';
   items.forEach((item, index) => {
     const next = item.kind === 'command' ? (query ? 'Commands' : 'Quick actions') : query ? 'Matching pages' : state.scope === 'History' ? 'Recently visited' : state.scope === 'All' ? 'Open tabs & recent links' : state.scope;
     if (next !== group) { nodes.push(el('div', 'group-label', next)); group = next; }
     const row = el('div', 'row'); row.id = 'result-' + index; row.dataset.id = item.id; row.dataset.kind = item.kind; row.setAttribute('role', 'option');
     const tile = el('span', 'row-icon' + (item.kind === 'page' ? ' page-icon' : ''));
-    if (item.kind === 'command') tile.append(icon(item.symbol)); else tile.textContent = (item.domain || '?')[0].toUpperCase();
+    if (item.kind === 'command') tile.append(icon(item.symbol)); else pageIcon(tile, item);
     const text = el('div', 'row-text'), title = el('div', 'row-title', item.title);
     if (item.favorite) title.append(el('span', 'star', '★'));
     let detail = item.detail;
@@ -166,20 +269,26 @@ function renderRoot() {
       if (item.isHistory && !item.isOpen && !item.isSaved) accessory.append(el('span', 'source-label', 'History'));
       const check = el('input', 'row-check'); check.type = 'checkbox'; check.setAttribute('aria-label', 'Select ' + item.title); check.tabIndex = -1;
       check.onclick = event => event.stopPropagation();
-      check.onchange = () => { check.checked ? selected.add(item.id) : selected.delete(item.id); focusedID = item.id; updateSelection(); focusSearch(); };
+      check.title = 'Select link (⇧Space)';
+      check.onchange = () => { toggleSelection(item); focusSearch(); };
       accessory.append(check);
-      const read = el('button', 'row-read'); read.append(icon('reader')); read.title = 'Read & note'; read.setAttribute('aria-label', 'Read & note: ' + item.title);
+      const read = el('button', 'row-read'); read.append(icon('reader')); read.title = 'Read & note (⌘↵)'; read.setAttribute('aria-label', 'Read & note: ' + item.title);
       read.onclick = event => { event.stopPropagation(); void run('readerOpen', { ids: [item.id] }); };
       read.ondblclick = event => event.stopPropagation();
       accessory.append(read);
     } else accessory.append(el('span', 'source-label', 'Command'));
     if (index < 9) accessory.append(el('kbd', '', '⌘' + (index + 1)));
     const more = el('button', 'row-more', '⋯'); more.setAttribute('aria-label', 'Actions for ' + item.title); more.tabIndex = -1;
-    more.onclick = event => { event.stopPropagation(); selected.clear(); focusedID = item.id; updateSelection(); showActions(); };
+    more.onclick = event => { event.stopPropagation(); if (!selected.has(item.id)) clearSelection(); focusedID = item.id; updateSelection(); showActions(); };
     accessory.append(more); row.append(accessory);
-    row.onclick = () => { selected.clear(); focusedID = item.id; updateSelection(); focusSearch(); };
-    row.ondblclick = () => void execute(item);
-    row.oncontextmenu = event => { event.preventDefault(); if (!selected.has(item.id)) selected.clear(); focusedID = item.id; updateSelection(); showActions(); };
+    row.onclick = event => {
+      if (event.shiftKey && item.kind === 'page') selectRange(item.id);
+      else if (event.metaKey && item.kind === 'page') toggleSelection(item);
+      else { clearSelection(); focusedID = item.id; selectionAnchorID = item.id; updateSelection(); }
+      focusSearch();
+    };
+    row.ondblclick = event => { if (!event.metaKey && !event.shiftKey) void execute(item); };
+    row.oncontextmenu = event => { event.preventDefault(); if (!selected.has(item.id)) clearSelection(); focusedID = item.id; updateSelection(); showActions(); };
     nodes.push(row);
   });
   $('results').replaceChildren(...nodes); $('results').setAttribute('aria-busy', String(state.loading || state.loadingHistory));
@@ -221,10 +330,17 @@ function renderState() {
     else if (noticeSource === 'native') $('notice').hidden = true;
   }
   renderRoot(); if (route === 'sources') renderSources();
-  if (state.captureDraft && state.captureDraft.id !== lastCaptureID && route === 'root') {
+  if ($('action-dialog').open) {
+    const activeAction = filteredActions[actionIndex]?.id;
+    actionItems = availableActions(); renderActions();
+    const nextIndex = filteredActions.findIndex(item => item.id === activeAction);
+    if (nextIndex >= 0) { actionIndex = nextIndex; renderActions(); }
+  }
+  if (state.captureDraft && state.captureDraft.id !== lastCaptureID && (route === 'root' || route === 'activity')) {
     lastCaptureID = state.captureDraft.id; openEditor(state.captureDraft, true);
   }
-  if (state.captureSelection && state.captureSelection.id !== lastSelectionID && route === 'root') {
+  if (state.captureSelection && state.captureSelection.id !== lastSelectionID && (route === 'root' || route === 'activity')) {
+    if (route === 'activity') activity?.close();
     lastSelectionID = state.captureSelection.id; captureSelected = new Set(state.captureSelection.links.map(link => link.id));
     $('route-title').textContent = 'Save selected browser tabs';
     $('capture-tabs').replaceChildren(...state.captureSelection.links.map(link => {
@@ -243,32 +359,45 @@ async function execute(item) {
   else if (item.ui === 'sources') openSources();
   else if (item.ui === 'shortcuts') showShortcuts();
   else if (item.ui === 'features') showFeatures();
+  else if (item.ui === 'activity') openActivity();
   else if (item.scope) setScope(item.scope);
   else if (item.command) await run(item.command, item.action ? { action: item.action } : {});
 }
-function showActions() {
-  if (route !== 'root' || fatal) return;
+function availableActions() {
   const rows = chosen(), single = rows.length === 1;
   $('actions-context').textContent = single ? rows[0].title : rows.length ? `${rows.length} selected pages` : 'All Savenest actions';
-  actionItems = [];
+  const actions = [];
   const group = single ? 'Selected page' : 'Selected pages';
-  const add = (title, command, targets, key = '', danger = false) => { if (targets.length) actionItems.push({ id: 'context:' + command, group, title, key, danger, run: () => run(command, { ids: targets.map(row => row.id) }) }); };
-  if (single && rows[0].kind === 'command') actionItems.push({ id: 'context:run', group: 'Selected command', title: 'Run command', key: '↵', run: () => execute(rows[0]) });
+  const add = (title, command, targets, shortcut = pageShortcuts[command], danger = false) => {
+    if (targets.length) actions.push({ id: 'context:' + command, group, title, shortcut, key: shortcut?.label || '', danger,
+      run: () => run(command, { ids: targets.map(row => row.id) }) });
+  };
+  if (single && rows[0].kind === 'command') actions.push({ id: 'context:run', group: 'Selected command', title: 'Run command', key: '↵', run: () => execute(rows[0]) });
   else {
-    if (single) add(rows[0].isOpen ? 'Switch to tab' : 'Open link', 'open', rows, '↵');
+    if (single) add(rows[0].isOpen ? 'Switch to tab' : 'Open link', 'open', rows, { key: 'Enter', label: '↵' });
     if (single) add('Read & note', 'readerOpen', rows);
-    add('Save to library', 'save', rows.filter(row => !row.isSaved), '⌘S');
-    if (single) actionItems.push({ id: 'context:edit', group, title: 'Edit title, note & tags', key: '⌘E', run: () => openEditor(rows[0]) });
-    add(single ? 'Copy URL' : 'Copy URLs', 'copy', rows, '⇧⌘C');
+    add('Save to library', 'save', rows.filter(row => !row.isSaved));
+    if (single) actions.push({ id: 'context:edit', group, title: 'Edit title, note & tags', shortcut: pageShortcuts.edit, key: pageShortcuts.edit.label, run: () => openEditor(rows[0]) });
+    add(single ? 'Copy URL' : 'Copy URLs', 'copy', rows);
     add('Save & close tabs', 'saveClose', rows.filter(row => row.isOpen));
-    add(single && rows[0].favorite ? 'Remove favorite' : 'Toggle favorite', 'favorite', rows.filter(row => row.isSaved));
-    add('Archive saved links', 'archive', rows.filter(row => row.isSaved && !row.archived));
-    add('Restore saved links', 'restore', rows.filter(row => row.isSaved && row.archived));
+    const saved = rows.filter(row => row.isSaved), unarchived = saved.filter(row => !row.archived);
+    add(saved.every(row => row.favorite) ? 'Remove from favorites' : 'Mark as favorite', 'favorite', saved);
+    add(single ? 'Archive link' : 'Archive saved links', 'archive', unarchived);
+    add(single ? 'Restore from archive' : 'Restore saved links', 'restore', saved.filter(row => row.archived), unarchived.length ? null : pageShortcuts.archive);
     if (single) add('Email link…', 'share', rows.filter(row => row.isSaved));
-    add('Close browser tabs…', 'close', rows.filter(row => row.isOpen), '', true);
-    add('Delete saved links…', 'delete', rows.filter(row => row.isSaved), '', true);
+    add('Close browser tabs…', 'close', rows.filter(row => row.isOpen), null, true);
+    add(single ? 'Delete saved link…' : 'Delete saved links…', 'delete', saved, pageShortcuts.delete, true);
   }
-  for (const item of model.actionCatalog(state)) actionItems.push({ ...item, run: () => execute(item) });
+  const selectionAction = (id, title, shortcut, perform) => actions.push({ id: 'selection:' + id, group: 'Selection', title, shortcut, key: shortcut?.label || '', run: perform });
+  if (current()?.kind === 'page') selectionAction('toggle', selected.has(focusedID) ? 'Deselect link' : 'Select link', pageShortcuts.select, () => toggleSelection());
+  if (items.some(item => item.kind === 'page')) selectionAction('all', 'Select all visible links', pageShortcuts.selectAll, selectAllPages);
+  if (selected.size) selectionAction('clear', 'Clear selection', null, clearSelection);
+  for (const item of model.actionCatalog({ ...state, canOpenActivity: activityAvailable() })) actions.push({ ...item, shortcut: item.command === 'undo' ? pageShortcuts.undo : undefined, run: () => execute(item) });
+  return actions;
+}
+function showActions() {
+  if (route !== 'root' || fatal) return;
+  actionItems = availableActions();
   $('action-search').value = ''; actionIndex = 0; renderActions();
   if (!$('action-dialog').open) $('action-dialog').showModal();
   $('action-search').focus();
@@ -295,12 +424,20 @@ function renderShortcuts() {
   const groups = [
     ['In the launcher', [
       ['Open Actions', '⌘K'], ['Keyboard shortcuts', '⌘/'], ['Open Settings', '⌘,'],
-      ['Choose a result', '↑ ↓'], ['Open or run a result', '↵'], ['Run result 1–9', '⌘1–9'],
+      ['Move between results', '↑ ↓'], ['Open or run a result', '↵'], ['Run result 1–9', '⌘1–9'],
       ['Next / previous search scope', '⌃Tab / ⌃⇧Tab'], ['Focus search', '⌘F'],
       ['Add a link', '⌘N'], ['Refresh tabs and history', '⌘R'], ['Back or close', 'esc']
     ]],
-    ['With a page selected', [
-      ['Save selected pages', '⌘S'], ['Edit title, note and tags', '⌘E'], ['Copy selected URLs', '⇧⌘C']
+    ['Select links', [
+      ['Select / deselect a link', pageShortcuts.select.label], ['Select a range', '⇧↑ / ⇧↓'],
+      ['Select all visible links', pageShortcuts.selectAll.label], ['Clear selection', 'esc'],
+      ['Add / remove a clicked link', '⌘Click'], ['Select a clicked range', '⇧Click']
+    ]],
+    ['With links highlighted or selected', [
+      ['Read & note one link', pageShortcuts.readerOpen.label], ['Save to library', pageShortcuts.save.label],
+      ['Edit one link’s title, note and tags', pageShortcuts.edit.label], ['Copy URLs', pageShortcuts.copy.label],
+      ['Mark / unmark favorite', pageShortcuts.favorite.label], ['Archive / restore saved links', pageShortcuts.archive.label],
+      ['Delete saved links…', pageShortcuts.delete.label], ['Undo last library change', pageShortcuts.undo.label]
     ]],
     ['While editing a link', [['Save changes', '⌘↵']]]
   ];
@@ -443,7 +580,7 @@ $('editor-form').onsubmit = async event => {
   finally { editorSaving = false; updateFooter(); }
 };
 $('search').oninput = () => {
-  pendingQuery = $('search').value; focusedID = null; selected.clear(); clearTimeout(searchTimer); renderRoot();
+  pendingQuery = $('search').value; focusedID = null; clearSelection(); clearTimeout(searchTimer); renderRoot();
   if (noticeSource !== 'fatal') $('notice').hidden = true;
   searchTimer = setTimeout(() => void run('search', { query: $('search').value, scope: state.scope }), 45);
 };
@@ -451,7 +588,11 @@ $('scope').onchange = () => setScope($('scope').value);
 $('back').onclick = () => setScope('All'); $('route-back').onclick = back;
 $('home').onclick = () => { if (state.shortcutError) void run('settings'); else if (route !== 'root') back(); else { setScope('All'); focusSearch(); } };
 $('actions').onclick = showActions;
+$('toggle-selection').onclick = () => { toggleSelection(); focusSearch(); };
+$('select-all').onclick = () => { selectAllPages(); focusSearch(); };
+$('clear-selection').onclick = () => { clearSelection(); focusSearch(); };
 $('open-settings').onclick = () => void run('settings');
+$('open-activity').onclick = openActivity;
 $('show-shortcuts').onclick = showShortcuts;
 $('show-features').onclick = showFeatures;
 $('features-close').onclick = closeFeatures;
@@ -472,7 +613,8 @@ $('shortcuts-close').onclick = () => $('shortcuts-dialog').close();
 $('shortcut-settings').onclick = () => { $('shortcuts-dialog').close(); void run('settings'); };
 $('shortcuts-dialog').onclose = () => { if (shortcutReturnFocus?.isConnected && !shortcutReturnFocus.closest('dialog')) shortcutReturnFocus.focus(); else focusSearch(); };
 $('primary').onclick = async () => {
-  if (route === 'editor') $('editor-form').requestSubmit();
+  if (route === 'activity') back();
+  else if (route === 'editor') $('editor-form').requestSubmit();
   else if (route === 'sources') back();
   else if (route === 'selection') {
     if (selectionSaving) return;
@@ -493,6 +635,14 @@ $('action-search').oninput = () => { actionIndex = 0; renderActions(); };
 $('action-dialog').onclose = focusSearch;
 $('keep-editing').onclick = () => { $('discard-dialog').close(); $('edit-note').focus(); };
 $('discard').onclick = () => { $('discard-dialog').close(); const action = discardAction; discardAction = null; void action?.(); };
+function handlePageShortcut(event) {
+  if (event.key === 'Enter' && !event.metaKey) return false;
+  const action = availableActions().find(item => matchesShortcut(event, item.shortcut));
+  if (!action) return false;
+  event.preventDefault();
+  if (!event.repeat) { if ($('action-dialog').open) $('action-dialog').close(); void action.run(); }
+  return true;
+}
 document.addEventListener('keydown', event => {
   if (event.isComposing || event.keyCode === 229) return;
   if ($('shortcuts-dialog').open) {
@@ -505,34 +655,36 @@ document.addEventListener('keydown', event => {
     return;
   }
   if ($('discard-dialog').open) return;
+  if (fatal) return;
   if ($('action-dialog').open) {
     if (event.key === 'Escape') { event.preventDefault(); $('action-dialog').close(); }
     else if (['ArrowDown', 'ArrowUp'].includes(event.key)) { event.preventDefault(); actionIndex = Math.max(0, Math.min(filteredActions.length - 1, actionIndex + (event.key === 'ArrowDown' ? 1 : -1))); renderActions(); $('action-options').querySelector('.active')?.scrollIntoView({ block: 'nearest' }); $('action-search').focus(); }
-    else if (event.key === 'Enter' && document.activeElement?.tagName !== 'BUTTON') { event.preventDefault(); const action = filteredActions[actionIndex]; if (action) { $('action-dialog').close(); void action.run(); } }
+    else if (event.key === 'Enter' && !event.metaKey && !event.ctrlKey && !event.altKey && !event.shiftKey && document.activeElement?.tagName !== 'BUTTON') { event.preventDefault(); const action = filteredActions[actionIndex]; if (action && !event.repeat) { $('action-dialog').close(); void action.run(); } }
     else if (event.metaKey && event.key.toLowerCase() === 'k') { event.preventDefault(); $('action-dialog').close(); }
     else if (event.metaKey && event.key === '/') { event.preventDefault(); showShortcuts(); }
+    else if (event.key !== 'Enter' || event.metaKey) handlePageShortcut(event);
     return;
   }
   if (event.key === 'Escape') { event.preventDefault(); back(); return; }
   if (event.metaKey && event.key === '/') { event.preventDefault(); showShortcuts(); return; }
   if (route !== 'root') { if (event.metaKey && event.key === 'Enter') { event.preventDefault(); $('primary').click(); } return; }
   // Keep native keyboard activation for focused controls, including privacy actions.
-  if (event.key === 'Enter' && document.activeElement?.tagName === 'BUTTON') return;
-  const typing = ['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName);
+  if (!event.metaKey && !event.ctrlKey && !event.altKey && ['Enter', ' '].includes(event.key) && document.activeElement?.tagName === 'BUTTON') return;
   if (event.metaKey && event.key.toLowerCase() === 'k') { event.preventDefault(); showActions(); }
   else if (event.ctrlKey && event.key === 'Tab') { event.preventDefault(); setScope(scopes[(scopes.indexOf(state.scope) + (event.shiftKey ? scopes.length - 1 : 1)) % scopes.length]); }
   else if (event.metaKey && /^[1-9]$/.test(event.key)) { event.preventDefault(); void execute(items[Number(event.key) - 1]); }
-  else if (event.metaKey && event.key.toLowerCase() === 's' && current()?.kind === 'page') { event.preventDefault(); void run('save', { ids: chosen().map(item => item.id) }); }
-  else if (event.metaKey && event.key.toLowerCase() === 'e' && current()?.kind === 'page') { event.preventDefault(); openEditor(current()); }
-  else if (event.metaKey && event.shiftKey && event.key.toLowerCase() === 'c' && current()?.kind === 'page') { event.preventDefault(); void run('copy', { ids: chosen().map(item => item.id) }); }
-  else if (event.metaKey && event.key === 'z' && !typing) { event.preventDefault(); void run('undo'); }
-  else if (event.shiftKey && event.code === 'Space' && current()?.kind === 'page') { event.preventDefault(); const id = current().id; selected.has(id) ? selected.delete(id) : selected.add(id); updateSelection(); }
-  else if (['ArrowDown', 'ArrowUp'].includes(event.key) && document.activeElement !== $('scope')) { event.preventDefault(); navigate(event.key === 'ArrowDown' ? 1 : -1); }
-  else if (event.key === 'Enter' && document.activeElement !== $('scope')) { event.preventDefault(); void execute(current()); }
+  else if (document.activeElement !== $('scope') && handlePageShortcut(event)) return;
+  else if (['ArrowDown', 'ArrowUp'].includes(event.key) && !event.metaKey && !event.ctrlKey && !event.altKey && document.activeElement !== $('scope')) { event.preventDefault(); navigate(event.key === 'ArrowDown' ? 1 : -1, event.shiftKey); }
+  else if (event.key === 'Enter' && !event.metaKey && !event.ctrlKey && !event.altKey && !event.shiftKey && document.activeElement !== $('scope')) { event.preventDefault(); void execute(current()); }
 });
 window.savenest.onEvent(message => {
   if (message.event === 'state' && !fatal) { state = message.state; renderState(); }
-  if (message.event === 'focus') { if (message.reset && route === 'root') setScope('All'); focusSearch(); }
+  if (message.event === 'focus') {
+    if (route === 'activity') activity?.refresh();
+    if (message.reset && route === 'root') setScope('All');
+    focusSearch();
+  }
+  if (message.event === 'activityChanged') activity?.changed();
   if (message.event === 'add') openEditor();
   if (message.event === 'editorSaved' && captureID && !editorSaving) { captureID = null; setRoute('root'); focusSearch(); }
   if (message.event === 'selectionClosed' && route === 'selection') { setRoute('root'); focusSearch(); }

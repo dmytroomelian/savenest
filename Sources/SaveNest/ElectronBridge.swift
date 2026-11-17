@@ -47,8 +47,9 @@ final class ElectronBridge {
         model.cloud.objectWillChange.sink { [weak self] in self?.scheduleSnapshot() }.store(in: &subscriptions)
         model.socialCapture.objectWillChange.sink { [weak self] in self?.scheduleSnapshot() }.store(in: &subscriptions)
         model.tabSearch.objectWillChange.sink { [weak self] in self?.scheduleSnapshot() }.store(in: &subscriptions)
-        model.$library.dropFirst().receive(on: DispatchQueue.main).sink { [weak self] library in
+        model.$library.removeDuplicates().dropFirst().receive(on: DispatchQueue.main).sink { [weak self] library in
             self?.model.tabSearch.updateLibrary(library.links)
+            self?.event("activityChanged")
         }.store(in: &subscriptions)
         NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification).receive(on: DispatchQueue.main)
             .sink { [weak self] _ in self?.scheduleSnapshot() }.store(in: &subscriptions)
@@ -206,6 +207,11 @@ final class ElectronBridge {
         var documentId: String?
         var text: String?
         var revision: String?
+        var year: Int?
+        var kind: String?
+        var day: String?
+        var offset: Int?
+        var limit: Int?
     }
 
     private func receive(_ data: Data) async {
@@ -220,7 +226,7 @@ final class ElectronBridge {
         } catch {
             Self.write(["id": request.id, "ok": false, "error": error.localizedDescription])
         }
-        scheduleSnapshot()
+        if !["siteIcon", "activity"].contains(request.command) { scheduleSnapshot() }
     }
 
     private struct Failure: LocalizedError {
@@ -236,6 +242,17 @@ final class ElectronBridge {
 
     private func performReader(_ request: Request) async throws -> [String: Any]? {
         switch request.command {
+        case "activity":
+            guard let year = request.year else { throw Failure(message: "Choose an activity year.") }
+            let result = try LibraryActivity.query(library: model.library, year: year,
+                kind: request.kind ?? "all", day: request.day,
+                offset: request.offset ?? 0, limit: request.limit ?? 100)
+            return try JSONSerialization.jsonObject(with: JSONEncoder().encode(result)) as? [String: Any]
+        case "siteIcon":
+            guard let url = request.url,
+                  let item = model.tabSearch.results.first(where: { $0.url == url }) else { return [:] }
+            guard let data = await SiteIconLoader.shared.image(page: url, hint: item.link?.iconURL) else { return [:] }
+            return ["dataURL": "data:image/png;base64," + data.base64EncodedString()]
         case "readerCurrent":
             var source = try await ReaderCapture.current(using: model.captureService, sourceApplication: panelVisible ? previousApplication : nil, preview: model.readerPreview)
             if let url = source["url"] as? String {
@@ -339,7 +356,18 @@ final class ElectronBridge {
             }
             search.saveTabs(tabs, closeAfter: request.command == "saveClose")
         case "close": search.closeTabs(tabs)
-        case "favorite": for link in links { model.favorite(link) }
+        case "activityOpen":
+            guard let requested = request.ids, requested.count == 1,
+                  let id = UUID(uuidString: requested[0]),
+                  let link = model.library.links.first(where: { $0.id == id }),
+                  Library.validatedURL(link.url) != nil else {
+                throw Failure(message: "This saved link is no longer available. Refresh Activity and try again.")
+            }
+            if model.isPreview { search.setMessage("Preview: this would open the saved link.") }
+            else if let tab = search.tabs.first(where: { Library.identity($0.url) == Library.identity(link.url) }) {
+                search.activate(tab)
+            } else { model.open(link); event("hide") }
+        case "favorite": model.toggleFavorites(ids: Set(links.map(\.id)))
         case "archive", "restore": _ = model.setArchived(request.command == "archive", ids: Set(links.map(\.id)))
         case "delete": model.deleteLinks(ids: Set(links.map(\.id)))
         case "undo": model.undoLastAction()

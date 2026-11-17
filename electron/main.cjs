@@ -176,8 +176,13 @@ async function start() {
     if (request.command === 'view') {
       currentView = request.view;
       const area = screen.getDisplayNearestPoint(screen.getCursorScreenPoint()).workArea;
-      const height = request.view === 'editor' ? 610 : 520;
+      const height = ['editor', 'activity'].includes(request.view) ? 610 : 520;
       win.setSize(Math.min(760, area.width - 32), Math.min(height, area.height - 48));
+      if (request.view === 'activity') {
+        const bounds = win.getBounds();
+        win.setPosition(Math.max(area.x + 16, Math.min(bounds.x, area.x + area.width - bounds.width - 16)),
+          Math.max(area.y + 16, Math.min(bounds.y, area.y + area.height - bounds.height - 16)));
+      }
       return true;
     }
     if (request.command === 'snapshot' && latestState) send({ event: 'state', state: latestState });
@@ -272,7 +277,7 @@ async function start() {
       await require('./smoke.cjs').run({ win, native, root, show, toggle });
       await fs.writeFile(path.join(root, 'build/smoke-result.json'), JSON.stringify({
         version: require('../package.json').version, completedAt: new Date().toISOString(),
-        checks: ['workspace', 'launcher', 'native updater bridge']
+        checks: ['workspace', 'launcher', 'activity', 'native updater bridge']
       }, null, 2));
       console.log('Electron launcher and reading workspace checks passed.'); quitting = true; app.exit(0);
     }

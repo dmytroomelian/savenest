@@ -46,6 +46,7 @@ public struct CloudLibrarySnapshot: Codable, Equatable {
                   library.collections.contains(link.collection),
                   link.iconURL.map(CloudLibraryJSON.validWebURL) ?? true,
                   link.tags.count <= 100, link.tags.allSatisfy({ CloudLibraryJSON.validText($0, limit: 200) }),
+                  link.archiveHistory.allSatisfy(CloudLibraryJSON.validDate),
                   CloudLibraryJSON.validDate(link.createdAt) else {
                 throw CloudLibraryFailure.invalidSnapshot
             }

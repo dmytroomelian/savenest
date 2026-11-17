@@ -7,8 +7,10 @@
   <link rel="stylesheet" href="glass.css">
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="features.css">
+  <link rel="stylesheet" href="activity.css">
   <script src="launcher-model.js" defer></script>
   <script src="features.js" defer></script>
+  <script src="activity.js" defer></script>
   <script src="renderer.js" defer></script>
 </head>
 <body>
@@ -28,7 +30,15 @@
       <p id="usage-notice-text">Anonymous usage counts are on. No saved content, account IDs, or device IDs are sent.</p>
       <div><button id="usage-off">Turn off</button><button id="usage-privacy">Privacy policy ↗</button><button id="usage-dismiss" aria-label="Dismiss usage notice">Dismiss</button></div>
     </aside>
-    <section id="root-view" class="view"><div id="results" role="listbox" aria-label="Commands and pages" aria-busy="true"></div></section>
+    <section id="root-view" class="view">
+      <div id="selection-bar" hidden>
+        <span id="selection-count" role="status"></span>
+        <button id="toggle-selection" title="Select or deselect the highlighted link (⇧Space)"></button>
+        <button id="select-all" title="Select all visible links (⇧⌘A)">Select all</button>
+        <button id="clear-selection" hidden>Clear <kbd>esc</kbd></button>
+      </div>
+      <div id="results" role="listbox" aria-label="Commands and pages" aria-multiselectable="true" aria-busy="true"></div>
+    </section>
     <section id="editor-view" class="view form-view" hidden>
       <form id="editor-form">
         <label>Link<input id="edit-url" type="url" placeholder="https://" required maxlength="16384"></label>
@@ -46,10 +56,47 @@
       <div class="source-buttons"><button id="history-refresh">Refresh history</button><button id="history-access">Open macOS Privacy settings ↗</button></div>
     </section>
     <section id="selection-view" class="view form-view" hidden><p class="subtle">Choose the tabs to keep. Their browser tabs stay open.</p><div id="capture-tabs"></div></section>
+    <section id="activity-view" class="view activity-view" hidden aria-label="Activity">
+      <div class="activity-content">
+        <div class="activity-toolbar">
+          <div id="activity-filters" class="activity-filters" role="group" aria-label="Activity filter">
+            <button type="button" data-kind="all" aria-pressed="true">All activity</button>
+            <button type="button" data-kind="saved" aria-pressed="false">Saved</button>
+            <button type="button" data-kind="finished" aria-pressed="false">Finished</button>
+          </div>
+          <label class="activity-year-label" for="activity-year">Year<select id="activity-year"></select></label>
+        </div>
+        <p class="activity-caption">Your saves and finishes, day by day. Archiving counts as finished.</p>
+        <div id="activity-summary" class="activity-summary" aria-label="Activity summary"></div>
+        <p id="activity-undated" class="activity-undated" hidden></p>
+        <div class="activity-chart">
+          <div class="activity-chart-scroll">
+            <div class="activity-chart-inner">
+              <div id="activity-months" class="activity-months" aria-hidden="true"></div>
+              <div class="activity-chart-row">
+                <div id="activity-weekdays" class="activity-weekdays" aria-hidden="true"></div>
+                <div id="activity-grid" class="activity-grid" role="group" aria-label="Saved and finished links by day"></div>
+              </div>
+            </div>
+          </div>
+          <div class="activity-legend" aria-hidden="true">
+            <span>Less</span><span class="activity-cell level-0"></span><span class="activity-cell level-1"></span><span class="activity-cell level-2"></span><span class="activity-cell level-3"></span><span class="activity-cell level-4"></span><span>More</span>
+          </div>
+        </div>
+        <p id="activity-hover" class="activity-hover" aria-live="polite"></p>
+        <div class="activity-day">
+          <div class="activity-day-head"><h2 id="activity-day-title">Links</h2><span id="activity-day-count"></span></div>
+          <div id="activity-links" class="activity-links"></div>
+          <button id="activity-more" type="button" hidden>Show more</button>
+        </div>
+        <div id="activity-status" class="activity-status" role="status" hidden></div>
+        <button id="activity-retry" type="button" class="activity-retry" hidden>Try again</button>
+      </div>
+    </section>
     <footer>
       <button id="home" aria-label="Back to root search"><span class="footer-mark" aria-hidden="true">≋</span><span id="status">Starting Savenest…</span><span id="sync-status" role="status" aria-live="polite" aria-atomic="true" hidden><span class="sync-dot" aria-hidden="true"></span><span id="sync-label"></span></span></button>
       <span id="preview" hidden>Preview</span>
-      <div class="footer-utilities"><button id="show-features" title="Explore Savenest features" aria-haspopup="dialog" aria-controls="features-dialog">Explore features</button><button id="open-settings" title="Settings (⌘,)">Settings</button><button id="show-shortcuts" title="Keyboard shortcuts (⌘/)" aria-haspopup="dialog" aria-controls="shortcuts-dialog">Shortcuts</button></div>
+      <div class="footer-utilities"><button id="show-features" title="Explore Savenest features" aria-haspopup="dialog" aria-controls="features-dialog">Explore features</button><button id="open-settings" title="Settings (⌘,)">Settings</button><button id="open-activity" title="Activity dashboard">Activity</button><button id="show-shortcuts" title="Keyboard shortcuts (⌘/)" aria-haspopup="dialog" aria-controls="shortcuts-dialog">Shortcuts</button></div>
       <div class="footer-actions"><button id="primary">Open <kbd>↵</kbd></button><span class="separator"></span><button id="actions" title="Browse all actions (⌘K)" aria-haspopup="dialog" aria-controls="action-dialog">Actions <kbd>⌘K</kbd></button></div>
     </footer>
     <div id="notice" role="status" hidden><span id="notice-text"></span><button id="dismiss-notice" aria-label="Dismiss message">×</button></div>
