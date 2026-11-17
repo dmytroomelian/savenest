@@ -13,6 +13,6 @@ enum FeedbackDestination: String, CaseIterable {
 
     var url: URL {
         let template = self == .requestFeature ? "feature.yml" : "bug.yml"
-        return URL(string: "https://github.com/dmytro-omelian/savenest/issues/new?template=\(template)")!
+        return URL(string: "https://github.com/dmytroomelian/savenest/issues/new?template=\(template)")!
     }
 }

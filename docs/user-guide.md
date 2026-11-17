@@ -2,7 +2,7 @@
 
 ## Explore features
 
-Choose **Explore features** in the launcher footer, root search, or Actions. Search for a capability and use its button to open the matching tool or settings. The catalog also describes Activity, macOS Services URL drafts, and Launch at login; Activity opens the dashboard, Services explains the menu command, and login opens Settings. Closing the guide returns to your previous search and selection. Pro and Beta labels identify paid features and features still being tested.
+Choose **Help → Explore features** in the launcher footer, or open it from root search or Actions. Search for a capability and use its button to open the matching tool or settings. The catalog also describes Activity, macOS Services URL drafts, and Launch at login; Activity opens the dashboard, Services explains the menu command, and login opens Settings. Closing the guide returns to your previous search and selection. Pro and Beta labels identify paid features and features still being tested.
 
 ## Save from other apps — Pro beta
 
@@ -40,7 +40,7 @@ Account, Settings, sharing, and system dialogs retain their native implementatio
 
 ### Feedback
 
-Choose **Request a feature** or **Report a bug** in the **Feedback** section at the top of Settings, on the Account screen, or in the macOS **Help** menu. Both actions also appear in **⌘K Actions** and root search; search for “feedback”, “feature”, or “bug”. Each opens the corresponding GitHub issue form in your default browser.
+Choose **Request a feature** or **Report a bug** in **Help** in the launcher footer, the **Feedback** row at the bottom of Settings, on the Account screen, or in the macOS **Help** menu. Both actions also appear in **⌘K Actions** and root search; search for “feedback”, “feature”, or “bug”. Each opens the corresponding GitHub issue form in your default browser.
 
 ### Browser history
 

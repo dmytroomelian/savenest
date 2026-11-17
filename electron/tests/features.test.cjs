@@ -56,19 +56,23 @@ function launcher(t, initial = {}) {
   return { window, document, calls, update, byID, key, action, featureAction, event: message => onEvent(message) };
 }
 
-test('Explore features is discoverable in root search, Actions and the persistent footer', t => {
+function openFeatures(target) {
+  target.byID('open-help').click();
+  target.byID('help-menu').querySelector('[data-help-action="features"]').click();
+}
+
+test('Explore features is discoverable in search, Actions and Help, not as a default quick action', t => {
   const root = model.commands('');
-  const explore = root.find(item => item.id === 'command:explore');
-  assert.ok(explore, 'empty root search must offer Explore features');
-  assert.equal(explore.ui, 'features');
-  assert.equal(explore.title, 'Explore features');
+  assert.equal(root.some(item => item.id === 'command:explore'), false);
   assert.ok(model.commands('guide').some(item => item.id === 'command:explore'));
   assert.equal(model.actionCatalog({}).find(item => item.id === 'command:explore')?.group, 'Savenest');
 
   const ui = launcher(t);
-  assert.equal(ui.byID('show-features').textContent, 'Explore features');
-  const trigger = ui.byID('show-features');
-  trigger.focus(); trigger.click();
+  assert.equal(ui.byID('show-features'), null, 'the standalone footer button is removed');
+  ui.byID('open-help').click();
+  const item = ui.byID('help-menu').querySelector('[data-help-action="features"]');
+  assert.equal(item.textContent, 'Explore features');
+  item.click();
   assert.equal(ui.byID('features-dialog').open, true);
   assert.equal(ui.document.activeElement, ui.byID('features-search'));
   ui.key('Escape', ui.byID('features-search'));
@@ -82,7 +86,7 @@ test('Explore features is discoverable in root search, Actions and the persisten
 
 test('the social capture card summarizes setup, limits and evidence', t => {
   const ui = launcher(t);
-  ui.byID('show-features').click();
+  openFeatures(ui);
   const card = ui.document.querySelector('.feature-card[data-feature-id="social-capture"]');
   assert.ok(card);
   const text = card.textContent;
@@ -112,7 +116,7 @@ test('the social capture card summarizes setup, limits and evidence', t => {
 
 test('social capture status follows the optional launcher state and stays a demo in preview', t => {
   const ui = launcher(t);
-  ui.byID('show-features').click();
+  openFeatures(ui);
   const status = () => ui.document.querySelector('.social-capture .feature-status');
   assert.equal(status().textContent, 'Off');
   ui.update({ socialCapture: { enabled: true, paused: false, hasAccess: true, permissionGranted: true, status: 'ready', enabledCount: 2 } });
@@ -138,7 +142,7 @@ test('catalog shortcuts follow live bindings by capture id and hide unassigned o
     { id: 'duplicates', title: 'Close duplicate tabs', key: '⇧⌘L', assigned: true, error: '' }
   ];
   const ui = launcher(t, { shortcuts });
-  ui.byID('show-features').click();
+  openFeatures(ui);
   const key = id => ui.document.querySelector(`.feature-card[data-feature-id="${id}"] .feature-key`)?.textContent || '';
   assert.equal(key('save-current'), '⇧⌘J');
   assert.equal(key('save-note'), '⌥⌘N');
@@ -154,7 +158,7 @@ test('catalog shortcuts follow live bindings by capture id and hide unassigned o
 
 test('catalog actions use existing commands and search scopes', t => {
   const ui = launcher(t);
-  const run = id => { ui.byID('show-features').click(); ui.featureAction(id).click(); };
+  const run = id => { openFeatures(ui); ui.featureAction(id).click(); };
   run('save-current');
   assert.deepEqual(ui.calls.splice(0), [{ command: 'capture', action: 'quick' }]);
   run('manage-tags');
@@ -163,7 +167,7 @@ test('catalog actions use existing commands and search scopes', t => {
   assert.deepEqual(ui.calls.splice(0), [{ command: 'export' }]);
   run('cloud-saving');
   assert.deepEqual(ui.calls.splice(0), [{ command: 'account' }]);
-  ui.byID('show-features').click();
+  openFeatures(ui);
   assert.equal(ui.featureAction('duplicates').textContent, 'Close duplicate tabs');
   ui.featureAction('duplicates').click();
   assert.deepEqual(ui.calls.splice(0), [{ command: 'capture', action: 'duplicates' }]);
@@ -174,7 +178,7 @@ test('catalog actions use existing commands and search scopes', t => {
 
 test('live state refreshes preserve the focused catalog action, search focus and scroll position', t => {
   const ui = launcher(t);
-  ui.byID('show-features').click();
+  openFeatures(ui);
   const list = ui.byID('features-list');
   const action = ui.featureAction('duplicates');
   action.focus();
@@ -197,7 +201,7 @@ test('live state refreshes preserve the focused catalog action, search focus and
 
 test('live catalog refreshes keep the search element, caret and selection stable', t => {
   const ui = launcher(t);
-  ui.byID('show-features').click();
+  openFeatures(ui);
   const search = ui.byID('features-search');
   search.value = 'social capture';
   search.focus();
@@ -214,7 +218,7 @@ test('live catalog refreshes keep the search element, caret and selection stable
 
 test('feature search filters the catalog without firing root shortcuts', t => {
   const ui = launcher(t);
-  ui.byID('show-features').click();
+  openFeatures(ui);
   const search = ui.byID('features-search');
   search.value = 'pro';
   search.dispatchEvent(new ui.window.Event('input', { bubbles: true }));
@@ -236,15 +240,14 @@ test('closing the catalog preserves the launcher query, selection, scope and foc
   assert.ok(selected);
   selected.click();
   assert.equal(selected.checked, true);
-  const trigger = ui.byID('show-features');
-  trigger.focus(); trigger.click();
+  openFeatures(ui);
   assert.equal(ui.byID('features-dialog').open, true);
   assert.equal(ui.key('Escape', ui.byID('features-search')).defaultPrevented, true);
   assert.equal(ui.byID('features-dialog').open, false);
   assert.equal(ui.byID('search').value, 'saved page');
   assert.equal(ui.byID('scope').value, 'All');
   assert.equal(ui.document.querySelector('.row-check').checked, true);
-  assert.equal(ui.document.activeElement, trigger);
+  assert.equal(ui.document.activeElement, ui.byID('search'));
   assert.equal(ui.calls.some(call => call.command === 'dismiss'), false);
 });
 
@@ -255,7 +258,7 @@ test('Escape closes the catalog before leaving an open draft', t => {
   ui.calls.length = 0;
   const note = ui.byID('edit-note');
   note.value = 'Draft still here';
-  ui.byID('show-features').click();
+  openFeatures(ui);
   assert.equal(ui.byID('features-dialog').open, true);
   ui.key('Escape', ui.byID('features-search'));
   assert.equal(ui.byID('features-dialog').open, false);
@@ -266,7 +269,7 @@ test('Escape closes the catalog before leaving an open draft', t => {
 
 test('arrow keys move from catalog search to visible actions', t => {
   const ui = launcher(t);
-  ui.byID('show-features').click();
+  openFeatures(ui);
   const search = ui.byID('features-search');
   ui.key('ArrowDown', search);
   assert.equal(ui.document.activeElement, ui.document.querySelector('.social-capture .feature-action'));
@@ -280,14 +283,14 @@ test('activity catalog action opens Activity and leaves drafts untouched', t => 
   const draft = launcher(t);
   draft.event({ event: 'add' });
   draft.byID('edit-note').value = 'Draft still here';
-  draft.byID('show-features').click();
+  openFeatures(draft);
   draft.featureAction('activity').click();
   assert.equal(draft.byID('features-dialog').open, false);
   assert.equal(draft.document.body.dataset.view, 'editor');
   assert.equal(draft.byID('edit-note').value, 'Draft still here');
 
   const ui = launcher(t);
-  ui.byID('show-features').click();
+  openFeatures(ui);
   ui.featureAction('activity').click();
   assert.equal(ui.byID('features-dialog').open, false);
   assert.equal(ui.document.body.dataset.view, 'activity');
@@ -312,13 +315,13 @@ test('catalog exposes shipped add link, local tags, close-after-save, appearance
   assert.equal(item('keyboard-guide').action.ui, 'shortcuts');
 
   const ui = launcher(t);
-  ui.byID('show-features').click();
+  openFeatures(ui);
   ui.featureAction('add-link').click();
   assert.equal(ui.byID('features-dialog').open, false);
   assert.equal(ui.document.body.dataset.view, 'editor');
   assert.equal(ui.byID('edit-url').readOnly, false);
 
-  ui.byID('show-features').click();
+  openFeatures(ui);
   ui.featureAction('keyboard-guide').click();
   assert.equal(ui.byID('shortcuts-dialog').open, true);
 });

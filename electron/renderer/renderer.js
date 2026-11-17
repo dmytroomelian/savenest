@@ -9,7 +9,7 @@ let captureSelected = new Set(), selectionSaving = false, actionItems = [], filt
 let activity;
 let lastNativeMessage = '', noticeSource = '', discardAction = null;
 let shortcutReturnFocus = null;
-let featuresReturnFocus = null;
+let featuresReturnFocus = null, helpReturnFocus = null;
 let selectionAnchorID = null, rangeSelectionBase = null;
 const pageShortcuts = {
   select: { key: ' ', shift: true, label: '⇧Space' },
@@ -198,7 +198,8 @@ function updateSyncStatus() {
 }
 function updateFooter() {
   updateSyncStatus();
-  $('open-feature-request').disabled = fatal;
+  if (fatal) closeHelp(false);
+  $('open-help').disabled = fatal;
   $('open-settings').disabled = fatal;
   $('shortcut-settings').disabled = fatal;
   $('open-activity').disabled = !activityAvailable();
@@ -461,6 +462,8 @@ function renderShortcuts() {
 function showShortcuts() {
   shortcutReturnFocus = document.activeElement;
   if ($('action-dialog').open) $('action-dialog').close();
+  if ($('features-dialog').open) $('features-dialog').close();
+  closeHelp(false);
   renderShortcuts();
   if (!$('shortcuts-dialog').open) $('shortcuts-dialog').showModal();
   $('shortcuts-close').focus();
@@ -542,11 +545,35 @@ function renderFeatures(preserve = false) {
     if (next) next.focus(); else restoreSearch();
   } else if (searchFocused) restoreSearch();
 }
+function helpMenuItems() { return [...$('help-menu').querySelectorAll('[role="menuitem"]')]; }
+function closeHelp(restore = false) {
+  if ($('help-menu').hidden) return;
+  $('help-menu').hidden = true; $('open-help').setAttribute('aria-expanded', 'false');
+  if (restore && helpReturnFocus?.isConnected) helpReturnFocus.focus();
+}
+function openHelp() {
+  if (fatal) return;
+  if ($('action-dialog').open) $('action-dialog').close();
+  if ($('features-dialog').open) $('features-dialog').close();
+  if ($('shortcuts-dialog').open) $('shortcuts-dialog').close();
+  helpReturnFocus = document.activeElement;
+  $('help-menu').hidden = false; $('open-help').setAttribute('aria-expanded', 'true');
+  (helpMenuItems()[0] || $('open-help')).focus();
+}
+function toggleHelp() { if ($('help-menu').hidden) openHelp(); else closeHelp(true); }
+function runHelpAction(action) {
+  closeHelp(true);
+  if (action === 'features') showFeatures();
+  else if (action === 'request-feature') void run('requestFeature');
+  else if (action === 'report-bug') void run('reportBug');
+  else if (action === 'shortcuts') showShortcuts();
+}
 function showFeatures() {
   if (fatal) return;
   const catalog = window.FeaturesCatalog;
   if (!catalog) { notice('The feature guide is unavailable.', true); return; }
   featuresReturnFocus = document.activeElement;
+  closeHelp(false);
   if ($('action-dialog').open) $('action-dialog').close();
   $('features-search').value = ''; renderFeatures();
   if (!$('features-dialog').open) $('features-dialog').showModal();
@@ -594,11 +621,12 @@ $('actions').onclick = showActions;
 $('toggle-selection').onclick = () => { toggleSelection(); focusSearch(); };
 $('select-all').onclick = () => { selectAllPages(); focusSearch(); };
 $('clear-selection').onclick = () => { clearSelection(); focusSearch(); };
-$('open-feature-request').onclick = () => void run('requestFeature');
+$('open-help').onclick = toggleHelp;
+for (const item of helpMenuItems()) item.onclick = () => runHelpAction(item.dataset.helpAction);
+document.addEventListener('click', event => { if (!$('help-menu').hidden && !event.target.closest?.('.help-control')) closeHelp(false); });
 $('open-settings').onclick = () => void run('settings');
 $('open-activity').onclick = openActivity;
 $('show-shortcuts').onclick = showShortcuts;
-$('show-features').onclick = showFeatures;
 $('features-close').onclick = closeFeatures;
 $('features-search').oninput = () => renderFeatures();
 $('features-dialog').onkeydown = event => {
@@ -649,6 +677,19 @@ function handlePageShortcut(event) {
 }
 document.addEventListener('keydown', event => {
   if (event.isComposing || event.keyCode === 229) return;
+  if (!$('help-menu').hidden) {
+    const items = helpMenuItems(), index = items.indexOf(document.activeElement);
+    if (event.key === 'Escape') { event.preventDefault(); closeHelp(true); }
+    else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault();
+      const next = index < 0 ? 0 : (index + (event.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length;
+      items[next]?.focus();
+    } else if (event.key === 'Home' || event.key === 'End') {
+      event.preventDefault(); items[event.key === 'Home' ? 0 : items.length - 1]?.focus();
+    } else if (event.key === 'Tab') closeHelp(false);
+    else if (!event.metaKey && !event.ctrlKey && !event.altKey && ['Enter', ' '].includes(event.key)) return;
+    return;
+  }
   if ($('shortcuts-dialog').open) {
     if (event.key === 'Escape' || (event.metaKey && event.key === '/')) { event.preventDefault(); $('shortcuts-dialog').close(); }
     return;
@@ -690,6 +731,7 @@ window.savenest.onEvent(message => {
   }
   if (message.event === 'activityChanged') activity?.changed();
   if (message.event === 'add') openEditor();
+  if (message.event === 'features') showFeatures();
   if (message.event === 'editorSaved' && captureID && !editorSaving) { captureID = null; setRoute('root'); focusSearch(); }
   if (message.event === 'selectionClosed' && route === 'selection') { setRoute('root'); focusSearch(); }
   if (message.event === 'error') notice(message.message, true);

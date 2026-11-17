@@ -22,7 +22,7 @@
     { id: 'shortcuts', title: 'Keyboard shortcuts', detail: 'Learn launcher keys and see your capture shortcuts', symbol: 'keyboard', ui: 'shortcuts', keywords: 'keyboard shortcuts keys help learn hotkeys' },
     { id: 'request-feature', title: 'Request a feature', detail: 'Suggest an improvement on GitHub', symbol: 'feedback', command: 'requestFeature', keywords: 'feedback feature request idea suggestion improvement help support github' },
     { id: 'report-bug', title: 'Report a bug', detail: 'Tell us what went wrong on GitHub', symbol: 'feedback', command: 'reportBug', keywords: 'feedback bug report issue problem error broken help support github' },
-    { id: 'explore', title: 'Explore features', detail: 'Browse capture, search, reading, organization and Pro capabilities', symbol: 'compass', ui: 'features', keywords: 'explore features guide catalog capabilities pro beta social capture slack linkedin x help', home: true },
+    { id: 'explore', title: 'Explore features', detail: 'Browse capture, search, reading, organization and Pro capabilities', symbol: 'compass', ui: 'features', keywords: 'explore features guide catalog capabilities pro beta social capture slack linkedin x help' },
     { id: 'account', title: 'Account & Pro', detail: 'Automatic saving · Account and billing', symbol: 'account', command: 'account', keywords: 'account pro cloud backup billing sign in login subscription payment' },
     { id: 'tags', title: 'Manage tags', detail: 'Rename or remove tags across your library', symbol: 'tag', command: 'tags', keywords: 'tags rename remove organize' },
     { id: 'refresh', title: 'Refresh tabs and history', detail: 'Read the latest browser state', symbol: 'refresh', command: 'refresh', keywords: 'refresh reload rescan sync' },
