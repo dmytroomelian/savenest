@@ -35,6 +35,31 @@
 	<string>45</string>
 	<key>LSMinimumSystemVersion</key>
 	<string>14.0</string>
+	<key>NSServices</key>
+	<array>
+		<dict>
+			<key>NSMenuItem</key>
+			<dict>
+				<key>default</key>
+				<string>Add to SaveNest…</string>
+			</dict>
+			<key>NSMessage</key>
+			<string>addToSaveNest</string>
+			<key>NSPortName</key>
+			<string>Savenest</string>
+			<key>NSRequiredContext</key>
+			<dict>
+				<key>NSTextContent</key>
+				<string>URL</string>
+			</dict>
+			<key>NSSendTypes</key>
+			<array>
+				<string>public.url</string>
+				<string>public.utf8-plain-text</string>
+				<string>NSStringPboardType</string>
+			</array>
+		</dict>
+	</array>
 	<key>NSAppleEventsUsageDescription</key>
 	<string>Savenest reads the title and address of browser tabs when you use the capture shortcut or menu. Your tabs stay open and your saved links stay on your Mac.</string>
 	<key>NSHighResolutionCapable</key>

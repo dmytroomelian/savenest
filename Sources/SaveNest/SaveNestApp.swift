@@ -32,8 +32,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     private var pendingURLs: [URL] = []
     private var electronBridge: ElectronBridge?
     private var librarySession: LibrarySessionLock?
+    private var servicesProvider: ServicesProvider?
     func applicationDidFinishLaunching(_ notification: Notification) {
         #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("--services-checks") && AppLaunch.isPreview {
+            NSApp.setActivationPolicy(.prohibited)
+            Task { @MainActor in
+                do { try await ServicesSelfChecks.run(); print("Services checks passed"); exit(0) }
+                catch { fputs("Services checks failed: \(error)\n", stderr); exit(1) }
+            }
+            return
+        }
         if ProcessInfo.processInfo.arguments.contains("--automation-browser-checks") {
             guard AppLaunch.isPreview, ProcessInfo.processInfo.arguments.contains("--ui-preview") else {
                 fputs("Live browser checks require --ui-preview.\n", stderr); exit(1)
@@ -127,6 +136,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             setupStatusItem(); if AppRuntime.isPrivateBeta { openAccount() } else { openLibrary() }
             model.updater.start()
         }
+        if !model.isPreview && !isElectron { servicesProvider = ServicesProvider.register(model) }
         let launchURLs = pendingURLs
         pendingURLs.removeAll()
         for url in launchURLs { model.account.handleIncomingURL(url) }

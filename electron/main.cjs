@@ -10,6 +10,7 @@ const { ReadingWorkspace } = require('./workspace.cjs');
 const { offerInstallation, resolveStartupConflict } = require('./installation.cjs');
 const { glassWindowOptions, updateWindowMaterial } = require('./window-material.cjs');
 const { isNativeWindowCommand, requestNativeWindowCommand } = require('./window-handoff.cjs');
+const { createServiceQueue, registerServices } = require('./services.cjs');
 
 const preview = !app.isPackaged && process.argv.includes('--preview');
 const smoke = preview && process.argv.includes('--smoke-test');
@@ -22,9 +23,18 @@ app.enableSandbox();
 protocol.registerSchemesAsPrivileged([{ scheme: 'savenest-ui', privileges: { standard: true, secure: true, supportFetchAPI: true } }]);
 
 let win, tray, native, updater, workspace, latestState, fatalError, quitting = false, preparingQuit = false, startupConflict = false;
-let currentView = 'root';
+let currentView = 'root', launcherLoaded = false;
 let hiddenAt = 0, showing = null, modalDepth = 0, blurTimer;
 const callbacks = [];
+const services = createServiceQueue({
+  capture: async url => {
+    await show();
+    if (fatalError) throw new Error(fatalError);
+    if (currentView === 'editor') throw new Error('Finish or cancel the open editor, then choose Add to SaveNest again.');
+    await native.request({ command: 'serviceCapture', url });
+  },
+  onError: error => { void show().then(() => send({ event: 'error', message: error.message })); }
+});
 
 function refreshWindowMaterials() {
   const appearance = latestState?.appearance || 'black';
@@ -153,6 +163,7 @@ if (!app.requestSingleInstanceLock()) {
 }
 
 async function start() {
+  registerServices({ app, root, preview, receive: services.receive });
   if (process.platform !== 'darwin') throw new Error('Savenest currently requires macOS 14 or later.');
   if (await offerInstallation({ app, dialog,
     release: app.isPackaged && require('../package.json').saveNestRelease === true,
@@ -239,6 +250,7 @@ async function start() {
     }
     if (message.event === 'state') {
       latestState = message.state;
+      if (launcherLoaded) services.ready();
       refreshWindowMaterials();
       workspace.send({ event: 'appearance', appearance: latestState.appearance });
       while (callbacks.length) void command({ command: 'callback', url: callbacks.shift() });
@@ -257,11 +269,13 @@ async function start() {
     else if (message.event === 'quit' && !quitting && !smoke) app.quit();
     else send(message);
   });
-  native.on('failure', message => { if (!quitting) { fatalError = message; send({ event: 'fatal', message }); } });
+  native.on('failure', message => { if (!quitting) { fatalError = message; send({ event: 'fatal', message }); if (launcherLoaded) services.ready(); } });
   // Settings belongs to the helper; only this host can configure its updater.
   // Keep these messages outside the renderer's command allowlist.
   void native.request({ command: 'updateStatus', ...updater.status }).catch(() => {});
   await win.loadURL(APP_URL);
+  launcherLoaded = true;
+  if (!quitting && (latestState || fatalError)) services.ready();
   if (startupConflict || quitting) return;
   if (fatalError) send({ event: 'fatal', message: fatalError });
   if (!smoke) {

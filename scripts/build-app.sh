@@ -2,7 +2,10 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 configuration="${CONFIGURATION:-release}"
-if [[ "${ELECTRON_HELPER:-0}" == "1" ]]; then node scripts/build-ui.mjs; fi
+if [[ "${ELECTRON_HELPER:-0}" == "1" ]]; then
+  node scripts/build-ui.mjs
+  node scripts/build-services.mjs
+fi
 build_args=(-c "$configuration")
 if [[ -n "${SWIFT_SCRATCH_PATH:-}" ]]; then build_args+=(--scratch-path "$SWIFT_SCRATCH_PATH"); fi
 if [[ -n "${TARGET_ARCH:-}" ]]; then
@@ -22,6 +25,8 @@ fi
 /usr/libexec/PlistBuddy -c 'Set :SaveNestUpdatesEnabled false' "$app/Contents/Info.plist"
 if [[ "${ELECTRON_HELPER:-0}" == "1" ]]; then
   /usr/libexec/PlistBuddy -c 'Delete :CFBundleURLTypes' "$app/Contents/Info.plist"
+  # The outer Electron bundle advertises the Services port; the child must not duplicate it.
+  /usr/libexec/PlistBuddy -c 'Delete :NSServices' "$app/Contents/Info.plist"
   /usr/libexec/PlistBuddy -c 'Add :LSUIElement bool true' "$app/Contents/Info.plist"
 fi
 swift scripts/make-icon.swift

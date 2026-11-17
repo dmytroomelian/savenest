@@ -754,6 +754,20 @@ final class AppModel: ObservableObject {
         }
         saveClipboard(url)
     }
+    /// Opens the annotation editor for a URL delivered by macOS Services.
+    /// Never saves on the user's behalf, and never replaces an existing draft.
+    func beginServicesCapture(_ url: URL) -> String? {
+        if draft != nil || tabSelection != nil || isCapturing {
+            return "Finish or cancel the open Savenest capture first, then choose Add to SaveNest again."
+        }
+        if let existing = library.links.first(where: { Library.identity($0.url) == Library.identity(url.absoluteString) }) {
+            beginDraft(existing, action: .note)
+        } else {
+            let title = LinkTitle.best(url: url.absoluteString, browserTitle: "")
+            beginDraft(SavedLink(url: url.absoluteString, title: title, browser: "Services"), action: .note)
+        }
+        return nil
+    }
     func labelImportance(_ link: SavedLink, _ importance: LinkImportance?) {
         Task { @MainActor in
             guard prepareLocalWrite() else { return }
