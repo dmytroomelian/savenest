@@ -1,29 +1,108 @@
 import { makeUniversalApp } from '@electron/universal';
 import { sign } from '@electron/osx-sign';
-import { cp, mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile, access } from 'node:fs/promises';
-import { createReadStream } from 'node:fs';
-import { createHash } from 'node:crypto';
+import { cp, mkdir, mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import assert from 'node:assert/strict';
+import {
+  createCheckpoint, createCommandRunner, hashFile, markCompleted, notarizeAndStaple,
+  pathExists, removeSubmissionArchive, sha256Text, stableStringify, verifyExistingFinal,
+  writeFileAtomic, writeJsonAtomic
+} from './release-state.mjs';
 
 // Merge the already validated release archives, never a fresh working-tree build.
 const manifest = JSON.parse(await readFile('package.json', 'utf8'));
-const releaseDirectory = path.resolve(process.argv[2] || `build/releases/electron/${manifest.version}`);
+const releaseDirectory = path.resolve(process.argv[2] || process.env.RELEASE_OUTPUT_DIR || `build/releases/electron/${manifest.version}`);
 const identity = process.env.SIGNING_IDENTITY;
 const profile = process.env.NOTARY_PROFILE;
 if (!identity || identity === '-' || !profile) throw new Error('Set SIGNING_IDENTITY and NOTARY_PROFILE to existing release credentials.');
 const run = (command, args) => execFileSync(command, args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
+async function readJsonIfExists(file) {
+  try { return JSON.parse(await readFile(file, 'utf8')); }
+  catch (error) { if (error.code === 'ENOENT') return null; throw error; }
+}
+async function readTextIfExists(file) {
+  try { return await readFile(file, 'utf8'); }
+  catch (error) { if (error.code === 'ENOENT') return null; throw error; }
+}
 const filename = `SaveNest-${manifest.version}-macOS-universal.zip`;
 const archive = path.join(releaseDirectory, filename);
-try { await access(archive); throw new Error(`Refusing to overwrite release archive: ${archive}`); }
-catch (error) { if (error.code !== 'ENOENT') throw error; }
-const sha256 = async file => {
-  const hash = createHash('sha256');
-  for await (const chunk of createReadStream(file)) hash.update(chunk);
-  return hash.digest('hex');
+const checkpoint = createCheckpoint({ file: path.join(releaseDirectory, '.release-state', 'universal.json') });
+const runner = createCommandRunner({ logDirectory: path.join(releaseDirectory, '.release-state', 'logs', 'universal'), checkpoint });
+const sha256 = hashFile;
+const archiveInputs = {};
+for (const architecture of ['arm64', 'x64']) {
+  const artifactPath = path.join(releaseDirectory, architecture, 'artifact.json');
+  const input = path.join(releaseDirectory, `SaveNest-${manifest.version}-macOS-${architecture}.zip`);
+  let artifact;
+  try { artifact = JSON.parse(await readFile(artifactPath, 'utf8')); }
+  catch (error) {
+    if (error.code === 'ENOENT' && await pathExists(archive)) {
+      throw new Error(`Refusing to reuse ${archive}: missing ${artifactPath} provenance.`);
+    }
+    throw error;
+  }
+  assert.equal(await sha256(input), artifact.sha256, `${architecture} archive checksum mismatch`);
+  archiveInputs[architecture] = { file: artifact.file, sha256: artifact.sha256, size: artifact.size };
+}
+const build = run('/usr/libexec/PlistBuddy', ['-c', 'Print :CFBundleVersion', 'Resources/Info.plist']);
+const identityInputs = {
+  version: manifest.version, build, architecture: 'universal', electronVersion: manifest.devDependencies.electron,
+  signingIdentity: sha256Text(identity), archives: archiveInputs,
+  entitlements: {
+    electron: await hashFile('Resources/Electron.entitlements'),
+    helper: await hashFile('Resources/SaveNest.entitlements')
+  },
+  packageJson: await hashFile('package.json')
 };
+// The future orchestrator may supply a release-wide identity. Standalone
+// builds derive one from the exact architecture archives and signing inputs.
+const releaseIdentity = process.env.SAVENEST_RELEASE_IDENTITY || process.env.RELEASE_IDENTITY || sha256Text(stableStringify(identityInputs));
+const universalDirectory = path.join(releaseDirectory, 'universal');
+const metadataPaths = { artifact: path.join(universalDirectory, 'artifact.json'), sums: path.join(universalDirectory, 'SHA256SUMS.txt') };
+const makeMetadata = facts => {
+  const artifact = { architecture: 'universal', file: filename,
+    url: `https://github.com/dmytroomelian/savenest/releases/download/v${manifest.version}/${filename}`,
+    sha256: facts.sha256, size: facts.size };
+  return { artifact, sha256sums: `${artifact.sha256}  ${filename}\n` };
+};
+const writeMetadata = async metadata => {
+  await mkdir(universalDirectory, { recursive: true });
+  await writeJsonAtomic(metadataPaths.artifact, metadata.artifact);
+  await writeFileAtomic(metadataPaths.sums, metadata.sha256sums, { mode: 0o644 });
+  await markCompleted({ checkpoint, metadata });
+};
+if (await pathExists(archive)) {
+  const metadata = { artifact: await readJsonIfExists(metadataPaths.artifact), sha256sums: await readTextIfExists(metadataPaths.sums) };
+  const verified = await verifyExistingFinal({ checkpoint, identity: releaseIdentity, architecture: 'universal',
+    version: manifest.version, build, inputs: identityInputs, finalArchive: archive, metadata,
+    validate: async file => {
+      await runner.run('validate-package', process.execPath, ['scripts/check-electron-package.mjs', file, 'universal']);
+    } });
+  const recovered = metadata.artifact && metadata.sha256sums ? (verified.state.metadata ?? metadata)
+    : (verified.state.metadata?.artifact && verified.state.metadata?.sha256sums ? verified.state.metadata : makeMetadata(verified.final));
+  await writeMetadata(recovered);
+  console.log(`Reused notarized ${archive}`);
+  process.exit(0);
+}
+const pending = await checkpoint.read();
+if (pending?.notary?.id && pending.submission && pending.identity === releaseIdentity) {
+  // Resume the immutable submitted ZIP without rebuilding or re-signing a new
+  // universal app. createSubmissionArchive is intentionally unreachable.
+  const submission = path.join(releaseDirectory, '.notarize-universal.zip');
+  const result = await notarizeAndStaple({
+    checkpoint, runner, identity: releaseIdentity, architecture: 'universal', version: manifest.version, build,
+    inputs: identityInputs, submissionArchive: submission, finalArchive: archive, profile,
+    extractDirectory: path.join(releaseDirectory, '.release-state', 'extract-universal'),
+    createSubmissionArchive: async () => { throw new Error('A pending submission must never be recreated.'); }
+  });
+  const metadata = makeMetadata(result.artifact);
+  await writeMetadata(metadata);
+  await removeSubmissionArchive({ checkpoint, submissionArchive: submission });
+  console.log(JSON.stringify({ archive, app: result.app, ...metadata.artifact }, null, 2));
+  process.exit(0);
+}
 const workspace = await mkdtemp(path.join(tmpdir(), 'savenest-universal-'));
 console.log(`Staging universal app in ${workspace}`);
 const apps = {};
@@ -83,6 +162,7 @@ const mcpExecutable = path.join(app, 'Contents/Resources/savenest-mcp');
 if (hasMCP) {
   for (const cpu of ['arm64', 'x86_64']) run('lipo', [mcpExecutable, '-verify_arch', cpu]);
   run('codesign', ['--force', '--options', 'runtime', '--timestamp', '--sign', identity, mcpExecutable]);
+  run('codesign', ['--verify', '--strict', mcpExecutable]);
 }
 await sign({ app, identity, platform: 'darwin', version: manifest.devDependencies.electron,
   preAutoEntitlements: false, preEmbedProvisioningProfile: false,
@@ -90,24 +170,22 @@ await sign({ app, identity, platform: 'darwin', version: manifest.devDependencie
   optionsForFile: file => ({ hardenedRuntime: true,
     entitlements: file === app ? path.resolve('Resources/Electron.entitlements') : ['com.apple.security.cs.allow-jit'] })
 });
-if (hasMCP) run('codesign', ['--verify', '--strict', mcpExecutable]);
 run('codesign', ['--verify', '--deep', '--strict', app]);
 for (const bundle of [app, embeddedHelper]) {
   for (const cpu of ['arm64', 'x86_64']) run('lipo', [path.join(bundle, 'Contents/MacOS/SaveNest'), '-verify_arch', cpu]);
 }
-const submission = path.join(workspace, 'notarize-universal.zip');
-run('ditto', ['-c', '-k', '--sequesterRsrc', '--keepParent', app, submission]);
+const submission = path.join(releaseDirectory, '.notarize-universal.zip');
 console.log('Submitting universal app for notarization.');
-execFileSync('xcrun', ['notarytool', 'submit', submission, '--keychain-profile', profile, '--wait', '--timeout', '20m'], { stdio: 'inherit' });
-run('xcrun', ['stapler', 'staple', app]);
-run('xcrun', ['stapler', 'validate', app]);
-run('spctl', ['--assess', '--type', 'execute', app]);
-run('codesign', ['--verify', '--deep', '--strict', app]);
-run('ditto', ['-c', '-k', '--sequesterRsrc', '--keepParent', app, archive]);
-await mkdir(path.join(releaseDirectory, 'universal'), { recursive: true });
-const artifact = { architecture: 'universal', file: filename,
-  url: `https://github.com/dmytro-omelian/savenest/releases/download/v${manifest.version}/${filename}`,
-  sha256: await sha256(archive), size: (await stat(archive)).size };
-await writeFile(path.join(releaseDirectory, 'universal/artifact.json'), JSON.stringify(artifact, null, 2) + '\n');
-await writeFile(path.join(releaseDirectory, 'universal/SHA256SUMS.txt'), `${artifact.sha256}  ${filename}\n`);
-console.log(JSON.stringify({ archive, app, ...artifact }, null, 2));
+const result = await notarizeAndStaple({
+  checkpoint, runner, identity: releaseIdentity, architecture: 'universal', version: manifest.version, build,
+  inputs: identityInputs, submissionArchive: submission, finalArchive: archive, profile,
+  extractDirectory: path.join(releaseDirectory, '.release-state', 'extract-universal'),
+  createSubmissionArchive: async () => {
+    await rm(submission, { force: true });
+    await runner.run('submission-compress', 'ditto', ['-c', '-k', '--sequesterRsrc', '--keepParent', app, submission]);
+  }
+});
+const metadata = makeMetadata(result.artifact);
+await writeMetadata(metadata);
+await removeSubmissionArchive({ checkpoint, submissionArchive: submission });
+console.log(JSON.stringify({ archive, app, ...metadata.artifact }, null, 2));

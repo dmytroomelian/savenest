@@ -343,6 +343,10 @@ function createMenu() {
     ] },
     { label: 'Tools', submenu: [action('Manage tags…', 'tags'), action('Clean up tabs…', 'cleanup'), { label: 'Close duplicate tabs', click: () => void command({ command: 'capture', action: 'duplicates' }) }] },
     { label: 'Window', submenu: [{ role: 'minimize' }, { role: 'zoom' }, { label: 'Open Savenest', click: show }] },
-    { role: 'help', label: 'Help', submenu: [action('Request a feature', 'requestFeature'), action('Report a bug', 'reportBug')] }
+    { role: 'help', label: 'Help', submenu: [
+      { label: 'Explore features…', click: () => { void show().then(() => send({ event: 'features' })); } },
+      { type: 'separator' },
+      action('Request a feature', 'requestFeature'), action('Report a bug', 'reportBug')
+    ] }
   ]));
 }

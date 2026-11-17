@@ -7,7 +7,7 @@ const { JSDOM, VirtualConsole } = require('jsdom');
 
 const rendererDirectory = path.resolve(__dirname, '../renderer');
 const html = readFileSync(path.join(rendererDirectory, 'index.html'), 'utf8');
-const scripts = ['launcher-model.js', 'activity.js', 'renderer.js'].map(name => readFileSync(path.join(rendererDirectory, name), 'utf8'));
+const scripts = ['launcher-model.js', 'activity.js', 'features.js', 'renderer.js'].map(name => readFileSync(path.join(rendererDirectory, name), 'utf8'));
 const page = { id: 'saved:one', title: 'A saved page', url: 'https://example.com/one', domain: 'example.com', isSaved: true, tags: [] };
 
 function launcher(t, initial = {}) {
@@ -156,14 +156,61 @@ test('feature requests remain discoverable without search results', t => {
   assert.deepEqual(ui.calls, [{ command: 'requestFeature' }]);
 });
 
-test('the launcher footer exposes Request a feature and reuses the native feedback command', t => {
+test('the footer Help menu opens, handles arrows, and restores focus on Escape', t => {
   const ui = launcher(t);
-  const button = ui.byID('open-feature-request');
-  assert.equal(button.textContent, 'Request a feature');
-  button.click();
-  assert.deepEqual(ui.calls, [{ command: 'requestFeature' }]);
+  const trigger = ui.byID('open-help');
+  const items = [...ui.byID('help-menu').querySelectorAll('[role="menuitem"]')];
+  assert.equal(items.length, 4);
+  assert.equal(ui.byID('open-feature-request'), null, 'the standalone footer feedback button is removed');
+  assert.equal(ui.byID('show-features'), null, 'Explore moves into Help');
+  trigger.focus(); trigger.click();
+  assert.equal(ui.byID('help-menu').hidden, false);
+  assert.equal(trigger.getAttribute('aria-expanded'), 'true');
+  assert.equal(ui.document.activeElement, items[0]);
+  ui.key('ArrowDown', items[0]);
+  assert.equal(ui.document.activeElement, items[1]);
+  ui.key('ArrowUp', items[1]);
+  const escape = ui.key('Escape', items[0]);
+  assert.equal(escape.defaultPrevented, true);
+  assert.equal(ui.byID('help-menu').hidden, true);
+  assert.equal(trigger.getAttribute('aria-expanded'), 'false');
+  assert.equal(ui.document.activeElement, trigger);
+  assert.deepEqual(ui.calls, []);
+});
+
+test('Help routes Explore, feedback, bug reports, and keyboard shortcuts', t => {
+  const ui = launcher(t);
+  const open = action => {
+    ui.byID('open-help').click();
+    ui.byID('help-menu').querySelector(`[data-help-action="${action}"]`).click();
+  };
+  open('request-feature');
+  assert.deepEqual(ui.calls.splice(0), [{ command: 'requestFeature' }]);
+  open('report-bug');
+  assert.deepEqual(ui.calls.splice(0), [{ command: 'reportBug' }]);
+  open('shortcuts');
+  assert.equal(ui.byID('shortcuts-dialog').open, true);
+  ui.key('Escape', ui.byID('shortcuts-close'));
+  open('features');
+  assert.equal(ui.byID('features-dialog').open, true);
+  assert.equal(ui.document.activeElement, ui.byID('features-search'));
+  assert.deepEqual(ui.calls, []);
   const template = readFileSync(path.resolve(__dirname, '../../.github/ISSUE_TEMPLATE/feature.yml'), 'utf8');
   assert.match(template, /^name: Feature request/m);
+});
+
+test('Explore stays searchable but is not a default quick action', t => {
+  const ui = launcher(t);
+  const titles = () => [...ui.document.querySelectorAll('.row-title')].map(node => node.textContent);
+  assert.ok(!titles().includes('Explore features'), 'Explore must not be a default quick action');
+  ui.byID('search').focus();
+  ui.byID('search').value = 'explore';
+  ui.byID('search').dispatchEvent(new ui.window.Event('input', { bubbles: true }));
+  assert.ok(titles().includes('Explore features'));
+  ui.key('Enter', ui.byID('search'));
+  assert.equal(ui.byID('features-dialog').open, true);
+  ui.key('Escape', ui.byID('features-search'));
+  assert.equal(ui.byID('features-dialog').open, false);
 });
 
 const secondPage = { ...page, id: 'saved:two', title: 'Another page', url: 'https://example.com/two' };

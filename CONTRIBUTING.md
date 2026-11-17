@@ -4,7 +4,7 @@ Savenest has a free Mac core for saving and finding browser pages. Bug reports, 
 
 ## Start here
 
-Check [open issues](https://github.com/dmytro-omelian/savenest/issues) for existing work. For a substantial change, open an issue describing the user problem and proposed behavior before coding. Small fixes can go straight to a pull request. You can also help by reproducing a bug with sample data or clarifying a confusing instruction.
+Check [open issues](https://github.com/dmytroomelian/savenest/issues) for existing work. For a substantial change, open an issue describing the user problem and proposed behavior before coding. Small fixes can go straight to a pull request. You can also help by reproducing a bug with sample data or clarifying a confusing instruction.
 
 Keep discussions respectful and focused on the work. Report security problems privately using [SECURITY.md](SECURITY.md).
 
@@ -14,7 +14,7 @@ Maintainers classify issues by type, area, priority, and any outstanding triage 
 
 You need macOS 14+, Apple's command-line tools with Swift 5.9+, and Node.js 22.12+ with npm. Install Apple's tools with `xcode-select --install` if they are missing.
 
-1. [Fork the repository](https://github.com/dmytro-omelian/savenest/fork) into your GitHub account.
+1. [Fork the repository](https://github.com/dmytroomelian/savenest/fork) into your GitHub account.
 2. Clone your fork and create a branch. Replace `YOUR-USERNAME` below with your GitHub username.
 
 ```sh
@@ -72,7 +72,7 @@ If Swift reports paths from a previous checkout location, regenerate the disposa
 
 ## Open a pull request
 
-Push your branch to your fork and open a pull request against `dmytro-omelian/savenest`'s `main` branch. Explain the problem, resulting behavior, and checks actually run. Link a related issue when one exists. Keep the change focused and include screenshots with sample data for visible UI changes.
+Push your branch to your fork and open a pull request against `dmytroomelian/savenest`'s `main` branch. Explain the problem, resulting behavior, and checks actually run. Link a related issue when one exists. Keep the change focused and include screenshots with sample data for visible UI changes.
 
 Preserve local data compatibility and offline use. Do not put the app's core local saving, editing, import, or export behind account or subscription checks. Browser history and unsaved page context remain ephemeral. MCP may share permitted history records with an explicitly connected AI client; article bodies and live page text are excluded. Keep renderer isolation and validate all commands crossing process boundaries.
 

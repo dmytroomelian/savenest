@@ -161,11 +161,6 @@ struct SettingsView: View {
                 sheetHeading("Make yourself at home.", subtitle: "A few small things, just how you like them.")
             }
             if let error = model.error { Text(error).font(.system(size: 11)).foregroundStyle(.red) }
-            HStack(spacing: 20) {
-                ForEach(FeedbackDestination.allCases, id: \.self) { destination in
-                    Link(destination.title + " ↗", destination: destination.url).font(.system(size: 12))
-                }
-            }
             settingsTabs
             ZStack(alignment: .topLeading) {
                 VStack(alignment: .leading, spacing: 16) { settingsContent }
@@ -177,9 +172,17 @@ struct SettingsView: View {
             }
             .frame(maxWidth: .infinity, alignment: .topLeading)
             .clipped()
-            if selectedTab != .ai {
-                HStack { NestMark().frame(width: 20, height: 20); Text("Savenest " + (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "development")); Spacer(); Text("A small app for a clearer mind.") }.font(.system(size: 10)).foregroundStyle(Color.muted)
-            }
+            VStack(alignment: .leading, spacing: 12) {
+                if selectedTab != .ai {
+                    HStack { NestMark().frame(width: 20, height: 20); Text("Savenest " + (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "development")); Spacer(); Text("A small app for a clearer mind.") }
+                }
+                HStack(spacing: 16) {
+                    Text("Feedback")
+                    ForEach(FeedbackDestination.allCases, id: \.self) { destination in
+                        Link(destination.title + " ↗", destination: destination.url).font(.system(size: 11))
+                    }
+                }
+            }.font(.system(size: 10)).foregroundStyle(Color.muted)
         }.padding(32) }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(Color.paper).foregroundStyle(Color.ink).nestAppearance()

@@ -6,7 +6,7 @@ body:
     attributes:
       value: |
         Search existing issues before reporting a bug. Use sample data and remove personal URLs, notes, email addresses, and tokens.
-        Report vulnerabilities privately through [SECURITY.md](https://github.com/dmytro-omelian/savenest/blob/main/SECURITY.md).
+        Report vulnerabilities privately through [SECURITY.md](https://github.com/dmytroomelian/savenest/blob/main/SECURITY.md).
   - type: input
     id: version
     attributes:

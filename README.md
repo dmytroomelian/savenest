@@ -4,9 +4,9 @@ Save links. Keep the context. Find them again with **⌘O**.
 
 Savenest is a macOS launcher with a free, open-source core for saved links, notes, open browser tabs, and recent history. Local saving, search, reading, and import/export work without an account or subscription. Optional Pro integrations are separate.
 
-[Download](https://github.com/dmytro-omelian/savenest/releases/tag/v0.15.0) · [Website](https://savenest.app) · [Contribute](CONTRIBUTING.md) · [Report a bug](https://github.com/dmytro-omelian/savenest/issues/new?template=bug.yml)
+[Download](https://github.com/dmytroomelian/savenest/releases/tag/v0.15.0) · [Website](https://savenest.app) · [Contribute](CONTRIBUTING.md) · [Report a bug](https://github.com/dmytroomelian/savenest/issues/new?template=bug.yml)
 
-[![Checks](https://github.com/dmytro-omelian/savenest/actions/workflows/checks.yml/badge.svg)](https://github.com/dmytro-omelian/savenest/actions/workflows/checks.yml)
+[![Checks](https://github.com/dmytroomelian/savenest/actions/workflows/checks.yml/badge.svg)](https://github.com/dmytroomelian/savenest/actions/workflows/checks.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 ![Savenest launcher with commands, open tabs, and saved pages using sample data](docs/assets/launcher.png)
@@ -43,7 +43,7 @@ The backend `archiveHistory` compatibility change was deployed and its exact dep
 
 ## Try the app
 
-Get the current signed app from the [0.15.0 release](https://github.com/dmytro-omelian/savenest/releases/tag/v0.15.0) for **macOS 14+**, on Apple Silicon or Intel. Intel runtime validation remains pending. Pro integrations and the optional capture beta remain available in 0.15.0.
+Get the current signed app from the [0.15.0 release](https://github.com/dmytroomelian/savenest/releases/tag/v0.15.0) for **macOS 14+**, on Apple Silicon or Intel. Intel runtime validation remains pending. Pro integrations and the optional capture beta remain available in 0.15.0.
 
 This is still a preview. Installed-app migration, offline import/export, live browser permissions, Intel runtime, and real update checks remain open. See the [acceptance checklist](docs/preview-acceptance.md). Before upgrading, export a backup. Native 0.10.0 can install this preview through **Savenest → Check for Updates…**. Quit the old app first only when installing manually.
 
@@ -52,7 +52,7 @@ This is still a preview. Installed-app migration, offline import/export, live br
 You need **macOS 14+**, **Node.js 22.12+** with npm, and **Apple's command-line tools with Swift 5.9+**. If Apple's tools are missing, run `xcode-select --install` first.
 
 ```sh
-git clone https://github.com/dmytro-omelian/savenest.git
+git clone https://github.com/dmytroomelian/savenest.git
 cd savenest
 npm ci
 npm run preview
@@ -64,7 +64,7 @@ For normal app behavior, `npm start` uses your real library. Quit other Savenest
 
 ## Contribute
 
-Bug reports, documentation, accessibility improvements, and small fixes are welcome. Start with [open issues](https://github.com/dmytro-omelian/savenest/issues), or report a reproducible problem. For a larger change, discuss the user problem in an issue before coding.
+Bug reports, documentation, accessibility improvements, and small fixes are welcome. Start with [open issues](https://github.com/dmytroomelian/savenest/issues), or report a reproducible problem. For a larger change, discuss the user problem in an issue before coding.
 
 The [contribution guide](CONTRIBUTING.md) covers forking, the code layout, checks, and pull requests. Maintainers handle official releases; contributing does not require packaging or publishing the app.
 

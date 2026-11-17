@@ -32,4 +32,4 @@ An isolated archive-installation result does not verify a person's library, Keyc
 - [ ] Run the Intel build on Intel hardware or an appropriately configured environment. Architecture/signature checks alone are insufficient.
 - [ ] After native migration, install a newer signed Electron build through its Squirrel feed. Confirm signature rejection for invalid updates, explicit restart, draft protection, and library preservation. Confirm the embedded helper does not start Sparkle. Only the prepared, validated migration archives may appear in the native feed.
 
-Record version, architecture, OS version, steps, result, and issue links. Check off only observed results. [Release issue #18](https://github.com/dmytro-omelian/savenest/issues/18) and [launch tracker #13](https://github.com/dmytro-omelian/savenest/issues/13) track the remaining work.
+Record version, architecture, OS version, steps, result, and issue links. Check off only observed results. [Release issue #18](https://github.com/dmytroomelian/savenest/issues/18) and [launch tracker #13](https://github.com/dmytroomelian/savenest/issues/13) track the remaining work.

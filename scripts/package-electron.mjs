@@ -1,15 +1,22 @@
 import { packager } from '@electron/packager';
 import { sign } from '@electron/osx-sign';
 import { flipFuses, FuseVersion, FuseV1Options } from '@electron/fuses';
-import { cp, mkdir, readFile, writeFile, rm, stat, access } from 'node:fs/promises';
-import { createReadStream } from 'node:fs';
-import { createHash } from 'node:crypto';
+import { cp, mkdir, readFile, writeFile, rm } from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import { prepareMCP } from './mcp-package.mjs';
 import { prepareSocialCapture } from './social-capture-package.mjs';
+import {
+  collectReleaseInputs, createCheckpoint, createCommandRunner, markCompleted,
+  notarizeAndStaple, pathExists, removeSubmissionArchive, sha256Text,
+  stableStringify, verifyExistingFinal, writeJsonAtomic
+} from './release-state.mjs';
 
 const root = process.cwd();
+async function readJsonIfExists(file) {
+  try { return JSON.parse(await readFile(file, 'utf8')); }
+  catch (error) { if (error.code === 'ENOENT') return null; throw error; }
+}
 const architecture = process.env.ELECTRON_ARCH || process.arch;
 if (!['arm64', 'x64'].includes(architecture)) throw new Error('ELECTRON_ARCH must be arm64 or x64.');
 const distribution = process.env.DISTRIBUTION === '1';
@@ -39,10 +46,112 @@ execFileSync('lipo', [path.join(helper, 'Contents/MacOS/SaveNest'), '-verify_arc
 const workspace = path.resolve(process.env.PACKAGE_WORK_DIR || 'build');
 const mcp = await prepareMCP({ architecture, workspace });
 const socialCapture = await prepareSocialCapture({ binary: path.join(helper, 'Contents/MacOS/SaveNest') });
+const feedNotes = socialCapture.enabled
+  ? 'Help now gathers Explore features, feature requests, bug reports, and keyboard shortcuts in one menu. Release preparation is more reliable. Save from other apps remains an optional Pro beta and starts off; Chrome is experimental. Free local saving, reading, search and organization remain available.'
+  : 'Help now gathers Explore features, feature requests, bug reports, and keyboard shortcuts in one menu. Release preparation is more reliable. Free local saving, reading, search and organization remain available.';
+let releaseIdentity, identityInputs;
+if (distribution) {
+  const sparkleLicense = path.resolve(process.env.SWIFT_SCRATCH_PATH || '.build', 'artifacts/sparkle/Sparkle/LICENSE');
+  const consumed = await collectReleaseInputs({
+    helper,
+    files: {
+      packageJson: 'package.json', packageLock: 'package-lock.json',
+      appIcon: 'build/AppIcon.icns', license: 'LICENSE', thirdPartyNotices: 'THIRD_PARTY_NOTICES.md',
+      readerLicenses: 'build/reader-third-party-licenses.txt',
+      servicesAdapter: path.join('build/services', architecture, 'savenest-services.node'),
+      servicesSource: 'electron/native/services.m',
+      servicesScript: 'scripts/build-services.mjs',
+      electronLicense: 'node_modules/electron/dist/LICENSE',
+      chromiumLicenses: 'node_modules/electron/dist/LICENSES.chromium.html',
+      nodeApiLicense: 'node_modules/node-api-headers/LICENSE',
+      sparkleLicense,
+      electronEntitlements: 'Resources/Electron.entitlements',
+      helperEntitlements: 'Resources/SaveNest.entitlements',
+      packageScript: 'scripts/package-electron.mjs',
+      universalPackageScript: 'scripts/package-electron-universal.mjs',
+      mcpScript: 'scripts/mcp-package.mjs',
+      socialCaptureScript: 'scripts/social-capture-package.mjs',
+      ...(socialCapture.enabled ? { captureLicense: socialCapture.license, captureThirdParty: socialCapture.thirdParty } : {}),
+      releaseStateScript: 'scripts/release-state.mjs',
+      ...(mcp ? { mcpBinary: mcp.binary, mcpLicense: mcp.license, mcpThirdParty: mcp.thirdParty } : {})
+    },
+    directories: { electron: 'electron' }
+  });
+  identityInputs = {
+    version: manifest.version, build: nativeBuild, architecture, electronVersion: manifest.devDependencies.electron,
+    distribution, signingIdentity: sha256Text(identity),
+    mcp: mcp ? { included: true } : null,
+    socialCapture: socialCapture.enabled ? { included: true } : null, source: consumed
+  };
+  // The future orchestrator may supply a release-wide identity. Standalone
+  // builds derive one from the exact source/helper inputs above.
+  releaseIdentity = process.env.SAVENEST_RELEASE_IDENTITY || process.env.RELEASE_IDENTITY || sha256Text(stableStringify(identityInputs));
+  // Resume an in-flight notarization before rebuilding or re-signing anything.
+  // The checkpoint pins the exact submitted ZIP, so it remains immutable.
+  const resumeDirectory = path.resolve(process.env.RELEASE_OUTPUT_DIR || path.join(root, 'build/releases/electron', manifest.version));
+  const resumeFilename = `SaveNest-${manifest.version}-macOS-${architecture}.zip`;
+  const resumeArchive = path.join(resumeDirectory, resumeFilename);
+  const resumeCheckpoint = createCheckpoint({ file: path.join(resumeDirectory, '.release-state', `${architecture}.json`) });
+  if (await pathExists(resumeArchive)) {
+    const metadataDirectory = path.join(resumeDirectory, architecture);
+    const metadataPaths = { artifact: path.join(metadataDirectory, 'artifact.json'), feed: path.join(metadataDirectory, 'RELEASES.json') };
+    const metadata = { artifact: await readJsonIfExists(metadataPaths.artifact), feed: await readJsonIfExists(metadataPaths.feed) };
+    const verifyRunner = createCommandRunner({ logDirectory: path.join(resumeDirectory, '.release-state', 'logs', architecture), checkpoint: resumeCheckpoint });
+    const verified = await verifyExistingFinal({ checkpoint: resumeCheckpoint, identity: releaseIdentity, architecture,
+      version: manifest.version, build: nativeBuild, inputs: identityInputs, finalArchive: resumeArchive, metadata,
+      validate: async file => {
+        await verifyRunner.run('validate-package', process.execPath, ['scripts/check-electron-package.mjs', file, architecture]);
+      } });
+    const artifact = { architecture, file: resumeFilename,
+      url: `https://github.com/dmytroomelian/savenest/releases/download/v${manifest.version}/${resumeFilename}`,
+      sha256: verified.final.sha256, size: verified.final.size };
+    const feed = { currentRelease: manifest.version, releases: [{ version: manifest.version, updateTo: {
+      version: manifest.version, url: artifact.url, name: `Savenest ${manifest.version}`,
+      notes: feedNotes,
+      pub_date: new Date().toISOString(), sha256: artifact.sha256, size: artifact.size
+    } }] };
+    const recovered = metadata.artifact && metadata.feed ? (verified.state.metadata ?? metadata)
+      : (verified.state.metadata?.artifact && verified.state.metadata?.feed ? verified.state.metadata : { artifact, feed });
+    await mkdir(metadataDirectory, { recursive: true });
+    await writeJsonAtomic(metadataPaths.artifact, recovered.artifact);
+    await writeJsonAtomic(metadataPaths.feed, recovered.feed);
+    await markCompleted({ checkpoint: resumeCheckpoint, metadata: recovered });
+    console.log(`Reused notarized ${resumeArchive}`);
+    process.exit(0);
+  }
+  const resumeState = await resumeCheckpoint.read();
+  if (resumeState?.notary?.id && resumeState.submission && resumeState.identity === releaseIdentity) {
+    const resumeRunner = createCommandRunner({ logDirectory: path.join(resumeDirectory, '.release-state', 'logs', architecture), checkpoint: resumeCheckpoint });
+    const submissionArchive = path.join(resumeDirectory, `.notarize-${architecture}.zip`);
+    const result = await notarizeAndStaple({
+      checkpoint: resumeCheckpoint, runner: resumeRunner, identity: releaseIdentity, architecture, version: manifest.version, build: nativeBuild,
+      inputs: identityInputs, submissionArchive, finalArchive: resumeArchive, profile,
+      extractDirectory: path.join(resumeDirectory, '.release-state', `extract-${architecture}`),
+      createSubmissionArchive: async () => { throw new Error('A pending submission must never be recreated.'); }
+    });
+    const artifact = { architecture, file: resumeFilename,
+      url: `https://github.com/dmytroomelian/savenest/releases/download/v${manifest.version}/${resumeFilename}`,
+      sha256: result.artifact.sha256, size: result.artifact.size };
+    const feed = { currentRelease: manifest.version, releases: [{ version: manifest.version, updateTo: {
+      version: manifest.version, url: artifact.url, name: `Savenest ${manifest.version}`,
+      notes: feedNotes,
+      pub_date: new Date().toISOString(), sha256: artifact.sha256, size: artifact.size
+    } }] };
+    const metadata = { artifact, feed };
+    const metadataDirectory = path.join(resumeDirectory, architecture);
+    await mkdir(metadataDirectory, { recursive: true });
+    await writeJsonAtomic(path.join(metadataDirectory, 'artifact.json'), artifact);
+    await writeJsonAtomic(path.join(metadataDirectory, 'RELEASES.json'), feed);
+    await markCompleted({ checkpoint: resumeCheckpoint, metadata });
+    await removeSubmissionArchive({ checkpoint: resumeCheckpoint, submissionArchive });
+    console.log(`Notarized ${resumeArchive}`);
+    process.exit(0);
+  }
+}
 const stage = path.join(workspace, `electron-package-${architecture}`);
 await rm(stage, { recursive: true, force: true });
 await mkdir(stage, { recursive: true });
-await cp('electron', path.join(stage, 'electron'), { recursive: true, filter: source => !source.includes('/tests') && !source.includes('/native/') && !source.endsWith('/native') && !source.endsWith('smoke.cjs') });
+await cp('electron', path.join(stage, 'electron'), { recursive: true, filter: source => !source.includes('/tests') && !source.endsWith('smoke.cjs') });
 for (const name of ['LICENSE', 'THIRD_PARTY_NOTICES.md']) {
   try { await cp(name, path.join(stage, name)); }
   catch (error) { if (distribution) throw new Error(`${name} is required for a public release.`, { cause: error }); }
@@ -88,7 +197,6 @@ for (const directory of apps) {
     await cp(socialCapture.license, path.join(notices, 'SaveNest-Pro-Capture-LICENSE.txt'));
     await cp(socialCapture.thirdParty, path.join(notices, 'SaveNest-Pro-Capture-THIRD-PARTY-NOTICES.txt'));
   }
-
   const mcpExecutable = path.join(app, 'Contents/Resources/savenest-mcp');
   if (mcp) {
     await cp(mcp.binary, mcpExecutable);
@@ -126,34 +234,56 @@ for (const directory of apps) {
   execFileSync('codesign', ['--verify', '--deep', '--strict', app], { stdio: 'inherit' });
   console.log(`Built ${app}`);
   if (!distribution) continue;
-  const releaseDirectory = path.join(root, 'build/releases/electron', manifest.version);
+  const releaseDirectory = path.resolve(process.env.RELEASE_OUTPUT_DIR || path.join(root, 'build/releases/electron', manifest.version));
   await mkdir(releaseDirectory, { recursive: true });
   const filename = `SaveNest-${manifest.version}-macOS-${architecture}.zip`;
   const archive = path.join(releaseDirectory, filename);
-  try { await access(archive); throw new Error(`Refusing to overwrite release archive: ${archive}`); }
-  catch (error) { if (error.code !== 'ENOENT') throw error; }
+  const checkpoint = createCheckpoint({ file: path.join(releaseDirectory, '.release-state', `${architecture}.json`) });
+  const runner = createCommandRunner({ logDirectory: path.join(releaseDirectory, '.release-state', 'logs', architecture), checkpoint });
+  const metadataDirectory = path.join(releaseDirectory, architecture);
+  const metadataPaths = { artifact: path.join(metadataDirectory, 'artifact.json'), feed: path.join(metadataDirectory, 'RELEASES.json') };
+  const readMetadata = async () => ({ artifact: await readJsonIfExists(metadataPaths.artifact), feed: await readJsonIfExists(metadataPaths.feed) });
+  const makeMetadata = facts => {
+    const artifact = { architecture, file: filename,
+      url: `https://github.com/dmytroomelian/savenest/releases/download/v${manifest.version}/${filename}`,
+      sha256: facts.sha256, size: facts.size };
+    const feed = { currentRelease: manifest.version, releases: [{ version: manifest.version, updateTo: {
+      version: manifest.version, url: artifact.url, name: `Savenest ${manifest.version}`,
+      notes: feedNotes,
+      pub_date: new Date().toISOString(), sha256: artifact.sha256, size: artifact.size
+    } }] };
+    return { artifact, feed };
+  };
+  const writeMetadata = async metadata => {
+    await mkdir(metadataDirectory, { recursive: true });
+    await writeJsonAtomic(metadataPaths.artifact, metadata.artifact);
+    await writeJsonAtomic(metadataPaths.feed, metadata.feed);
+    await markCompleted({ checkpoint, metadata });
+  };
+  if (await pathExists(archive)) {
+    const metadata = await readMetadata();
+    const verified = await verifyExistingFinal({ checkpoint, identity: releaseIdentity, architecture,
+      version: manifest.version, build: nativeBuild, inputs: identityInputs, finalArchive: archive, metadata,
+      validate: async file => {
+        await runner.run('validate-package', process.execPath, ['scripts/check-electron-package.mjs', file, architecture]);
+      } });
+    const recovered = metadata.artifact && metadata.feed ? (verified.state.metadata ?? metadata)
+      : (verified.state.metadata?.artifact && verified.state.metadata?.feed ? verified.state.metadata : makeMetadata(verified.final));
+    await writeMetadata(recovered);
+    console.log(`Reused notarized ${archive}`);
+    continue;
+  }
   const submissionArchive = path.join(releaseDirectory, `.notarize-${architecture}.zip`);
-  execFileSync('ditto', ['-c', '-k', '--sequesterRsrc', '--keepParent', app, submissionArchive], { stdio: 'inherit' });
-  try {
-    execFileSync('xcrun', ['notarytool', 'submit', submissionArchive, '--keychain-profile', profile, '--wait', '--timeout', '20m'], { stdio: 'inherit' });
-    execFileSync('xcrun', ['stapler', 'staple', app], { stdio: 'inherit' });
-    execFileSync('xcrun', ['stapler', 'validate', app], { stdio: 'inherit' });
-    execFileSync('spctl', ['--assess', '--type', 'execute', '--verbose=2', app], { stdio: 'inherit' });
-    execFileSync('codesign', ['--verify', '--deep', '--strict', app], { stdio: 'inherit' });
-    execFileSync('ditto', ['-c', '-k', '--sequesterRsrc', '--keepParent', app, archive], { stdio: 'inherit' });
-  } finally { await rm(submissionArchive, { force: true }); }
-  const hash = createHash('sha256');
-  for await (const chunk of createReadStream(archive)) hash.update(chunk);
-  const artifact = { architecture, file: filename,
-    url: `https://github.com/dmytro-omelian/savenest/releases/download/v${manifest.version}/${filename}`,
-    sha256: hash.digest('hex'), size: (await stat(archive)).size };
-  const feed = { currentRelease: manifest.version, releases: [{ version: manifest.version, updateTo: {
-    version: manifest.version, url: artifact.url, name: `Savenest ${manifest.version}`,
-    notes: socialCapture.enabled ? 'Activity dashboard with yearly saved, finished and still-to-finish counts and a daily feed. Bulk actions, macOS Services URL drafts, optional launch at login, and safer installation. Save from other apps remains an optional Pro beta and starts off; Chrome is experimental. Free local saving, reading, search and organization remain available.' : 'Activity dashboard with yearly saved, finished and still-to-finish counts and a daily feed. Bulk actions, macOS Services URL drafts, optional launch at login, and safer installation. Free local saving, reading, search and organization remain available.',
-    pub_date: new Date().toISOString(), sha256: artifact.sha256, size: artifact.size
-  } }] };
-  await mkdir(path.join(releaseDirectory, architecture), { recursive: true });
-  await writeFile(path.join(releaseDirectory, architecture, 'RELEASES.json'), JSON.stringify(feed, null, 2) + '\n');
-  await writeFile(path.join(releaseDirectory, architecture, 'artifact.json'), JSON.stringify(artifact, null, 2) + '\n');
+  const result = await notarizeAndStaple({
+    checkpoint, runner, identity: releaseIdentity, architecture, version: manifest.version, build: nativeBuild,
+    inputs: identityInputs, submissionArchive, finalArchive: archive, profile,
+    extractDirectory: path.join(releaseDirectory, '.release-state', `extract-${architecture}`),
+    createSubmissionArchive: async () => {
+      await rm(submissionArchive, { force: true });
+      await runner.run('submission-compress', 'ditto', ['-c', '-k', '--sequesterRsrc', '--keepParent', app, submissionArchive]);
+    }
+  });
+  await writeMetadata(makeMetadata(result.artifact));
+  await removeSubmissionArchive({ checkpoint, submissionArchive });
   console.log(`Notarized ${archive}`);
 }
