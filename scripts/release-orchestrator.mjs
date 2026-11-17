@@ -967,7 +967,7 @@ export async function executeRelease({ root = process.cwd(), env = process.env, 
       const stageEnv = {
         ...env,
         CONFIGURATION: 'release', DISTRIBUTION: '1', ELECTRON_HELPER: '1', APP_PATH: helper, HELPER_APP_PATH: helper,
-        TARGET_ARCH: architecture === 'x64' ? 'x86_64' : 'arm64',
+        TARGET_ARCH: architecture === 'x64' ? 'x86_64' : 'arm64', ELECTRON_ARCH: architecture,
         SWIFT_SCRATCH_PATH: scratch, PACKAGE_WORK_DIR: packageWork,
         RELEASE_OUTPUT_DIR: releaseDirectory, SAVENEST_RELEASE_IDENTITY: identity,
         RELEASE_REUSE_HELPER: prepared.helperReusable ? '1' : '0',
