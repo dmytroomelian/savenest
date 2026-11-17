@@ -78,5 +78,9 @@
 	<string>DloGaR2uEOivp+6esHir49HeZAqQc3BfirZkxwfQgRA=</string>
 	<key>SaveNestUpdatesEnabled</key>
 	<true/>
+	<key>SaveNestPostHogProjectToken</key>
+	<string>phc_xAJL8WbFVKivbkhYYpGuiVAZPZvzgWQTL4QhdnAggMdx</string>
+	<key>SaveNestPostHogHost</key>
+	<string>https://us.i.posthog.com</string>
 </dict>
 </plist>

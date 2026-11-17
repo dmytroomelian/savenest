@@ -254,7 +254,7 @@ struct SettingsView: View {
             VStack(alignment: .leading, spacing: 12) {
                 fieldLabel("ANONYMOUS USAGE")
                 Toggle("Share anonymous usage counts", isOn: $model.analyticsEnabled)
-                Text("Share anonymous action counts with savenest.app. No URLs, titles, notes, tags, account IDs, or device identifiers are included.")
+                Text(UsageAnalytics.sharingDescription)
                     .font(.system(size: 11)).foregroundStyle(Color.muted).fixedSize(horizontal: false, vertical: true)
                 OwnerUsageView(account: model.account)
             }.padding(20).nestSurface()
