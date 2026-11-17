@@ -30,6 +30,7 @@ function matchesShortcut(event, shortcut) {
     && event.altKey === Boolean(shortcut.alt) && event.ctrlKey === Boolean(shortcut.ctrl);
 }
 const symbols = {
+  feedback: 'M21 11.5a8.5 8.5 0 0 1-8.5 8.5H3l2.5-4A8.5 8.5 0 1 1 21 11.5ZM8 11h.01M12 11h.01M16 11h.01',
   keyboard: 'M3 6h18v12H3zM6 9h.01M9 9h.01M12 9h.01M15 9h.01M18 9h.01M6 12h.01M9 12h.01M12 12h.01M15 12h.01M18 12h.01M8 15h8',
   reader: 'M3 4h18v16H3zM13 4v16M6 8h4M6 12h4M16 8h2M16 12h2',
   nest: 'M4 8l8 5 8-5M4 13l8 5 8-5M6 18l6 4 6-4M9 4l3 2 3-2',
@@ -197,6 +198,7 @@ function updateSyncStatus() {
 }
 function updateFooter() {
   updateSyncStatus();
+  $('open-feature-request').disabled = fatal;
   $('open-settings').disabled = fatal;
   $('shortcut-settings').disabled = fatal;
   $('open-activity').disabled = !activityAvailable();
@@ -591,6 +593,7 @@ $('actions').onclick = showActions;
 $('toggle-selection').onclick = () => { toggleSelection(); focusSearch(); };
 $('select-all').onclick = () => { selectAllPages(); focusSearch(); };
 $('clear-selection').onclick = () => { clearSelection(); focusSearch(); };
+$('open-feature-request').onclick = () => void run('requestFeature');
 $('open-settings').onclick = () => void run('settings');
 $('open-activity').onclick = openActivity;
 $('show-shortcuts').onclick = showShortcuts;

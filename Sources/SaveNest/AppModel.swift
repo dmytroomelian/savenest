@@ -47,6 +47,7 @@ enum AppLaunch {
 final class AppModel: ObservableObject {
     lazy var notes = ObsidianNotes(preview: readerPreview, lab: readerLive)
     let updater = AppUpdater()
+    let launchAtLogin = LaunchAtLogin()
     let account = AccountController()
     lazy var cloud = CloudLibraryController(model: self)
     lazy var aiConnections = AutomationController(model: self)

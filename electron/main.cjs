@@ -1,4 +1,5 @@
 'use strict';
+const { loginItemStatus } = require('./login-item.cjs');
 const { app, BrowserWindow, Menu, Tray, nativeImage, nativeTheme, ipcMain, protocol, session, dialog, screen, autoUpdater } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs/promises');
@@ -6,7 +7,9 @@ const { NativeClient } = require('./native-client.cjs');
 const { createUpdater, canRestartSafely } = require('./updater.cjs');
 const { APP_URL, validateCommand, trustedSender, assetName } = require('./contracts.cjs');
 const { ReadingWorkspace } = require('./workspace.cjs');
+const { offerInstallation, resolveStartupConflict } = require('./installation.cjs');
 const { glassWindowOptions, updateWindowMaterial } = require('./window-material.cjs');
+const { isNativeWindowCommand, requestNativeWindowCommand } = require('./window-handoff.cjs');
 
 const preview = !app.isPackaged && process.argv.includes('--preview');
 const smoke = preview && process.argv.includes('--smoke-test');
@@ -18,7 +21,7 @@ app.setPath('userData', preview ? path.join(root, 'build', smoke ? 'electron-tes
 app.enableSandbox();
 protocol.registerSchemesAsPrivileged([{ scheme: 'savenest-ui', privileges: { standard: true, secure: true, supportFetchAPI: true } }]);
 
-let win, tray, native, updater, workspace, latestState, fatalError, quitting = false, preparingQuit = false;
+let win, tray, native, updater, workspace, latestState, fatalError, quitting = false, preparingQuit = false, startupConflict = false;
 let currentView = 'root';
 let hiddenAt = 0, showing = null, modalDepth = 0, blurTimer;
 const callbacks = [];
@@ -116,8 +119,9 @@ async function command(input) {
     try { return await workspace.open(input); }
     catch (error) { send({ event: 'error', message: error.message }); return false; }
   }
-  try { return await native.request(input); }
-  catch (error) { send({ event: 'error', message: error.message }); return false; }
+  try {
+    return await requestNativeWindowCommand(input, { hide, show, request: request => native.request(request) });
+  } catch (error) { send({ event: 'error', message: error.message }); return false; }
 }
 function incomingURL(url) {
   if (preview || typeof url !== 'string' || url.length > 16384 || !url.startsWith('savenest://')) return;
@@ -150,6 +154,9 @@ if (!app.requestSingleInstanceLock()) {
 
 async function start() {
   if (process.platform !== 'darwin') throw new Error('Savenest currently requires macOS 14 or later.');
+  if (await offerInstallation({ app, dialog,
+    release: app.isPackaged && require('../package.json').saveNestRelease === true,
+    hasPendingURLs: () => callbacks.length > 0 })) return;
   app.dock?.hide();
   session.defaultSession.setPermissionRequestHandler((_webContents, _permission, callback) => callback(false));
   session.defaultSession.setPermissionCheckHandler(() => false);
@@ -222,11 +229,24 @@ async function start() {
   native = new NativeClient(path.join(helper, 'Contents/MacOS/SaveNest'), { preview, readerLive });
   workspace = new ReadingWorkspace({ native, preview: preview && !readerLive, userData: app.getPath('userData'), appearance: () => latestState?.appearance || 'black', onOpen: () => hide(), onWindow: refreshWindowMaterials });
   native.on('event', message => {
+    if (message.event === 'startup-conflict') {
+      startupConflict = true;
+      fatalError = 'Savenest is already open in another copy.';
+      modalDepth += 1;
+      void resolveStartupConflict({ app, dialog, existingAppPath: message.existingAppPath })
+        .finally(() => { modalDepth -= 1; });
+      return;
+    }
     if (message.event === 'state') {
       latestState = message.state;
       refreshWindowMaterials();
       workspace.send({ event: 'appearance', appearance: latestState.appearance });
       while (callbacks.length) void command({ command: 'callback', url: callbacks.shift() });
+    }
+    if (message.event === 'loginItemRefresh' || message.event === 'loginItemSet') {
+      const status = loginItemStatus(app, { preview, enabled: message.event === 'loginItemSet' ? message.enabled : undefined });
+      void native.request({ command: 'loginItemStatus', ...status }).catch(() => {});
+      return;
     }
     if (message.event === 'checkForUpdates') void updater.check();
     else if (message.event === 'readerCurrent') void command({ command: 'readerCurrent' });
@@ -242,6 +262,7 @@ async function start() {
   // Keep these messages outside the renderer's command allowlist.
   void native.request({ command: 'updateStatus', ...updater.status }).catch(() => {});
   await win.loadURL(APP_URL);
+  if (startupConflict || quitting) return;
   if (fatalError) send({ event: 'fatal', message: fatalError });
   if (!smoke) {
     const iconPath = path.join(helper, 'Contents/Resources/AppIcon.icns');
@@ -307,6 +328,7 @@ function createMenu() {
       action('Refresh tabs', 'refresh', 'Command+R'), { role: 'togglefullscreen' }
     ] },
     { label: 'Tools', submenu: [action('Manage tags…', 'tags'), action('Clean up tabs…', 'cleanup'), { label: 'Close duplicate tabs', click: () => void command({ command: 'capture', action: 'duplicates' }) }] },
-    { label: 'Window', submenu: [{ role: 'minimize' }, { role: 'zoom' }, { label: 'Open Savenest', click: show }] }
+    { label: 'Window', submenu: [{ role: 'minimize' }, { role: 'zoom' }, { label: 'Open Savenest', click: show }] },
+    { role: 'help', label: 'Help', submenu: [action('Request a feature', 'requestFeature'), action('Report a bug', 'reportBug')] }
   ]));
 }

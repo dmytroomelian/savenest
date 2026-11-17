@@ -18,6 +18,9 @@ final class ElectronBridge {
     init(model: AppModel) { self.model = model }
 
     static func failStartup(_ message: String) { write(["event": "fatal", "message": message]) }
+    static func startupConflict(existingApplication: URL) {
+        write(["event": "startup-conflict", "existingAppPath": existingApplication.path])
+    }
     private static func write(_ value: [String: Any]) {
         guard let data = try? JSONSerialization.data(withJSONObject: value, options: [.sortedKeys]) else { return }
         FileHandle.standardOutput.write(data + Data([10]))
@@ -40,6 +43,8 @@ final class ElectronBridge {
         model.closeCaptureEditor = { [weak self] in self?.event("editorSaved") }
         model.showTabSelection = { [weak self] _ in self?.event("show"); self?.scheduleSnapshot() }
         model.closeTabSelection = { [weak self] in self?.event("selectionClosed") }
+        model.launchAtLogin.hostRefresh = { [weak self] in self?.event("loginItemRefresh") }
+        model.launchAtLogin.hostSet = { enabled in Self.write(["event": "loginItemSet", "enabled": enabled]) }
         model.updater.requestHostCheck = { [weak self] in self?.event("checkForUpdates") }
         model.objectWillChange.sink { [weak self] in self?.scheduleSnapshot() }.store(in: &subscriptions)
         model.updater.objectWillChange.sink { [weak self] in self?.scheduleSnapshot() }.store(in: &subscriptions)
@@ -204,6 +209,8 @@ final class ElectronBridge {
         var action: String?
         var enabled: Bool?
         var updateState: String?
+        var available: Bool?
+        var message: String?
         var documentId: String?
         var text: String?
         var revision: String?
@@ -319,6 +326,9 @@ final class ElectronBridge {
                !["app.savenest.mac", "app.savenest.electron", "org.electronjs.Electron"].contains(front.bundleIdentifier ?? "") { previousApplication = front }
         case "restoreFocus": previousApplication?.activate(options: [])
         case "snapshot": snapshot()
+        case "loginItemStatus":
+            guard let enabled = request.enabled, let available = request.available else { throw Failure(message: "Invalid startup status.") }
+            model.launchAtLogin.receive(enabled: enabled, available: available, message: request.message ?? "")
         case "updateStatus":
             guard let enabled = request.enabled, let state = request.updateState,
                   model.updater.receiveHostStatus(enabled: enabled, state: state) else {
@@ -398,6 +408,10 @@ final class ElectronBridge {
         case "saveClipboard": if !model.isPreview { model.saveCurrentClipboard() }
         case "account": model.showAccount?()
         case "settings": model.showSettings?()
+        case "requestFeature", "reportBug":
+            guard let destination = FeedbackDestination(rawValue: request.command), NSWorkspace.shared.open(destination.url) else {
+                throw Failure(message: "Couldn’t open GitHub. Check your default browser and try again.")
+            }
         case "socialCaptureSettings":
             model.requestedSettingsTab = "Capture"
             model.showSettings?()

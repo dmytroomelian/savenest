@@ -25,6 +25,11 @@ class NativeClient extends EventEmitter {
       const line = this.buffer.slice(0, end); this.buffer = this.buffer.slice(end + 1);
       let message;
       try { message = JSON.parse(line); } catch { continue; }
+      if (message.event === 'startup-conflict') {
+        this.fail('Open the other copy of Savenest to continue.', false);
+        this.emit('event', message);
+        continue;
+      }
       if (message.event === 'fatal') { this.fail(message.message); continue; }
       if (message.event) { this.emit('event', message); continue; }
       const pending = this.pending.get(message.id);
@@ -46,11 +51,11 @@ class NativeClient extends EventEmitter {
       this.child.stdin.write(JSON.stringify({ ...command, id }) + '\n');
     });
   }
-  fail(message) {
+  fail(message, notify = true) {
     if (this.closed) return;
     this.closed = true;
     for (const pending of this.pending.values()) { clearTimeout(pending.timer); pending.reject(new Error(message)); }
-    this.pending.clear(); this.emit('failure', message);
+    this.pending.clear(); if (notify) this.emit('failure', message);
   }
   stop() {
     this.fail('Savenest is closing.');

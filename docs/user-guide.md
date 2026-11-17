@@ -34,7 +34,13 @@ Click **Actions** or press **⌘K** for actions on the selected page and app-wid
 
 The floating launcher opens on the display containing the pointer, including over fullscreen apps, and stays out of the Dock. Click elsewhere to hide it. Escape closes actions, goes back from an editor or scope, then dismisses root search. Unsaved edits require an explicit discard. The launcher remembers context for 60 seconds; after that it resets root search unless a draft is open. **⌘O** toggles it. The old **⌘⇧O** default migrates automatically; custom shortcuts remain unchanged and can be edited in Settings.
 
+In local builds with startup settings, open **Settings → General → Launch at login** to start Savenest when you sign in to your Mac. The switch reads the macOS setting. If approval is needed, use **Open Login Items settings**. Preview and unpackaged Electron development sessions cannot change login items.
+
 Account, Settings, sharing, and system dialogs retain their native implementation and are reachable from root search. Optional email sign-in and billing management are handled by savenest.app. Local links and notes remain available; Pro saving and enabled AI connections have the separate data flows described below. Existing saved links and Keychain sessions use the same storage, with no conversion. Settings → Appearance changes both interfaces. [Launcher design](launcher-design.md).
+
+### Feedback
+
+Choose **Request a feature** or **Report a bug** in the **Feedback** section at the top of Settings, on the Account screen, or in the macOS **Help** menu. Both actions also appear in **⌘K Actions** and root search; search for “feedback”, “feature”, or “bug”. Each opens the corresponding GitHub issue form in your default browser.
 
 ### Browser history
 

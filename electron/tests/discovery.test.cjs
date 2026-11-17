@@ -149,6 +149,23 @@ test('Enter on a focused Actions button preserves native activation instead of r
 });
 
 
+test('feature requests remain discoverable without search results', t => {
+  const ui = launcher(t, { query: 'no matching page' });
+  ui.byID('actions').click();
+  ui.action('Request a feature').click();
+  assert.deepEqual(ui.calls, [{ command: 'requestFeature' }]);
+});
+
+test('the launcher footer exposes Request a feature and reuses the native feedback command', t => {
+  const ui = launcher(t);
+  const button = ui.byID('open-feature-request');
+  assert.equal(button.textContent, 'Request a feature');
+  button.click();
+  assert.deepEqual(ui.calls, [{ command: 'requestFeature' }]);
+  const template = readFileSync(path.resolve(__dirname, '../../.github/ISSUE_TEMPLATE/feature.yml'), 'utf8');
+  assert.match(template, /^name: Feature request/m);
+});
+
 const secondPage = { ...page, id: 'saved:two', title: 'Another page', url: 'https://example.com/two' };
 const thirdPage = { ...page, id: 'saved:three', title: 'Third page', url: 'https://example.com/three' };
 const checkedIDs = ui => [...ui.document.querySelectorAll('.row-check:checked')].map(check => check.closest('.row').dataset.id);

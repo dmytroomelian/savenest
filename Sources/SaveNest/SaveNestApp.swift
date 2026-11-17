@@ -62,19 +62,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         NSApp.setActivationPolicy(isElectron ? .accessory : .regular)
         NSApp.appearance = AppAppearance.saved.nativeAppearance
         if !isElectron && pendingURLs.isEmpty && ApplicationMover.offerMoveIfNeeded() { return }
-        if isElectron && !AppLaunch.isPreview {
-            let otherCopy = NSWorkspace.shared.runningApplications.contains {
-                $0.bundleIdentifier == Bundle.main.bundleIdentifier && $0.processIdentifier != ProcessInfo.processInfo.processIdentifier
-            }
-            if otherCopy {
-                ElectronBridge.failStartup("Quit the other Savenest app, then reopen this one. Only one app can write your library.")
-                NSApp.terminate(nil); return
-            }
-        }
         if !AppLaunch.isPreview {
             do { librarySession = try LibrarySessionLock() }
             catch {
-                if isElectron { ElectronBridge.failStartup(error.localizedDescription) }
+                if isElectron {
+                    // The launching copy may still be exiting after an installation
+                    // handoff. Only a held library lock establishes a conflict.
+                    let otherCopy = NSWorkspace.shared.runningApplications.first {
+                        !$0.isTerminated && $0.bundleIdentifier == Bundle.main.bundleIdentifier
+                            && $0.processIdentifier != ProcessInfo.processInfo.processIdentifier
+                    }
+                    if error as? LibrarySessionLock.Failure == .busy,
+                       let applicationURL = otherCopy?.bundleURL,
+                       let hostURL = Self.hostApplicationURL(for: applicationURL) {
+                        ElectronBridge.startupConflict(existingApplication: hostURL)
+                    } else {
+                        ElectronBridge.failStartup(error.localizedDescription)
+                    }
+                }
                 else { let alert = NSAlert(); alert.messageText = error.localizedDescription; alert.runModal() }
                 NSApp.terminate(nil); return
             }
@@ -127,6 +132,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         for url in launchURLs { model.account.handleIncomingURL(url) }
         if !model.isPreview { Task { await model.account.synchronizeLogin() } }
         if model.shortcutError != nil && !isElectron { openSettings() }
+    }
+    private static func hostApplicationURL(for application: URL) -> URL? {
+        let resources = application.deletingLastPathComponent()
+        let contents = resources.deletingLastPathComponent()
+        guard resources.lastPathComponent == "Resources", contents.lastPathComponent == "Contents" else {
+            return application
+        }
+        let host = contents.deletingLastPathComponent()
+        // An embedded helper cannot be opened as the standalone application.
+        guard host.pathExtension == "app", Bundle(url: host)?.bundleIdentifier == "app.savenest.electron" else {
+            return nil
+        }
+        return host
     }
     func application(_ application: NSApplication, open urls: [URL]) {
         guard model != nil else { pendingURLs.append(contentsOf: urls); return }
@@ -289,7 +307,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         for (title, action, key) in [("Cut", #selector(NSText.cut(_:)), "x"), ("Copy", #selector(NSText.copy(_:)), "c"), ("Paste", #selector(NSText.paste(_:)), "v"), ("Select All", #selector(NSText.selectAll(_:)), "a")] { edit.addItem(NSMenuItem(title: title, action: action, keyEquivalent: key)) }
         edit.addItem(.separator()); edit.addItem(item("Find…", #selector(focusSearch), key: "f"))
         let editRoot = NSMenuItem(title: "Edit", action: nil, keyEquivalent: ""); editRoot.submenu = edit; main.addItem(editRoot)
+        let help = NSMenu(title: "Help")
+        for destination in FeedbackDestination.allCases {
+            let entry = item(destination.title, #selector(openFeedback(_:)))
+            entry.representedObject = destination.rawValue
+            help.addItem(entry)
+        }
+        let helpRoot = NSMenuItem(title: "Help", action: nil, keyEquivalent: ""); helpRoot.submenu = help; main.addItem(helpRoot)
         NSApp.mainMenu = main
+        NSApp.helpMenu = help
+    }
+    @objc private func openFeedback(_ sender: NSMenuItem) {
+        guard let value = sender.representedObject as? String, let destination = FeedbackDestination(rawValue: value) else { return }
+        NSWorkspace.shared.open(destination.url)
     }
     private func presentToast(_ notice: CaptureNotice) {
         toastDismiss?.cancel(); toastPanel?.orderOut(nil)

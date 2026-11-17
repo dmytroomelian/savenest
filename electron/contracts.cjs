@@ -3,7 +3,7 @@
 const APP_URL = 'savenest-ui://app/index.html';
 const commands = new Set(['snapshot', 'search', 'refresh', 'suspend', 'retryContext', 'open', 'copy',
   'save', 'saveClose', 'close', 'favorite', 'archive', 'restore', 'delete', 'undo', 'edit', 'add',
-  'account', 'settings', 'tags', 'share', 'cleanup', 'export', 'import', 'capture', 'synchronize', 'onboardingDone', 'privacy', 'analyticsEnabled', 'usageNoticeDismiss', 'dismissMessage',
+  'account', 'settings', 'requestFeature', 'reportBug', 'tags', 'share', 'cleanup', 'export', 'import', 'capture', 'synchronize', 'onboardingDone', 'privacy', 'analyticsEnabled', 'usageNoticeDismiss', 'dismissMessage',
   'dismiss', 'view', 'historyEnabled', 'historyAccess', 'saveDraft', 'cancelDraft', 'saveSelection', 'cancelSelection', 'saveClipboard', 'readerCurrent', 'readerOpen', 'socialCaptureSettings', 'siteIcon', 'activity', 'activityOpen']);
 const scopes = new Set(['All', 'Open', 'Saved', 'History', 'Favorites', 'Notes', 'Archive']);
 const activityKinds = new Set(['all', 'saved', 'finished']);

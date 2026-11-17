@@ -20,6 +20,8 @@
     { id: 'activity', title: 'View activity', detail: 'Saved, finished and still-to-finish links by day', symbol: 'activity', ui: 'activity', keywords: 'activity dashboard progress heatmap finished archived stats view' },
     { id: 'settings', title: 'Settings', detail: 'Appearance, shortcuts and capture preferences', symbol: 'settings', command: 'settings', keywords: 'settings preferences hotkey keyboard shortcut theme appearance' },
     { id: 'shortcuts', title: 'Keyboard shortcuts', detail: 'Learn launcher keys and see your capture shortcuts', symbol: 'keyboard', ui: 'shortcuts', keywords: 'keyboard shortcuts keys help learn hotkeys' },
+    { id: 'request-feature', title: 'Request a feature', detail: 'Suggest an improvement on GitHub', symbol: 'feedback', command: 'requestFeature', keywords: 'feedback feature request idea suggestion improvement help support github' },
+    { id: 'report-bug', title: 'Report a bug', detail: 'Tell us what went wrong on GitHub', symbol: 'feedback', command: 'reportBug', keywords: 'feedback bug report issue problem error broken help support github' },
     { id: 'explore', title: 'Explore features', detail: 'Browse capture, search, reading, organization and Pro capabilities', symbol: 'compass', ui: 'features', keywords: 'explore features guide catalog capabilities pro beta social capture slack linkedin x help', home: true },
     { id: 'account', title: 'Account & Pro', detail: 'Automatic saving · Account and billing', symbol: 'account', command: 'account', keywords: 'account pro cloud backup billing sign in login subscription payment' },
     { id: 'tags', title: 'Manage tags', detail: 'Rename or remove tags across your library', symbol: 'tag', command: 'tags', keywords: 'tags rename remove organize' },
@@ -59,7 +61,7 @@
     const keys = { settings: '⌘,', shortcuts: '⌘/', 'add-link': '⌘N', refresh: '⌘R', undo: '⌥⌘Z' };
     return catalog.filter(item => (item.id !== 'undo' || state.canUndo) && (item.id !== 'activity' || state.canOpenActivity !== false)).map(item => ({
       ...item, id: 'command:' + item.id, kind: 'command', key: keys[item.id] || '',
-      group: ['settings', 'shortcuts', 'account', 'explore', 'activity'].includes(item.id) ? 'Savenest' : item.scope ? 'Search'
+      group: ['settings', 'shortcuts', 'request-feature', 'report-bug', 'account', 'explore', 'activity'].includes(item.id) ? 'Savenest' : item.scope ? 'Search'
         : item.home || item.command === 'capture' || item.command === 'saveClipboard' ? 'Save & read' : 'Library'
     })).sort((a, b) => groups.indexOf(a.group) - groups.indexOf(b.group)
       || (a.scope === 'Saved' ? -1 : b.scope === 'Saved' ? 1 : 0));

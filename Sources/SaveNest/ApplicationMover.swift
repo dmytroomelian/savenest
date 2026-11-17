@@ -4,18 +4,23 @@ import Darwin
 @MainActor
 enum ApplicationMover {
     private static let declinedKey = "declinedApplicationMove"
+    private static let installedLaunchArgument = "--savenest-installed"
 
     /// Offers to install public builds that were launched from Downloads, a disk image,
     /// or another folder. Returns true when this process is handing off to the installed copy.
     static func offerMoveIfNeeded() -> Bool {
         guard shouldOfferMove else { return false }
 
+        if let installed = installedApplication {
+            return offerInstalledApplication(installed)
+        }
+
         NSApp.activate(ignoringOtherApps: true)
         let alert = NSAlert()
         alert.alertStyle = .informational
-        alert.messageText = "Move Savenest to Applications?"
-        alert.informativeText = "Savenest can move itself to your Applications folder and reopen from there. This keeps the app and its updates in the usual place."
-        alert.addButton(withTitle: "Move to Applications")
+        alert.messageText = "Install Savenest in Applications?"
+        alert.informativeText = "Savenest will copy itself to Applications and open from there. You can also keep using this download for now."
+        alert.addButton(withTitle: "Install & Open")
         alert.addButton(withTitle: "Not Now")
         alert.showsSuppressionButton = true
         alert.suppressionButton?.title = "Don’t ask again"
@@ -30,8 +35,10 @@ enum ApplicationMover {
 
         do {
             let source = Bundle.main.bundleURL.resolvingSymlinksInPath()
-            let destination = try install(source)
-            try clearQuarantine(at: destination)
+            guard let applications = FileManager.default.urls(for: .applicationDirectory, in: .localDomainMask).first else {
+                throw MoveError.applicationsFolderUnavailable
+            }
+            let destination = try install(source, applications: applications)
             try relaunch(destination)
             NSApp.terminate(nil)
             return true
@@ -45,7 +52,8 @@ enum ApplicationMover {
         guard Bundle.main.bundleIdentifier == "app.savenest.mac",
               Bundle.main.object(forInfoDictionaryKey: "SaveNestUpdatesEnabled") as? Bool == true,
               Bundle.main.bundleURL.pathExtension.lowercased() == "app",
-              !UserDefaults.standard.bool(forKey: declinedKey) else { return false }
+              !UserDefaults.standard.bool(forKey: declinedKey),
+              !ProcessInfo.processInfo.arguments.contains(installedLaunchArgument) else { return false }
 
         let source = Bundle.main.bundleURL.resolvingSymlinksInPath()
         return applicationDirectories.allSatisfy { !source.isInside($0) }
@@ -57,36 +65,55 @@ enum ApplicationMover {
             .compactMap { manager.urls(for: .applicationDirectory, in: $0).first?.resolvingSymlinksInPath() }
     }
 
-    private static func install(_ source: URL) throws -> URL {
-        let manager = FileManager.default
-        guard let applications = manager.urls(for: .applicationDirectory, in: .localDomainMask).first else {
-            throw MoveError.applicationsFolderUnavailable
-        }
+    private static var installedApplication: URL? {
+        applicationDirectories
+            .map { $0.appendingPathComponent("SaveNest.app", isDirectory: true) }
+            .first { url in
+                guard let identifier = Bundle(url: url)?.bundleIdentifier else { return false }
+                return ["app.savenest.mac", "app.savenest.electron"].contains(identifier)
+            }
+    }
 
-        let destination = applications.appendingPathComponent(source.lastPathComponent, isDirectory: true)
-        if manager.fileExists(atPath: destination.path) {
-            let staging = applications.appendingPathComponent(".SaveNest-\(UUID().uuidString).install.app", isDirectory: true)
-            do {
-                try manager.copyItem(at: source, to: staging)
-                _ = try manager.replaceItemAt(destination, withItemAt: staging)
-            } catch {
-                try? manager.removeItem(at: staging)
-                throw error
-            }
-        } else {
-            do {
-                try manager.copyItem(at: source, to: destination)
-            } catch {
-                try? manager.removeItem(at: destination)
-                throw error
-            }
+    private static func offerInstalledApplication(_ application: URL) -> Bool {
+        NSApp.activate(ignoringOtherApps: true)
+        let alert = NSAlert()
+        alert.alertStyle = .informational
+        alert.messageText = "Open Savenest from Applications?"
+        alert.informativeText = "Savenest is already in Applications. Open that copy to continue. To update it, choose Check for Updates from its Savenest menu."
+        alert.addButton(withTitle: "Open Installed Savenest")
+        alert.addButton(withTitle: "Continue Here")
+        guard alert.runModal() == .alertFirstButtonReturn else { return false }
+        do {
+            try relaunch(application)
+            NSApp.terminate(nil)
+            return true
+        } catch {
+            presentFailure(error)
+            return false
+        }
+    }
+
+    // Keep the destination independent of Finder's repeated-download name, e.g. SaveNest 2.app.
+    // Stage first, then atomically publish without replacing an existing or concurrently installed app.
+    static func install(_ source: URL, applications: URL) throws -> URL {
+        let manager = FileManager.default
+        let destination = applications.appendingPathComponent("SaveNest.app", isDirectory: true)
+        let staging = applications.appendingPathComponent(".SaveNest-\(UUID().uuidString).install", isDirectory: true)
+        try manager.createDirectory(at: staging, withIntermediateDirectories: false, attributes: [.posixPermissions: 0o700])
+        defer { try? manager.removeItem(at: staging) }
+        let stagedApplication = staging.appendingPathComponent("SaveNest.app", isDirectory: true)
+        try manager.copyItem(at: source, to: stagedApplication)
+        try clearQuarantine(at: stagedApplication)
+        guard renamex_np(stagedApplication.path, destination.path, UInt32(RENAME_EXCL)) == 0 else {
+            throw NSError(domain: NSPOSIXErrorDomain, code: Int(errno), userInfo: [NSFilePathErrorKey: destination.path])
         }
         return destination
     }
 
-    /// A programmatic copy keeps Gatekeeper's quarantine attribute. Clear it from
-    /// the installed bundle so macOS launches that path instead of translocating it
-    /// and offering to move it again.
+    /// This running release has already been approved by macOS. Preserve the
+    /// existing self-install behavior on its new copy so it opens at the writable
+    /// Applications path, not a read-only translocation. Never alter the source
+    /// download or a previously installed app.
     private static func clearQuarantine(at application: URL) throws {
         let errorCode = application.withUnsafeFileSystemRepresentation { path -> Int32 in
             guard let path else { return EINVAL }
@@ -94,25 +121,30 @@ enum ApplicationMover {
             return errno
         }
         guard errorCode == 0 || errorCode == ENOATTR else {
-            throw NSError(
-                domain: NSPOSIXErrorDomain,
-                code: Int(errorCode),
-                userInfo: [NSFilePathErrorKey: application.path]
-            )
+            throw NSError(domain: NSPOSIXErrorDomain, code: Int(errorCode), userInfo: [NSFilePathErrorKey: application.path])
         }
     }
 
     private static func relaunch(_ application: URL) throws {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/open")
-        process.arguments = ["-n", application.path]
+        let installedIsRunning = NSWorkspace.shared.runningApplications.contains {
+            $0.processIdentifier != ProcessInfo.processInfo.processIdentifier &&
+            $0.bundleURL?.resolvingSymlinksInPath() == application.resolvingSymlinksInPath()
+        }
+        // A fresh handoff needs a new instance: LaunchServices could otherwise reuse this
+        // Downloads copy. Reuse an already running installed copy rather than duplicating it.
+        // The argument also avoids a repeated setup prompt during cross-host handoff.
+        process.arguments = (installedIsRunning ? [] : ["-n"]) + ["-a", application.path, "--args", installedLaunchArgument]
         try process.run()
+        process.waitUntilExit()
+        guard process.terminationStatus == 0 else { throw MoveError.launchFailed }
     }
 
     private static func presentFailure(_ error: Error) {
         let alert = NSAlert()
         alert.alertStyle = .warning
-        alert.messageText = "Savenest couldn’t be moved"
+        alert.messageText = "Savenest couldn’t finish setup"
         alert.informativeText = "You can keep using Savenest here, or move it to Applications in Finder.\n\n\(error.localizedDescription)"
         alert.addButton(withTitle: "Continue")
         alert.runModal()
@@ -120,11 +152,14 @@ enum ApplicationMover {
 
     private enum MoveError: LocalizedError {
         case applicationsFolderUnavailable
+        case launchFailed
 
         var errorDescription: String? {
             switch self {
             case .applicationsFolderUnavailable:
                 return "The Applications folder could not be found."
+            case .launchFailed:
+                return "Open Savenest from Applications in Finder. macOS may need you to approve opening it."
             }
         }
     }
