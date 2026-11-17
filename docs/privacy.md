@@ -71,6 +71,8 @@ Pending counts stay in memory and are sent in batches, approximately once a minu
 
 The service keeps daily aggregate counts for approximately 90 days and random batch receipts for seven days. Cleanup runs when new batches arrive, so expired records may remain until the next cleanup. These tables do not contain IP addresses. The hosting provider still receives ordinary network information. Because counts have no person or device identifier, we cannot locate one person’s contribution in an aggregate for deletion.
 
+Mac builds configured for PostHog also send these fixed counts to our Savenest PostHog project. Website and Mac events are labeled separately for reporting, with no shared person or device identity. Each batch uses a new random identifier, never linked to an account or installation. The app requests no person profile or location enrichment and substitutes a placeholder for the event IP field. PostHog's network infrastructure still receives ordinary connection information. The integration has no automatic click capture or session recordings. The project discards client IP data. PostHog retains usage events under its service and project settings; we have not configured a custom deletion schedule. The Savenest service's 90-day retention does not apply to PostHog. The same usage-reporting off switch governs both destinations.
+
 ## Optional accounts and subscriptions
 
 If you request a sign-in link, we process your email address, optional name, and authentication records to provide your account. Website sign-in does not upload your library. The Mac app starts automatic saving after sign-in when Pro access, server permission, and local-library health checks pass. The app keeps its session credential in macOS Keychain. The server stores hashed tokens. A successful browser confirmation can also set a secure, HttpOnly account-session cookie.
@@ -89,6 +91,7 @@ The website does not add advertising trackers. Essential account cookies and hos
 
 - [Cloudflare](https://www.cloudflare.com/privacypolicy/) hosts the website and forwards account and backup API requests through the Sites hosting platform.
 - [Amazon Web Services](https://aws.amazon.com/privacy/) hosts the backend, PostgreSQL account and current-library database, and encrypted recovery-backup storage in Stockholm, Sweden.
+- [PostHog](https://posthog.com/privacy) processes optional usage events when the corresponding Mac integration is configured and enabled.
 - [Resend](https://resend.com/legal/privacy-policy) delivers account and friend-invitation emails.
 - [Stripe](https://stripe.com/privacy) processes billing and payment records.
 - [GitHub](https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement) hosts the public source and desktop downloads. We fetch the public star count from our server, not your browser.

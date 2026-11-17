@@ -24,11 +24,19 @@ public extension Library {
         return changed
     }
 
+    /// The single archive transition used by the app and automation. History grows only
+    /// when a link moves from active to archived; restoring never discards it.
+    static func applyArchiveTransition(_ archived: Bool, to link: inout SavedLink, at date: Date = Date()) {
+        guard link.isArchived != archived else { return }
+        link.isArchived = archived
+        if archived { link.archiveHistory.append(date) }
+    }
+
     /// Return only changed IDs, so Undo never restores unrelated archive entries.
-    @discardableResult mutating func setArchived(_ archived: Bool, ids: Set<UUID>) -> Set<UUID> {
+    @discardableResult mutating func setArchived(_ archived: Bool, ids: Set<UUID>, at date: Date = Date()) -> Set<UUID> {
         var changed = Set<UUID>()
         for index in links.indices where ids.contains(links[index].id) && links[index].isArchived != archived {
-            links[index].isArchived = archived
+            Self.applyArchiveTransition(archived, to: &links[index], at: date)
             changed.insert(links[index].id)
         }
         return changed

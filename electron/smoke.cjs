@@ -50,6 +50,97 @@ exports.run = async ({ win, native, root, show, toggle }) => {
   assert.equal(win.webContents.getLastWebPreferences().contextIsolation, true);
   await assert.rejects(js("window.savenest.command({command:'callback',url:'savenest://auth'})"), /Unknown Savenest action/);
 
+  // Activity is a read-only projection over the native library. Exercise its
+  // real archives/history, then remove the temporary link so later smoke
+  // scenarios see the original preview fixture.
+  const activityYear = new Date().getFullYear();
+  const activityDay = (() => {
+    const now = new Date(), pad = value => String(value).padStart(2, '0');
+    return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+  })();
+  const activityQuery = extra => native.request({ command: 'activity', year: activityYear, ...extra });
+  const dayCounts = snapshot => snapshot.days.find(day => day.date === activityDay) || { saved: 0, finished: 0 };
+  const baseline = dayCounts(await activityQuery());
+  const temporaryURL = 'https://example.com/activity-smoke';
+  await native.request({ command: 'add', url: temporaryURL, title: 'Making time for thoughtful reading' });
+  await wait(() => state.rows.some(row => row.url === temporaryURL), 'activity temporary link');
+  const temporary = state.rows.find(row => row.url === temporaryURL);
+  assert(temporary);
+  const temporaryLinkID = temporary.id.replace(/^saved:/, '');
+  await js("document.getElementById('open-activity').click()");
+  await route('activity');
+  await wait(() => js("document.querySelectorAll('#activity-summary .activity-card').length === 3"), 'activity summary');
+  assert.equal(await js("document.getElementById('activity-year').value"), String(activityYear));
+  assert.equal(await js("document.querySelector('#activity-filters [data-kind=\"all\"]').getAttribute('aria-pressed')"), 'true');
+  assert.equal(await js(`document.querySelector('#activity-grid [data-date="${activityDay}"]').getAttribute('aria-pressed')`), 'true');
+  assert.equal(await js("document.getElementById('primary').textContent.includes('Back to search')"), true);
+  const finishedInGrid = () => js(`Number(document.querySelector('#activity-grid [data-date="${activityDay}"]').dataset.finished || 0)`);
+  assert.equal(await finishedInGrid(), baseline.finished);
+  await native.request({ command: 'archive', ids: [temporary.id] });
+  await wait(async () => await finishedInGrid() === baseline.finished + 1, 'activity daily finished count after archive');
+  await native.request({ command: 'undo' });
+  await wait(async () => await finishedInGrid() === baseline.finished, 'activity daily finished count after undo');
+  await wait(() => state.rows.some(row => row.id === temporary.id), 'activity link searchable after undo');
+  await native.request({ command: 'archive', ids: [temporary.id] });
+  await wait(async () => await finishedInGrid() === baseline.finished + 1, 'activity finished count after re-archive');
+  await wait(() => js(`document.querySelectorAll('#activity-links .activity-link[data-id="${temporaryLinkID}"]').length === 2`),
+    'activity daily saved and finished events for the same link');
+  assert(await js(`document.getElementById('activity-day-count').textContent.includes('event')`));
+  await js(`(() => {
+    const notice = document.getElementById('notice');
+    const dismiss = document.getElementById('dismiss-notice');
+    if (notice && !notice.hidden && dismiss) dismiss.click();
+    return true;
+  })()`);
+  await js(`(() => {
+    const row = document.querySelector('#activity-links .activity-link[data-id="${temporaryLinkID}"][data-action="finished"]');
+    row.scrollIntoView({ block: 'center' });
+    row.focus();
+    return true;
+  })()`);
+  await painted();
+  await fs.writeFile(path.join(root, 'build/activity-daily-focus.png'), (await win.webContents.capturePage()).toPNG());
+  await js("document.activeElement.blur()");
+  await painted();
+  await fs.writeFile(path.join(root, 'build/activity-log.png'), (await win.webContents.capturePage()).toPNG());
+  await native.request({ command: 'search', scope: 'Archive', query: temporaryURL });
+  await wait(() => state.resultsScope === 'Archive' && state.resultsQuery === temporaryURL
+    && state.rows.some(row => row.id === temporary.id), 'activity archived link available for restore');
+  await native.request({ command: 'restore', ids: [temporary.id] });
+  await native.request({ command: 'search', scope: 'Saved', query: temporaryURL });
+  await wait(() => state.resultsScope === 'Saved' && state.resultsQuery === temporaryURL
+    && state.rows.some(row => row.id === temporary.id && !row.archived), 'activity restored link available for deletion');
+  await wait(async () => await finishedInGrid() === baseline.finished + 1, 'restore retains finished history');
+  await native.request({ command: 'delete', ids: [temporary.id] });
+  await wait(() => !state.rows.some(row => row.url === temporaryURL), 'activity temporary link removed');
+  await wait(async () => await finishedInGrid() === baseline.finished
+    && Number(await js(`document.querySelector('#activity-grid [data-date="${activityDay}"]').dataset.saved || 0`)) === baseline.saved,
+  'activity fixture counts restored');
+  await native.request({ command: 'search', scope: 'All', query: '' });
+  await wait(() => state.resultsScope === 'All' && state.resultsQuery === '' && state.rows.length >= 10,
+    'activity restores root search fixture');
+  await wait(() => js("document.documentElement.scrollWidth <= window.innerWidth"), 'activity fits the launcher width');
+  await wait(() => js("(() => { const chart = document.querySelector('.activity-chart-scroll'); return chart.scrollWidth <= chart.clientWidth; })()"), 'activity heatmap fits at normal width');
+  await js("(() => { const notice = document.getElementById('notice'); const dismiss = document.getElementById('dismiss-notice'); if (notice && !notice.hidden && dismiss) dismiss.click(); return true; })()");
+  await js("document.getElementById('activity-view').scrollTop = 0");
+  await painted();
+  const activityAppearance = state.appearance;
+  for (const appearance of ['black', 'cream']) {
+    native.emit('event', { event: 'state', state: { ...state, appearance } });
+    await wait(() => js(`document.documentElement.dataset.appearance === '${appearance}'`), appearance + ' activity appearance');
+    await painted();
+    await fs.writeFile(path.join(root, `build/activity-${appearance}.png`), (await win.webContents.capturePage()).toPNG());
+  }
+  native.emit('event', { event: 'state', state: { ...state, appearance: activityAppearance } });
+  await js("document.getElementById('primary').click()");
+  await route('root');
+  await wait(() => win.getBounds().height === 520, 'Activity Back restores launcher height');
+  await type('heatmap'); await key('Enter'); await route('activity');
+  assert.equal(await js("document.getElementById('route-title').textContent"), 'Activity');
+  await key('Escape'); await route('root');
+  await wait(() => win.getBounds().height === 520, 'Activity Escape restores launcher height');
+  await type('');
+
   // The native fixture has no account or subscription. It follows the same local
   // write checks as the normal app; preview only replaces persistence/browser IO.
   assert.equal(state.canSave, true);

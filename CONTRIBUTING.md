@@ -62,6 +62,8 @@ node scripts/check-browser-tabs.mjs
 node scripts/check-tab-context.mjs
 ```
 
+For macOS Services changes, run `bash scripts/check-services.sh` after the native build. On a Mac with a desktop session, also run `node scripts/check-services-integration.mjs`. The integration check temporarily registers a uniquely named app in `~/Applications`, exercises cold and warm Services delivery against the sample library, and removes the fixture afterward. It never opens the real library.
+
 Add regression coverage when it can catch a meaningful behavioral failure, especially data loss, authorization, or privacy regressions. Documentation-only changes need link and command review, not a full app build. Report checks you could not run.
 
 Preview and automated checks do not establish real-browser permissions, installed-app migration, or update behavior. See the [preview acceptance checklist](docs/preview-acceptance.md) for those checks.

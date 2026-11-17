@@ -13,13 +13,14 @@ public struct SavedLink: Identifiable, Codable, Equatable {
     public var isFavorite: Bool
     public var isArchived: Bool
     public var importance: LinkImportance? = nil
+    public var archiveHistory: [Date] = []
 
     public init(url: String, title: String, browser: String = "Manual", collection: String = "Inbox") {
         id = UUID(); self.url = url; self.title = title; self.browser = browser
         createdAt = Date(); self.collection = collection; note = ""; tags = []
         isFavorite = false; isArchived = false
     }
-    private enum CodingKeys: String, CodingKey { case id, url, title, iconURL, browser, createdAt, collection, note, tags, isFavorite, isArchived, importance }
+    private enum CodingKeys: String, CodingKey { case id, url, title, iconURL, browser, createdAt, collection, note, tags, isFavorite, isArchived, importance, archiveHistory }
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         id = try c.decode(UUID.self, forKey: .id); url = try c.decode(String.self, forKey: .url)
@@ -30,6 +31,18 @@ public struct SavedLink: Identifiable, Codable, Equatable {
         tags = Self.normalizedTags(try c.decodeIfPresent([String].self, forKey: .tags) ?? [])
         isFavorite = try c.decode(Bool.self, forKey: .isFavorite); isArchived = try c.decode(Bool.self, forKey: .isArchived)
         importance = try c.decodeIfPresent(LinkImportance.self, forKey: .importance)
+        archiveHistory = try c.decodeIfPresent([Date].self, forKey: .archiveHistory) ?? []
+    }
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id); try c.encode(url, forKey: .url); try c.encode(title, forKey: .title)
+        try c.encodeIfPresent(iconURL, forKey: .iconURL)
+        try c.encode(browser, forKey: .browser); try c.encode(createdAt, forKey: .createdAt)
+        try c.encode(collection, forKey: .collection); try c.encode(note, forKey: .note)
+        try c.encode(tags, forKey: .tags); try c.encode(isFavorite, forKey: .isFavorite)
+        try c.encode(isArchived, forKey: .isArchived); try c.encodeIfPresent(importance, forKey: .importance)
+        // Keep legacy files free of an empty optional key while preserving real history.
+        if !archiveHistory.isEmpty { try c.encode(archiveHistory, forKey: .archiveHistory) }
     }
     public static func normalizedTags(_ values: [String]) -> [String] {
         var seen = Set<String>()

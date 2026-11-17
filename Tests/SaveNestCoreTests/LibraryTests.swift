@@ -622,6 +622,7 @@ func XCTAssertThrowsError<T>(_ expression: @autoclosure () throws -> T) {
         try runNoteFileChecks()
         try runCloudLibraryChecks()
         try runAutomationLibraryChecks()
+        try runActivityChecks()
         let tests = LibraryTests()
         tests.testTabCleanupPlanningIsConservativeAndDomainScoped()
         try tests.testBrowserTabPayloadsDecodeAndSaveTogether()
@@ -664,6 +665,7 @@ func XCTAssertThrowsError<T>(_ expression: @autoclosure () throws -> T) {
         tests.testTagCompletionSelectsFirstFilteredSuggestion()
         try tests.testImportanceMigrationAndBackup()
         try tests.testAnalyticsOptOutAndPayloadBoundary()
-        print("Passed 40 SaveNest checks")
+        try await runUsageAnalyticsChecks()
+        print("Passed 41 SaveNest checks")
     }
 }

@@ -7,7 +7,7 @@ const { JSDOM, VirtualConsole } = require('jsdom');
 
 const rendererDirectory = path.resolve(__dirname, '../renderer');
 const html = readFileSync(path.join(rendererDirectory, 'index.html'), 'utf8');
-const scripts = ['launcher-model.js', 'renderer.js'].map(name => readFileSync(path.join(rendererDirectory, name), 'utf8'));
+const scripts = ['launcher-model.js', 'activity.js', 'renderer.js'].map(name => readFileSync(path.join(rendererDirectory, name), 'utf8'));
 const page = { id: 'saved:one', title: 'A saved page', url: 'https://example.com/one', domain: 'example.com', isSaved: true, tags: [] };
 
 function launcher(t, initial = {}) {
@@ -148,6 +148,91 @@ test('Enter on a focused Actions button preserves native activation instead of r
   assert.equal(ui.byID('action-dialog').open, false);
 });
 
+
+test('feature requests remain discoverable without search results', t => {
+  const ui = launcher(t, { query: 'no matching page' });
+  ui.byID('actions').click();
+  ui.action('Request a feature').click();
+  assert.deepEqual(ui.calls, [{ command: 'requestFeature' }]);
+});
+
+test('the launcher footer exposes Request a feature and reuses the native feedback command', t => {
+  const ui = launcher(t);
+  const button = ui.byID('open-feature-request');
+  assert.equal(button.textContent, 'Request a feature');
+  button.click();
+  assert.deepEqual(ui.calls, [{ command: 'requestFeature' }]);
+  const template = readFileSync(path.resolve(__dirname, '../../.github/ISSUE_TEMPLATE/feature.yml'), 'utf8');
+  assert.match(template, /^name: Feature request/m);
+});
+
+const secondPage = { ...page, id: 'saved:two', title: 'Another page', url: 'https://example.com/two' };
+const thirdPage = { ...page, id: 'saved:three', title: 'Third page', url: 'https://example.com/three' };
+const checkedIDs = ui => [...ui.document.querySelectorAll('.row-check:checked')].map(check => check.closest('.row').dataset.id);
+
+test('keyboard selection supports disjoint links, ranges that shrink, and Escape before leaving scope', t => {
+  const ui = launcher(t, { scope: 'Saved', rows: [page, secondPage, thirdPage] });
+  const search = ui.byID('search'); search.focus();
+  assert.equal(ui.byID('selection-bar').hidden, false);
+  ui.key(' ', search, { shiftKey: true });
+  ui.key('ArrowDown'); ui.key('ArrowDown'); ui.key(' ', search, { shiftKey: true });
+  assert.deepEqual(checkedIDs(ui), [page.id, thirdPage.id]);
+  assert.equal(ui.byID('selection-count').textContent, '2 selected');
+  ui.key('Escape');
+  assert.deepEqual(checkedIDs(ui), []);
+  assert.equal(ui.byID('scope').value, 'Saved');
+  assert.deepEqual(ui.calls, []);
+  ui.key('ArrowUp', search, { shiftKey: true });
+  assert.deepEqual(checkedIDs(ui), [secondPage.id, thirdPage.id]);
+  ui.key('ArrowUp', search, { shiftKey: true });
+  assert.deepEqual(checkedIDs(ui), [page.id, secondPage.id, thirdPage.id]);
+  ui.key('ArrowDown', search, { shiftKey: true });
+  assert.deepEqual(checkedIDs(ui), [secondPage.id, thirdPage.id]);
+});
+
+test('selection controls and bulk favorites use checked links', t => {
+  const ui = launcher(t, { scope: 'Saved', rows: [page, secondPage, thirdPage] });
+  ui.byID('toggle-selection').click();
+  assert.deepEqual(checkedIDs(ui), [page.id]);
+  const rows = [...ui.document.querySelectorAll('.row')];
+  rows[2].dispatchEvent(new ui.window.MouseEvent('click', { bubbles: true, metaKey: true }));
+  assert.deepEqual(checkedIDs(ui), [page.id, thirdPage.id]);
+  ui.byID('clear-selection').click(); rows[0].click();
+  rows[2].dispatchEvent(new ui.window.MouseEvent('click', { bubbles: true, shiftKey: true }));
+  assert.deepEqual(checkedIDs(ui), [page.id, secondPage.id, thirdPage.id]);
+  rows[1].querySelector('.row-check').click();
+  assert.deepEqual(checkedIDs(ui), [page.id, thirdPage.id]);
+  rows[2].querySelector('.row-more').click();
+  assert.equal(ui.byID('actions-context').textContent, '2 selected pages');
+  ui.action('Copy URLs').click();
+  assert.deepEqual(ui.calls, [{ command: 'copy', ids: [page.id, thirdPage.id] }]);
+});
+
+test('select all skips commands, preserves text shortcuts, and clears on a new query', t => {
+  const ui = launcher(t, { rows: [page, secondPage] });
+  const search = ui.byID('search'); search.focus();
+  for (const modifiers of [{ metaKey: true }, { metaKey: true, shiftKey: true }]) {
+    assert.equal(ui.key('z', search, modifiers).defaultPrevented, false);
+  }
+  assert.equal(ui.key('a', search, { metaKey: true }).defaultPrevented, false);
+  ui.key('A', search, { metaKey: true, shiftKey: true });
+  assert.deepEqual(checkedIDs(ui), [page.id, secondPage.id]);
+  ui.key('F', search, { metaKey: true, shiftKey: true });
+  assert.deepEqual(ui.calls, [{ command: 'favorite', ids: [page.id, secondPage.id] }]);
+  search.value = 'another'; search.dispatchEvent(new ui.window.Event('input', { bubbles: true }));
+  assert.deepEqual(checkedIDs(ui), []);
+});
+
+test('Actions updates favorite state and keyboard targets when native results change', t => {
+  const ui = launcher(t, { scope: 'Saved', rows: [page, secondPage, thirdPage] });
+  ui.byID('search').focus(); ui.key('ArrowDown'); ui.byID('actions').click();
+  ui.update({ rows: [page, { ...secondPage, favorite: true }, thirdPage] });
+  ui.action('Remove from favorites');
+  ui.update({ rows: [page, thirdPage] });
+  assert.equal(ui.byID('actions-context').textContent, thirdPage.title, 'triage continues at the next row');
+  ui.key('f', ui.byID('action-search'), { metaKey: true, shiftKey: true });
+  assert.deepEqual(ui.calls, [{ command: 'favorite', ids: [thirdPage.id] }]);
+});
 
 test('sync status is absent without Pro and changes immediately when sync loses access', t => {
   const ui = launcher(t, { savedCount: 4 });

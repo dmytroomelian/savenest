@@ -45,6 +45,8 @@ struct AccountView: View {
                 }
                 if let message = account.message { Text(message).font(.system(size: 12)).foregroundStyle(Color.muted).fixedSize(horizontal: false, vertical: true) }
                 Divider()
+                Link(FeedbackDestination.requestFeature.title + " ↗", destination: FeedbackDestination.requestFeature.url)
+                    .font(.system(size: 12))
                 HStack {
                     Link("Privacy policy ↗", destination: URL(string: "https://savenest.app/privacy")!)
                     Spacer()

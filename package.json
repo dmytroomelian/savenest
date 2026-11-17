@@ -1,7 +1,7 @@
 {
   "name": "savenest-desktop",
   "productName": "Savenest",
-  "version": "0.14.0",
+  "version": "0.15.0",
   "private": true,
   "description": "Savenest Electron desktop with native macOS capture and local storage",
   "main": "electron/main.cjs",
@@ -27,7 +27,8 @@
     "@electron/universal": "3.0.6",
     "electron": "45.1.0",
     "esbuild": "0.28.2",
-    "jsdom": "30.1.3"
+    "jsdom": "30.1.3",
+    "node-api-headers": "1.9.0"
   },
   "engines": {
     "node": ">=22.12.0"

@@ -27,11 +27,16 @@ h1 { font-size: 17px; font-weight: 550; margin: 3px 0 0; letter-spacing: -.25px;
 h2 { font-size: 15px; font-weight: 550; margin: 0 0 7px; }
 .view { flex: 1; min-height: 0; overflow-y: auto; }
 #results { padding: 8px 13px 14px; }
+#selection-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding: 8px 22px 0; color: var(--muted); font-size: 11px; }
+#selection-count { margin-right: auto; }
+#selection-bar button { padding: 5px 7px; color: var(--muted); font-size: 11px; }
+#selection-bar button:hover { color: var(--ink); }
 .group-label { padding: 13px 13px 8px; color: var(--muted); font-size: 11px; font-weight: 550; }
 .row { display: flex; align-items: center; gap: 13px; min-height: 58px; padding: 8px 12px; border-radius: 12px; border: 1px solid transparent; cursor: default; }
 .row.selected { background: linear-gradient(105deg, var(--selected), color-mix(in srgb, var(--selected) 45%, transparent)); border-color: color-mix(in srgb, var(--accent) 30%, transparent); box-shadow: inset 0 1px 0 color-mix(in srgb, var(--glass-highlight) 45%, transparent); }
 .row:hover { background: var(--surface); }
 .row.selected:hover { background: var(--selected); }
+.row.checked:not(.selected) { background: color-mix(in srgb, var(--selected) 40%, transparent); border-color: var(--line); }
 .row[data-kind="command"] .row-icon { color: var(--accent); background: var(--surface); border: 1px solid var(--line); }
 .row-icon { width: 34px; height: 34px; display: grid; place-items: center; color: var(--muted); border-radius: 10px; flex-shrink: 0; }
 .row-icon.page-icon { border: 1px solid var(--line); background: var(--surface); color: var(--accent); font-size: 13px; font-weight: 600; }
@@ -46,7 +51,7 @@ h2 { font-size: 15px; font-weight: 550; margin: 0 0 7px; }
 .source-label { font-size: 10px; color: var(--muted); padding: 3px 7px; border-radius: 999px; background: var(--surface); }
 .source-label.open { color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
 .row-check { accent-color: var(--accent); width: 12px; height: 12px; margin: 0; opacity: 0; cursor: pointer; }
-.row:hover .row-check, .row-check:checked, .row-check:focus-visible { opacity: 1; }
+.row:hover .row-check, .row.selected .row-check, .row-check:checked, .row-check:focus-visible { opacity: 1; }
 .row-more { color: var(--muted); padding: 1px 6px; font-size: 17px; opacity: 0; }
 .row:hover .row-more, .row.selected .row-more, .row-more:focus-visible { opacity: 1; }
 .star { color: var(--accent); font-size: 11px; margin-left: 6px; }
@@ -153,6 +158,8 @@ dialog::backdrop { background: rgba(3, 12, 24, .18); }
 .row-read { display: grid; place-items: center; color: var(--muted); padding: 5px; border-radius: 5px; }
 .row-read svg { width: 17px; height: 17px; }
 .row-read:hover, .row-read:focus-visible { color: var(--accent); background: var(--raised); }
+
+.row-icon.page-icon img { width: 20px; height: 20px; object-fit: contain; border-radius: 3px; }
 
 @media (max-width: 620px) {
   #search-header, #route-header { padding: 0 16px; gap: 10px; }

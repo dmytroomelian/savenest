@@ -18,6 +18,9 @@ final class ElectronBridge {
     init(model: AppModel) { self.model = model }
 
     static func failStartup(_ message: String) { write(["event": "fatal", "message": message]) }
+    static func startupConflict(existingApplication: URL) {
+        write(["event": "startup-conflict", "existingAppPath": existingApplication.path])
+    }
     private static func write(_ value: [String: Any]) {
         guard let data = try? JSONSerialization.data(withJSONObject: value, options: [.sortedKeys]) else { return }
         FileHandle.standardOutput.write(data + Data([10]))
@@ -40,6 +43,8 @@ final class ElectronBridge {
         model.closeCaptureEditor = { [weak self] in self?.event("editorSaved") }
         model.showTabSelection = { [weak self] _ in self?.event("show"); self?.scheduleSnapshot() }
         model.closeTabSelection = { [weak self] in self?.event("selectionClosed") }
+        model.launchAtLogin.hostRefresh = { [weak self] in self?.event("loginItemRefresh") }
+        model.launchAtLogin.hostSet = { enabled in Self.write(["event": "loginItemSet", "enabled": enabled]) }
         model.updater.requestHostCheck = { [weak self] in self?.event("checkForUpdates") }
         model.objectWillChange.sink { [weak self] in self?.scheduleSnapshot() }.store(in: &subscriptions)
         model.updater.objectWillChange.sink { [weak self] in self?.scheduleSnapshot() }.store(in: &subscriptions)
@@ -47,8 +52,9 @@ final class ElectronBridge {
         model.cloud.objectWillChange.sink { [weak self] in self?.scheduleSnapshot() }.store(in: &subscriptions)
         model.socialCapture.objectWillChange.sink { [weak self] in self?.scheduleSnapshot() }.store(in: &subscriptions)
         model.tabSearch.objectWillChange.sink { [weak self] in self?.scheduleSnapshot() }.store(in: &subscriptions)
-        model.$library.dropFirst().receive(on: DispatchQueue.main).sink { [weak self] library in
+        model.$library.removeDuplicates().dropFirst().receive(on: DispatchQueue.main).sink { [weak self] library in
             self?.model.tabSearch.updateLibrary(library.links)
+            self?.event("activityChanged")
         }.store(in: &subscriptions)
         NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification).receive(on: DispatchQueue.main)
             .sink { [weak self] _ in self?.scheduleSnapshot() }.store(in: &subscriptions)
@@ -203,9 +209,16 @@ final class ElectronBridge {
         var action: String?
         var enabled: Bool?
         var updateState: String?
+        var available: Bool?
+        var message: String?
         var documentId: String?
         var text: String?
         var revision: String?
+        var year: Int?
+        var kind: String?
+        var day: String?
+        var offset: Int?
+        var limit: Int?
     }
 
     private func receive(_ data: Data) async {
@@ -220,7 +233,7 @@ final class ElectronBridge {
         } catch {
             Self.write(["id": request.id, "ok": false, "error": error.localizedDescription])
         }
-        scheduleSnapshot()
+        if !["siteIcon", "activity"].contains(request.command) { scheduleSnapshot() }
     }
 
     private struct Failure: LocalizedError {
@@ -236,6 +249,17 @@ final class ElectronBridge {
 
     private func performReader(_ request: Request) async throws -> [String: Any]? {
         switch request.command {
+        case "activity":
+            guard let year = request.year else { throw Failure(message: "Choose an activity year.") }
+            let result = try LibraryActivity.query(library: model.library, year: year,
+                kind: request.kind ?? "all", day: request.day,
+                offset: request.offset ?? 0, limit: request.limit ?? 100)
+            return try JSONSerialization.jsonObject(with: JSONEncoder().encode(result)) as? [String: Any]
+        case "siteIcon":
+            guard let url = request.url,
+                  let item = model.tabSearch.results.first(where: { $0.url == url }) else { return [:] }
+            guard let data = await SiteIconLoader.shared.image(page: url, hint: item.link?.iconURL) else { return [:] }
+            return ["dataURL": "data:image/png;base64," + data.base64EncodedString()]
         case "readerCurrent":
             var source = try await ReaderCapture.current(using: model.captureService, sourceApplication: panelVisible ? previousApplication : nil, preview: model.readerPreview)
             if let url = source["url"] as? String {
@@ -302,6 +326,9 @@ final class ElectronBridge {
                !["app.savenest.mac", "app.savenest.electron", "org.electronjs.Electron"].contains(front.bundleIdentifier ?? "") { previousApplication = front }
         case "restoreFocus": previousApplication?.activate(options: [])
         case "snapshot": snapshot()
+        case "loginItemStatus":
+            guard let enabled = request.enabled, let available = request.available else { throw Failure(message: "Invalid startup status.") }
+            model.launchAtLogin.receive(enabled: enabled, available: available, message: request.message ?? "")
         case "updateStatus":
             guard let enabled = request.enabled, let state = request.updateState,
                   model.updater.receiveHostStatus(enabled: enabled, state: state) else {
@@ -339,7 +366,18 @@ final class ElectronBridge {
             }
             search.saveTabs(tabs, closeAfter: request.command == "saveClose")
         case "close": search.closeTabs(tabs)
-        case "favorite": for link in links { model.favorite(link) }
+        case "activityOpen":
+            guard let requested = request.ids, requested.count == 1,
+                  let id = UUID(uuidString: requested[0]),
+                  let link = model.library.links.first(where: { $0.id == id }),
+                  Library.validatedURL(link.url) != nil else {
+                throw Failure(message: "This saved link is no longer available. Refresh Activity and try again.")
+            }
+            if model.isPreview { search.setMessage("Preview: this would open the saved link.") }
+            else if let tab = search.tabs.first(where: { Library.identity($0.url) == Library.identity(link.url) }) {
+                search.activate(tab)
+            } else { model.open(link); event("hide") }
+        case "favorite": model.toggleFavorites(ids: Set(links.map(\.id)))
         case "archive", "restore": _ = model.setArchived(request.command == "archive", ids: Set(links.map(\.id)))
         case "delete": model.deleteLinks(ids: Set(links.map(\.id)))
         case "undo": model.undoLastAction()
@@ -370,6 +408,10 @@ final class ElectronBridge {
         case "saveClipboard": if !model.isPreview { model.saveCurrentClipboard() }
         case "account": model.showAccount?()
         case "settings": model.showSettings?()
+        case "requestFeature", "reportBug":
+            guard let destination = FeedbackDestination(rawValue: request.command), NSWorkspace.shared.open(destination.url) else {
+                throw Failure(message: "Couldn’t open GitHub. Check your default browser and try again.")
+            }
         case "socialCaptureSettings":
             model.requestedSettingsTab = "Capture"
             model.showSettings?()
@@ -393,6 +435,11 @@ final class ElectronBridge {
                 return
             }
             model.capture(action: action, sourceApplication: panelVisible ? previousApplication : nil)
+        case "serviceCapture":
+            guard let raw = request.url, let url = ClipboardLink.parse(raw) else {
+                throw Failure(message: "Select one complete http:// or https:// web address.")
+            }
+            if let message = model.beginServicesCapture(url) { throw Failure(message: message) }
         case "callback":
             guard !model.isPreview, let raw = request.url, let url = URL(string: raw), url.scheme == "savenest" else { return }
             model.account.handleIncomingURL(url)

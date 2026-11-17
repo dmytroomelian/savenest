@@ -13,6 +13,7 @@ cp Resources/Info.plist "$preview_app/Contents/Info.plist"
 /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName Savenest Preview" "$preview_app/Contents/Info.plist"
 # The sample-library app must not intercept real account callbacks.
 /usr/libexec/PlistBuddy -c "Delete :CFBundleURLTypes" "$preview_app/Contents/Info.plist"
+/usr/libexec/PlistBuddy -c "Delete :NSServices" "$preview_app/Contents/Info.plist"
 /usr/libexec/PlistBuddy -c 'Set :SaveNestUpdatesEnabled false' "$preview_app/Contents/Info.plist"
 swift scripts/make-icon.swift
 cp build/AppIcon.icns "$preview_app/Contents/Resources/AppIcon.icns"

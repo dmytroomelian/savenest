@@ -2,7 +2,7 @@
 
 ## Explore features
 
-Choose **Explore features** in the launcher footer, root search, or Actions. Search for a capability and use its button to open the matching tool or settings. Closing the guide returns to your previous search and selection. Pro and Beta labels identify paid features and features still being tested.
+Choose **Explore features** in the launcher footer, root search, or Actions. Search for a capability and use its button to open the matching tool or settings. The catalog also describes Activity, macOS Services URL drafts, and Launch at login; Activity opens the dashboard, Services explains the menu command, and login opens Settings. Closing the guide returns to your previous search and selection. Pro and Beta labels identify paid features and features still being tested.
 
 ## Save from other apps — Pro beta
 
@@ -24,13 +24,23 @@ The [Read & note workspace](read-and-note.md) opens an article beside its Obsidi
 
 Press **⌘O**, then type. Commands, open tabs, saved links, notes, tags, and recent browser history share one search. **Enter** runs the selected command, switches to an open tab, or opens a saved/visited page. Pasting a URL offers **Save this link**. Saving with a note and choosing multiple tabs happen inside the same panel. The launcher keeps its borderless search field, scope dropdown, quick actions, and result list.
 
+Open **Activity** from the footer or choose **View activity** in Actions to review your archive history. The dashboard shows a Monday-first year calendar; use the **All activity**, **Saved**, and **Finished** filters to color days by saves or finishes. Archiving counts as finished, and undated legacy archives are reported separately. Summary cards show saved and finished totals for the selected year plus links still to finish across the full library. The paged day feed loads 100 events at a time with **Show more**, including separate saved and finished events for the same link. Tab to the calendar and use arrow keys, Home, End, Enter, or Space to browse and select days. Activity opens without losing your search scope or query; Escape or **Back to search** returns to the launcher.
+
+Select links with the row checkbox, **⇧Space**, **⌘Click**, or **⇧Click**; **⇧⌘A** selects all visible links. Selecting links enables bulk Actions such as saving, copying, favoriting, archiving, restoring, and deleting. **Escape** clears a selection before leaving the current scope.
+
 Click **Actions** or press **⌘K** for actions on the selected page and app-wide commands. The searchable panel includes **Settings**, **Keyboard shortcuts**, all search scopes, capture actions, and library tools. It remains available in every search scope, even when there are no results. For example, choose **Actions → Search saved links** to browse your saved library, or **Search all pages** to return to the combined search. Changing scope starts a fresh query. Use the arrow keys and Enter to choose an action, or click it.
 
 **Settings** and **Shortcuts** stay visible in the footer, including while editing a link. Click **Shortcuts** or press **⌘/** to open the keyboard guide; Escape or **⌘/** closes it. The guide separates launcher keys from shortcuts that work in other apps and displays your configured capture bindings, including missing assignments or registration errors. **Customize in Settings** opens the shortcut preferences. Preview mode shows the bindings but does not register global shortcuts.
 
 The floating launcher opens on the display containing the pointer, including over fullscreen apps, and stays out of the Dock. Click elsewhere to hide it. Escape closes actions, goes back from an editor or scope, then dismisses root search. Unsaved edits require an explicit discard. The launcher remembers context for 60 seconds; after that it resets root search unless a draft is open. **⌘O** toggles it. The old **⌘⇧O** default migrates automatically; custom shortcuts remain unchanged and can be edited in Settings.
 
+In local builds with startup settings, open **Settings → General → Launch at login** to start Savenest when you sign in to your Mac. The switch reads the macOS setting. If approval is needed, use **Open Login Items settings**. Preview and unpackaged Electron development sessions cannot change login items.
+
 Account, Settings, sharing, and system dialogs retain their native implementation and are reachable from root search. Optional email sign-in and billing management are handled by savenest.app. Local links and notes remain available; Pro saving and enabled AI connections have the separate data flows described below. Existing saved links and Keychain sessions use the same storage, with no conversion. Settings → Appearance changes both interfaces. [Launcher design](launcher-design.md).
+
+### Feedback
+
+Choose **Request a feature** or **Report a bug** in the **Feedback** section at the top of Settings, on the Account screen, or in the macOS **Help** menu. Both actions also appear in **⌘K Actions** and root search; search for “feedback”, “feature”, or “bug”. Each opens the corresponding GitHub issue form in your default browser.
 
 ### Browser history
 
@@ -79,6 +89,8 @@ Settings also offers an optional shortcut preset: **⇧⌘K** saves and **⇧⌘
 
 The service aggregates by UTC day, retaining approximately 90 days of counts and seven days of upload receipts. Ordinary network information (including IP address) reaches the hosting provider but is not stored in the usage tables. These are best-effort action totals, not unique-user, retention, or revenue metrics. Preview mode sends no analytics and does not monitor the clipboard.
 
+Builds configured for PostHog also send these fixed counts to the shared Savenest PostHog project, labeled `surface: mac`. Separate Website and Mac app dashboards filter their respective events. The same off switch controls both destinations. Each batch has a fresh random identifier, no person profile, and no persistent identity or saved content. No session recording or automatic click tracking is installed. PostHog receives ordinary network connection information; event IP and location enrichment are suppressed. PostHog retention is separate from Savenest's usage database; no custom deletion schedule has been configured. See [PostHog setup](posthog-mac.md). Website analytics uses `surface: website` and its own visitor choice. Website and Mac events have no shared visitor identity.
+
 ## Browser tab adapters
 
 Open tabs participate in the main **⌘O** search. Choose **Search open tabs** or the Open tabs scope to narrow results. Titles rank above URLs and browser names. Results refresh on opening; cached pages remain searchable while browsers respond. Safari and the supported Chromium adapters expose tabs across scriptable windows and profiles. Hidden Safari tab groups, Firefox tabs, and embedded browser views are not included. Firefox history is supported separately. Use **⌘S** or **⌘K → Save to library** to save a tab without switching browsers. Tab titles and URLs remain in memory unless explicitly saved.
@@ -126,3 +138,9 @@ In 0.13.1, open **Account & Pro → Invite a friend**, sign in, enter your frien
 A friend new to paid Savenest pays **$1.99 for the first monthly payment**, then **$4.99/month**, before applicable tax. After they pay, you get one **$3 discount** on your first eligible monthly checkout or a later monthly renewal. Yearly plans are excluded. Each account gets at most one discounted month across both roles, even when it sends several invitations. Monthly Pro renews automatically until cancelled.
 
 Invitations expire 30 days after sending. A reward for a new checkout expires 30 days after qualification. The [privacy policy](privacy.md) explains invitation email delivery and referral records.
+
+### Save selected URLs with Services
+
+Select a complete `https://` or `http://` URL, including text in your browser's address bar. Control-click and choose **Services → Add to SaveNest…**. You can also use the current app's **Services** menu. SaveNest opens its existing editor, where you can add an optional note and tags before choosing **Save**. Cancel leaves your library unchanged. Existing links open with their saved notes and tags; browser tabs stay open.
+
+This ships inside SaveNest and needs no browser extension. Availability depends on the source app supporting Services for its selection. If the entry is missing, open SaveNest once and check **System Settings → Keyboard → Keyboard Shortcuts → Services**. Select **Add to SaveNest…** there if it is disabled. Finish or cancel an existing editor before sending another URL. Services accepts one complete URL at a time, not prose containing URLs or a selection of several links.

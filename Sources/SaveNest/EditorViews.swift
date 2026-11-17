@@ -161,6 +161,11 @@ struct SettingsView: View {
                 sheetHeading("Make yourself at home.", subtitle: "A few small things, just how you like them.")
             }
             if let error = model.error { Text(error).font(.system(size: 11)).foregroundStyle(.red) }
+            HStack(spacing: 20) {
+                ForEach(FeedbackDestination.allCases, id: \.self) { destination in
+                    Link(destination.title + " ↗", destination: destination.url).font(.system(size: 12))
+                }
+            }
             settingsTabs
             ZStack(alignment: .topLeading) {
                 VStack(alignment: .leading, spacing: 16) { settingsContent }
@@ -243,12 +248,13 @@ struct SettingsView: View {
         case .ai:
             AutomationSettingsView(controller: model.aiConnections, account: model.account)
         case .general:
+            LaunchAtLoginSettingsView(controller: model.launchAtLogin)
             appearancePicker
             AppUpdateSettingsView(updater: model.updater)
             VStack(alignment: .leading, spacing: 12) {
                 fieldLabel("ANONYMOUS USAGE")
                 Toggle("Share anonymous usage counts", isOn: $model.analyticsEnabled)
-                Text("Share anonymous action counts with savenest.app. No URLs, titles, notes, tags, account IDs, or device identifiers are included.")
+                Text(UsageAnalytics.sharingDescription)
                     .font(.system(size: 11)).foregroundStyle(Color.muted).fixedSize(horizontal: false, vertical: true)
                 OwnerUsageView(account: model.account)
             }.padding(20).nestSurface()
