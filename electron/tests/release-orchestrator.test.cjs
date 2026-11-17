@@ -130,6 +130,10 @@ function archSpawner({ output, fail = new Set(), order = [], barrier = null } = 
       }
     } catch (error) { if (error.code !== 'ENOENT') throw error; }
     if (task.architecture !== 'universal') {
+      // Swift and Electron consume different architecture variables. Omitting
+      // ELECTRON_ARCH silently packages Intel helpers for the host's CPU.
+      assert.equal(task.env.ELECTRON_ARCH, task.architecture);
+      assert.equal(task.env.TARGET_ARCH, task.architecture === 'x64' ? 'x86_64' : 'arm64');
       assert.equal(task.env.DISTRIBUTION, '1');
       assert.equal(task.env.RELEASE_REUSE_ASSETS, '1');
       assert.equal(task.env.CONFIGURATION, 'release');
