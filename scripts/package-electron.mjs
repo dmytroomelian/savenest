@@ -149,7 +149,7 @@ for (const directory of apps) {
     sha256: hash.digest('hex'), size: (await stat(archive)).size };
   const feed = { currentRelease: manifest.version, releases: [{ version: manifest.version, updateTo: {
     version: manifest.version, url: artifact.url, name: `Savenest ${manifest.version}`,
-    notes: socialCapture.enabled ? 'Explore 26 features from the launcher. New Pro beta: capture saves from Slack, LinkedIn and X without an extension. Turn it on and read How it works in Settings → Capture. Capture starts off; Chrome is experimental.' : 'Explore Savenest features from the launcher. Free local saving, reading, search and organization remain available.',
+    notes: socialCapture.enabled ? 'Activity dashboard with yearly saved, finished and still-to-finish counts and a daily feed. Bulk actions, macOS Services URL drafts, optional launch at login, and safer installation. Save from other apps remains an optional Pro beta and starts off; Chrome is experimental. Free local saving, reading, search and organization remain available.' : 'Activity dashboard with yearly saved, finished and still-to-finish counts and a daily feed. Bulk actions, macOS Services URL drafts, optional launch at login, and safer installation. Free local saving, reading, search and organization remain available.',
     pub_date: new Date().toISOString(), sha256: artifact.sha256, size: artifact.size
   } }] };
   await mkdir(path.join(releaseDirectory, architecture), { recursive: true });

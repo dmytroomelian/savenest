@@ -4,7 +4,7 @@ Save links. Keep the context. Find them again with **⌘O**.
 
 Savenest is a macOS launcher with a free, open-source core for saved links, notes, open browser tabs, and recent history. Local saving, search, reading, and import/export work without an account or subscription. Optional Pro integrations are separate.
 
-[Download](https://savenest.app/download) · [Website](https://savenest.app) · [Contribute](CONTRIBUTING.md) · [Report a bug](https://github.com/dmytro-omelian/savenest/issues/new?template=bug.yml)
+[Download](https://github.com/dmytro-omelian/savenest/releases/tag/v0.15.0) · [Website](https://savenest.app) · [Contribute](CONTRIBUTING.md) · [Report a bug](https://github.com/dmytro-omelian/savenest/issues/new?template=bug.yml)
 
 [![Checks](https://github.com/dmytro-omelian/savenest/actions/workflows/checks.yml/badge.svg)](https://github.com/dmytro-omelian/savenest/actions/workflows/checks.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
@@ -33,9 +33,17 @@ The 0.13.0 release adds MCP with online Pro verification and Savenest running on
 
 Open **Account & Pro → Invite a friend** to send an invitation. A friend new to paid Savenest gets their first monthly Pro payment for **$1.99**, then **$4.99/month**, before applicable tax. After they pay, you get one **$3 discount** on eligible monthly Pro. Yearly plans are excluded; each account gets at most one discounted month across both roles. See the [user guide](docs/user-guide.md#invite-a-friend) for redemption and expiry details.
 
+## Activity, Services and install polish — 0.15.0
+
+Open **Activity** from the launcher footer or Actions to review a Monday-first yearly calendar and daily feed. Yearly counts show saved and finished links plus links still to finish across the library. Archiving counts as finished; older undated archives are reported separately instead of being given invented dates. Selecting links enables bulk save, copy, favorite, archive, restore, and delete actions, with checkboxes and keyboard shortcuts. Results show site icons.
+
+Select a complete URL in another app and choose **Services → Add to SaveNest…** to open a note-and-tags draft; nothing saves until you confirm. **Settings → General → Launch at login** is optional. Settings and Account now open reliably from the launcher, including capture and tag settings, without losing launcher context. Feedback is available in Settings, Account, the macOS Help menu, Actions, and root search. Installation and duplicate-instance handling are safer: the app installs under its canonical name, never overwrites an existing copy, and keeps one active library writer. Existing optional anonymous usage counts keep their off switch and are also reported to the configured PostHog project.
+
+The backend `archiveHistory` compatibility change was deployed and its exact deployed bytes were verified on November 17, 2026. Installed-app upgrade behavior and Intel runtime validation remain pending. **Save from other apps** remains an optional Pro beta. Free local saving, reading, search, and organization are unchanged.
+
 ## Try the app
 
-Get the current signed app from the [download page](https://savenest.app/download) for **macOS 14+**, on Apple Silicon or Intel. Pro AI connections are included in 0.13.0.
+Get the current signed app from the [0.15.0 release](https://github.com/dmytro-omelian/savenest/releases/tag/v0.15.0) for **macOS 14+**, on Apple Silicon or Intel. Intel runtime validation remains pending. Pro integrations and the optional capture beta remain available in 0.15.0.
 
 This is still a preview. Installed-app migration, offline import/export, live browser permissions, Intel runtime, and real update checks remain open. See the [acceptance checklist](docs/preview-acceptance.md). Before upgrading, export a backup. Native 0.10.0 can install this preview through **Savenest → Check for Updates…**. Quit the old app first only when installing manually.
 
@@ -76,7 +84,7 @@ The free app keeps saved links and notes local. With Pro, the signed-in app auto
 
 This repository contains the Electron app, Swift helper, and shared automation operations. The hosted backend and private Pro MCP and Capture components are separate. Public builds remain usable without these components. Savenest Pro automatically saves changes once the signed-in account, service permissions, and local library pass their checks. There is no sync toggle. **Sync is active** shows a green pulse only after a server acknowledgement in the current session and a recent successful status check. Offline and failure states stay non-green and retry every minute.
 
-Version 0.14.0 adds **Explore features** and the optional Pro beta **Save from other apps**. Capture new saves in Slack for Mac or LinkedIn and X in Safari without an extension. Chrome support is experimental. Capture starts off; choose sources and read **How it works** in Settings → Capture. Captured records follow ordinary library cloud saving and AI permissions. See the [user guide](docs/user-guide.md) and [Pro Capture license](docs/pro-capture-license.md).
+Version 0.15.0 adds the Activity dashboard, bulk launcher actions, macOS Services URL drafts, optional launch at login, safer installation, and clearer feedback entry points. The optional Pro beta **Save from other apps** remains available for Slack for Mac and LinkedIn or X in Safari; Chrome support is experimental. Capture starts off; choose sources and read **How it works** in Settings → Capture. Captured records follow ordinary library cloud saving and AI permissions. See the [user guide](docs/user-guide.md) and [Pro Capture license](docs/pro-capture-license.md).
 
 Each Mac has its own current saved library and latest successful daily recovery copy; changes are not merged between Macs. Recovery remains available for 90 days after Pro access ends. A missing previously known library or corrupt file requires restoration or an explicit **Use this library…** confirmation before automatic saving resumes. A confirmed restore preserves the previous local bytes and saves the restored library automatically when Pro access is active. Signing out stops new uploads. See [Pro saving and recovery](docs/cloud-backup.md) for limits, safety checks, and release prerequisites.
 

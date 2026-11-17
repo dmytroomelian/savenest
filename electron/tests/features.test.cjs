@@ -9,7 +9,7 @@ const catalog = require('../renderer/features.js');
 
 const rendererDirectory = path.resolve(__dirname, '../renderer');
 const html = readFileSync(path.join(rendererDirectory, 'index.html'), 'utf8');
-const scripts = ['launcher-model.js', 'features.js', 'renderer.js'].map(name => readFileSync(path.join(rendererDirectory, name), 'utf8'));
+const scripts = ['launcher-model.js', 'features.js', 'activity.js', 'renderer.js'].map(name => readFileSync(path.join(rendererDirectory, name), 'utf8'));
 const page = { id: 'saved:one', title: 'A saved page', url: 'https://example.com/one', domain: 'example.com', isSaved: true, tags: [] };
 
 function launcher(t, initial = {}) {
@@ -24,6 +24,7 @@ function launcher(t, initial = {}) {
     onEvent: handler => { onEvent = handler; }
   };
   window.HTMLElement.prototype.scrollIntoView = function () {};
+  window.IntersectionObserver = class { observe() {} unobserve() {} disconnect() {} };
   window.HTMLDialogElement.prototype.showModal = function () { this.open = true; };
   window.HTMLDialogElement.prototype.close = function () {
     if (!this.open) return;
@@ -275,6 +276,23 @@ test('arrow keys move from catalog search to visible actions', t => {
   assert.equal(ui.document.activeElement, ui.document.querySelector('.social-capture .feature-action'));
 });
 
+test('activity catalog action opens Activity and leaves drafts untouched', t => {
+  const draft = launcher(t);
+  draft.event({ event: 'add' });
+  draft.byID('edit-note').value = 'Draft still here';
+  draft.byID('show-features').click();
+  draft.featureAction('activity').click();
+  assert.equal(draft.byID('features-dialog').open, false);
+  assert.equal(draft.document.body.dataset.view, 'editor');
+  assert.equal(draft.byID('edit-note').value, 'Draft still here');
+
+  const ui = launcher(t);
+  ui.byID('show-features').click();
+  ui.featureAction('activity').click();
+  assert.equal(ui.byID('features-dialog').open, false);
+  assert.equal(ui.document.body.dataset.view, 'activity');
+});
+
 test('catalog exposes shipped add link, local tags, close-after-save, appearance and keyboard guide capabilities', t => {
   const items = catalog.groups.flatMap(group => group.items);
   const item = id => items.find(entry => entry.id === id);
@@ -305,11 +323,20 @@ test('catalog exposes shipped add link, local tags, close-after-save, appearance
   assert.equal(ui.byID('shortcuts-dialog').open, true);
 });
 
-test('catalog descriptions only expose shipped capabilities', () => {
+test('catalog descriptions expose activity, Services and launch-at-login capabilities', () => {
   const text = JSON.stringify(catalog);
-  assert.doesNotMatch(text, /macOS Services|Activity feed|Activity tab/i);
+  assert.match(text, /Activity dashboard/);
+  assert.match(text, /macOS Services/);
+  assert.match(text, /Launch at login/);
   const groups = catalog.groups.map(group => group.id);
   assert.deepEqual(groups, ['capture', 'find', 'read', 'organize', 'library', 'pro']);
+  const items = catalog.groups.flatMap(group => group.items);
+  assert.equal(items.length + 1, 29);
+  const item = id => items.find(entry => entry.id === id);
+  assert.equal(item('activity').action.ui, 'activity');
+  assert.equal(item('macos-services').action, undefined);
+  assert.match(item('macos-services').description, /Services → Add to SaveNest/);
+  assert.equal(item('launch-at-login').action.command, 'settings');
   for (const title of ['Invite a friend', 'AI connections', 'Automatic saving and recovery']) {
     assert.ok(catalog.groups.find(group => group.id === 'pro').items.some(item => item.title === title));
   }

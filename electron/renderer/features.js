@@ -63,6 +63,12 @@
           keywords: 'save all window tabs session bulk'
         },
         {
+          id: 'macos-services',
+          title: 'Save a URL from macOS Services',
+          description: 'Select a complete web URL in another app and choose Services → Add to SaveNest… to open a draft for a note and tags. Nothing is saved until you confirm.',
+          keywords: 'macos services url selection add to savenest note tags draft'
+        },
+        {
           id: 'close-after-save',
           title: 'Close the source tab after saving',
           description: 'In Settings → Capture, choose whether Save link and Save with a note close the source tab. Bulk saves never close tabs.',
@@ -172,6 +178,20 @@
       id: 'library',
       title: 'Library & shortcuts',
       items: [
+        {
+          id: 'activity',
+          title: 'Review activity and archive history',
+          description: 'Open the Activity dashboard for yearly saved, finished, and still-to-finish counts plus a daily feed. Archiving counts as finished; older undated archives stay separate.',
+          action: { label: 'Open Activity', ui: 'activity' },
+          keywords: 'activity dashboard yearly calendar daily feed saved finished archived still to finish counts'
+        },
+        {
+          id: 'launch-at-login',
+          title: 'Start Savenest at login',
+          description: 'Optional. In Settings → General, turn on Launch at login to start Savenest when you sign in to your Mac.',
+          action: { label: 'Open Settings', command: 'settings' },
+          keywords: 'launch login startup sign in general settings'
+        },
         {
           id: 'export',
           title: 'Export a JSON backup',

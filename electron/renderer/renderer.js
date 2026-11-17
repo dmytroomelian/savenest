@@ -557,6 +557,7 @@ async function invokeFeatureAction(action) {
   if (!action) return;
   if (action.ui === 'add') { openEditor(null, false, action.url || ''); return; }
   if (action.ui === 'shortcuts') { showShortcuts(); return; }
+  if (action.ui === 'activity') { openActivity(); return; }
   if (action.scope) { setScope(action.scope); return; }
   if (action.command) await run(action.command, action.action ? { action: action.action } : {});
 }

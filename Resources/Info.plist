@@ -17,7 +17,7 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>0.14.0</string>
+	<string>0.15.0</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
@@ -32,9 +32,15 @@
 		</dict>
 	</array>
 	<key>CFBundleVersion</key>
-	<string>45</string>
+	<string>46</string>
 	<key>LSMinimumSystemVersion</key>
 	<string>14.0</string>
+	<key>NSAppleEventsUsageDescription</key>
+	<string>Savenest reads the title and address of browser tabs when you use the capture shortcut or menu. Your tabs stay open and your saved links stay on your Mac.</string>
+	<key>NSHighResolutionCapable</key>
+	<true/>
+	<key>NSPrincipalClass</key>
+	<string>NSApplication</string>
 	<key>NSServices</key>
 	<array>
 		<dict>
@@ -60,12 +66,6 @@
 			</array>
 		</dict>
 	</array>
-	<key>NSAppleEventsUsageDescription</key>
-	<string>Savenest reads the title and address of browser tabs when you use the capture shortcut or menu. Your tabs stay open and your saved links stay on your Mac.</string>
-	<key>NSHighResolutionCapable</key>
-	<true/>
-	<key>NSPrincipalClass</key>
-	<string>NSApplication</string>
 	<key>SUAllowsAutomaticUpdates</key>
 	<false/>
 	<key>SUAutomaticallyUpdate</key>
@@ -76,11 +76,11 @@
 	<string>https://savenest.app/downloads/appcast.xml</string>
 	<key>SUPublicEDKey</key>
 	<string>DloGaR2uEOivp+6esHir49HeZAqQc3BfirZkxwfQgRA=</string>
-	<key>SaveNestUpdatesEnabled</key>
-	<true/>
-	<key>SaveNestPostHogProjectToken</key>
-	<string>phc_xAJL8WbFVKivbkhYYpGuiVAZPZvzgWQTL4QhdnAggMdx</string>
 	<key>SaveNestPostHogHost</key>
 	<string>https://us.i.posthog.com</string>
+	<key>SaveNestPostHogProjectToken</key>
+	<string>phc_xAJL8WbFVKivbkhYYpGuiVAZPZvzgWQTL4QhdnAggMdx</string>
+	<key>SaveNestUpdatesEnabled</key>
+	<true/>
 </dict>
 </plist>

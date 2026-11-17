@@ -27,4 +27,5 @@ jobs:
       - run: npm test
       - run: npm run build:native
       - run: bash scripts/check-services.sh
+      - run: bash scripts/check-application-mover.sh
       - run: npm run test:mcp
