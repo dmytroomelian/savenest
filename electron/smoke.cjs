@@ -5,7 +5,7 @@ const path = require('node:path');
 const { execFileSync } = require('node:child_process');
 
 exports.run = async ({ win, native, root, show, toggle }) => {
-  const privacyPreferences = () => ['analyticsEnabled', 'hasSeenUsageNotice', 'historySearchEnabled', 'closeAfterQuickSave'].map(key => {
+  const privacyPreferences = () => ['analyticsEnabled', 'hasSeenUsageNotice', 'historySearchEnabled', 'closeAfterQuickSave', 'browserAccessExplained', 'hasCompletedOnboarding'].map(key => {
     try { return execFileSync('/usr/bin/defaults', ['read', 'app.savenest.mac', key], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim(); }
     catch (error) { if (error.status === 1) return null; throw error; }
   });
@@ -293,7 +293,7 @@ exports.run = async ({ win, native, root, show, toggle }) => {
   assert.equal(state.socialCapture.enabled, false, 'preview must never enable social capture');
   assert.equal(state.socialCapture.available, false, 'preview must never observe other apps');
   assert.equal(state.socialCapture.enabledCount, 0, 'capture starts with no selected sources');
-  await js("document.getElementById('show-features').click()");
+  await js("document.getElementById('open-help').click(); document.querySelector('[data-help-action=features]').click()");
   await wait(() => js("document.getElementById('features-dialog').open"), 'feature catalog');
   assert.equal(await js("document.querySelector('[data-feature-id=social-capture] .social-cta').textContent"), 'Set up capture');
   await painted();
@@ -302,6 +302,23 @@ exports.run = async ({ win, native, root, show, toggle }) => {
   assert.equal(await js("document.querySelectorAll('#features-list .feature-card').length"), 1);
   await key('Escape');
   assert.equal(await js("document.getElementById('features-dialog').open"), false);
+
+  // A real helper-backed onboarding round trip, with disposable preview data.
+  await native.request({ command: 'onboardingStart' });
+  await wait(() => js("!document.getElementById('onboarding').hidden"), 'first-save guide');
+  await painted();
+  await fs.writeFile(path.join(root, 'build/launcher-onboarding.png'), (await win.webContents.capturePage()).toPNG());
+  await js("document.getElementById('onboarding-paste').click()");
+  await route('editor');
+  await js("document.getElementById('edit-url').value='https://example.com/first-save-guide'; document.getElementById('edit-title').value='A page worth keeping'; document.getElementById('edit-note').value='My retrieval practice'; document.getElementById('editor-form').requestSubmit()");
+  await route('root');
+  await wait(() => state.scope === 'Saved' && state.query === '', 'saved destination after onboarding save');
+  await wait(() => js("!document.getElementById('onboarding-find').hidden"), 'retrieval guide');
+  await type('retrieval practice');
+  await wait(() => js("document.querySelectorAll('#results .row[data-kind=page]').length === 1"), 'find by personal note');
+  await key('Enter');
+  await wait(() => !state.onboarding, 'guide completed only after opening result');
+  await scope('All'); await type('');
 
   await type('raycast'); await key('k', { metaKey: true });
   await wait(() => js("document.getElementById('action-dialog').open"), 'actions screenshot');

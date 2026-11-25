@@ -9,6 +9,7 @@ let captureSelected = new Set(), selectionSaving = false, actionItems = [], filt
 let activity;
 let lastNativeMessage = '', noticeSource = '', discardAction = null;
 let shortcutReturnFocus = null;
+let guideURL = null;
 let featuresReturnFocus = null, helpReturnFocus = null;
 let selectionAnchorID = null, rangeSelectionBase = null;
 const pageShortcuts = {
@@ -81,6 +82,7 @@ function pageIcon(tile, item) {
 $('nest-mark').append(icon('nest'));
 activity = window.SavenestActivity ? window.SavenestActivity.create({ command: request => window.savenest.command(request) }) : null;
 function notice(message, error = false, source = 'local') {
+  $('notice-saved').hidden = error || !/^Saved\b/i.test(message || '');
   noticeSource = source; $('notice-text').textContent = message; $('notice').dataset.error = String(error); $('notice').hidden = !message;
 }
 async function run(command, values = {}) {
@@ -136,10 +138,33 @@ function setRoute(value) {
   $('search-header').hidden = value !== 'root'; $('route-header').hidden = value === 'root';
   for (const name of ['root', 'editor', 'sources', 'selection', 'activity']) $(name + '-view').hidden = value !== name;
   $('onboarding').hidden = value !== 'root' || !state.onboarding;
-  $('usage-notice').hidden = value !== 'root' || !state.showUsageNotice;
+  $('usage-notice').hidden = value !== 'root' || !state.showUsageNotice || state.onboarding;
   $('actions').hidden = value !== 'root';
   document.querySelector('.separator').hidden = value !== 'root';
+  renderOnboarding();
   void run('view', { view: value }); updateFooter();
+}
+function showSavedLinks() {
+  if (route === 'editor' || route === 'selection') return;
+  setRoute('root'); setScope('Saved');
+}
+function renderOnboarding() {
+  const finding = Boolean(guideURL);
+  $('onboarding').hidden = route !== 'root' || !state.onboarding;
+  $('library-navigation').hidden = route !== 'root';
+  $('open-saved').setAttribute('aria-pressed', String(state.scope === 'Saved'));
+  $('connect-browser').hidden = state.browserAccessExplained !== false;
+  $('onboarding-title').textContent = finding ? 'Now find it using your own words.' : 'Keep a useful page. Remember why.';
+  $('onboarding-description').textContent = finding
+    ? 'Search for a word from your note, then open the saved page. Your original tab can stay open.'
+    : 'Choose a page you want to return to and add a few words about why it matters. Then find it using your own words.';
+  $('onboarding-save').hidden = finding; $('onboarding-paste').hidden = finding; $('onboarding-find').hidden = !finding;
+  const note = state.shortcuts?.find(binding => binding.id === 'note');
+  const search = state.shortcuts?.find(binding => binding.id === 'search');
+  const bindings = [];
+  if (note?.assigned && note.key && !note.error) bindings.push(`${note.key} saves with a note from your browser`);
+  if (search?.assigned && search.key && !search.error) bindings.push(`${search.key} opens Savenest`);
+  $('onboarding-shortcuts').textContent = bindings.join(' · ');
 }
 function formValues() { return { url: $('edit-url').value, title: $('edit-title').value, note: $('edit-note').value, tags: $('edit-tags').value }; }
 function dirty() { return JSON.stringify(formValues()) !== editorBaseline; }
@@ -199,6 +224,7 @@ function updateSyncStatus() {
 function updateFooter() {
   updateSyncStatus();
   if (fatal) closeHelp(false);
+  for (const id of ['open-saved', 'save-with-note', 'connect-browser', 'onboarding-save', 'onboarding-paste', 'onboarding-find', 'onboarding-done']) $(id).disabled = fatal || editorSaving;
   $('open-help').disabled = fatal;
   $('open-settings').disabled = fatal;
   $('shortcut-settings').disabled = fatal;
@@ -319,8 +345,9 @@ function renderState() {
   if (pendingQuery === state.query) pendingQuery = null;
   if (pendingQuery === null && $('search').value !== state.query) $('search').value = state.query;
   $('onboarding').hidden = route !== 'root' || !state.onboarding;
-  $('usage-notice').hidden = route !== 'root' || !state.showUsageNotice;
-  $('usage-notice-text').textContent = state.preview ? 'Preview: reporting is disabled. The app shares anonymous usage counts by default, with no saved content or account/device IDs.' : 'Anonymous usage counts are on. No saved content, account IDs, or device IDs are sent.';
+  $('usage-notice').hidden = route !== 'root' || !state.showUsageNotice || state.onboarding;
+  renderOnboarding();
+  $('usage-notice-text').textContent = state.preview ? 'Preview: reporting is disabled. The app shares anonymous usage counts by default, with no saved content or account/device IDs.' : 'Help improve Savenest with anonymous action counts. No URLs, notes, or account/device IDs are sent. You can stop sharing at any time.';
   const total = state.totalCount > 200 ? `${state.totalCount} matches · refine your search` : `${state.openCount || 0} open · ${state.savedCount || 0} saved · ${state.historyCount || 0} history`;
   $('status').textContent = state.shortcutError ? 'Shortcut unavailable · open Settings' : state.loadingHistory ? 'Reading local history…' : state.loading ? 'Refreshing tabs…' : total;
   $('home').title = `${state.launcherShortcut || '⌘O'} opens Savenest · History stays on this Mac`;
@@ -357,7 +384,14 @@ function renderState() {
 }
 async function execute(item) {
   if (!item || fatal) return;
-  if (item.kind === 'page') { await run('open', { ids: [item.id] }); return; }
+  if (item.kind === 'page') {
+    const opened = await run('open', { ids: [item.id] });
+    if (opened && state.onboarding && guideURL === new URL(item.url).href && item.isSaved && $('search').value.trim()) {
+      await run('onboardingDone'); guideURL = null;
+      notice('You found it. Save a little context now, find the page when you need it.');
+    }
+    return;
+  }
   if (item.ui === 'add') openEditor(null, false, item.url || '');
   else if (item.ui === 'sources') openSources();
   else if (item.ui === 'shortcuts') showShortcuts();
@@ -564,6 +598,7 @@ function toggleHelp() { if ($('help-menu').hidden) openHelp(); else closeHelp(tr
 function runHelpAction(action) {
   closeHelp(true);
   if (action === 'features') showFeatures();
+  else if (action === 'onboarding') { guideURL = null; void run('onboardingStart'); }
   else if (action === 'request-feature') void run('requestFeature');
   else if (action === 'report-bug') void run('reportBug');
   else if (action === 'shortcuts') showShortcuts();
@@ -600,11 +635,12 @@ $('editor-form').onsubmit = async event => {
     else Object.assign(request, { command: 'add', url: values.url });
     const ok = await window.savenest.command(request);
     if (ok) {
+      if (state.onboarding && values.note.trim()) guideURL = new URL(values.url).href;
       editorBaseline = JSON.stringify(formValues()); captureID = null; editingID = null;
-      setRoute('root'); renderRoot(); focusSearch();
-      // Finish quick-add/capture flows only after persistence succeeds. Editing
-      // an existing result stays in the launcher so browsing can continue.
-      if (dismissAfterSave) await run('dismiss');
+      setRoute('root'); setScope('Saved'); renderRoot(); focusSearch();
+      notice(guideURL ? 'Saved. Try finding this page with a word from your note.' : 'Saved. Add a note to remember why it mattered.');
+      // Preserve quick capture dismissal outside the first-save guide.
+      if (dismissAfterSave && !state.onboarding) await run('dismiss');
     }
   } catch (error) { $('editor-error').textContent = cleanError(error); }
   finally { editorSaving = false; updateFooter(); }
@@ -659,7 +695,14 @@ $('primary').onclick = async () => {
 $('usage-off').onclick = () => void run('analyticsEnabled', { enabled: false });
 $('usage-privacy').onclick = () => void run('privacy');
 $('usage-dismiss').onclick = () => void run('usageNoticeDismiss');
-$('onboarding-done').onclick = () => void run('onboardingDone');
+$('onboarding-done').onclick = () => { guideURL = null; void run('onboardingDone'); };
+$('onboarding-save').onclick = () => void run('capture', { action: 'note' });
+$('onboarding-paste').onclick = () => openEditor();
+$('onboarding-find').onclick = showSavedLinks;
+$('open-saved').onclick = showSavedLinks;
+$('notice-saved').onclick = showSavedLinks;
+$('save-with-note').onclick = () => void run('capture', { action: 'note' });
+$('connect-browser').onclick = () => void run('browserAccess');
 $('history-enabled').onchange = () => void run('historyEnabled', { enabled: $('history-enabled').checked });
 $('history-refresh').onclick = () => void run('refresh'); $('history-access').onclick = () => void run('historyAccess');
 $('dismiss-notice').onclick = () => { $('notice').hidden = true; if (state.error) void run('dismissMessage'); };
@@ -731,6 +774,7 @@ window.savenest.onEvent(message => {
   }
   if (message.event === 'activityChanged') activity?.changed();
   if (message.event === 'add') openEditor();
+  if (message.event === 'savedLinks') showSavedLinks();
   if (message.event === 'features') showFeatures();
   if (message.event === 'editorSaved' && captureID && !editorSaving) { captureID = null; setRoute('root'); focusSearch(); }
   if (message.event === 'selectionClosed' && route === 'selection') { setRoute('root'); focusSearch(); }

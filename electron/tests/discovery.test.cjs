@@ -160,7 +160,7 @@ test('the footer Help menu opens, handles arrows, and restores focus on Escape',
   const ui = launcher(t);
   const trigger = ui.byID('open-help');
   const items = [...ui.byID('help-menu').querySelectorAll('[role="menuitem"]')];
-  assert.equal(items.length, 4);
+  assert.equal(items.length, 5);
   assert.equal(ui.byID('open-feature-request'), null, 'the standalone footer feedback button is removed');
   assert.equal(ui.byID('show-features'), null, 'Explore moves into Help');
   trigger.focus(); trigger.click();
@@ -322,4 +322,82 @@ test('sync status does not hide a launcher shortcut error', t => {
   assert.equal(ui.byID('sync-status').hidden, true);
   assert.equal(ui.byID('status').hidden, false);
   assert.equal(ui.byID('status').textContent, 'Shortcut unavailable · open Settings');
+});
+
+
+test('first-use guide offers capture and permission-free paste, with actual configured shortcuts', async t => {
+  const ui = launcher(t, { onboarding: true, browserAccessExplained: false, shortcuts: [
+    { id: 'note', assigned: true, key: '⇧⌘N' }, { id: 'search', assigned: false, key: '' }
+  ] });
+  assert.equal(ui.byID('onboarding').hidden, false);
+  assert.equal(ui.byID('connect-browser').hidden, false);
+  assert.match(ui.byID('onboarding-shortcuts').textContent, /⇧⌘N/);
+  assert.doesNotMatch(ui.byID('onboarding-shortcuts').textContent, /⌘O/);
+  ui.byID('onboarding-paste').click();
+  assert.equal(ui.byID('editor-view').hidden, false);
+  assert.equal(ui.calls.some(call => ['capture', 'browserAccess', 'refresh'].includes(call.command)), false);
+  assert.equal(ui.calls.some(call => call.command === 'onboardingDone'), false);
+});
+
+test('guide advances only after a confirmed save with context, then completes on retrieval', async t => {
+  const ui = launcher(t, { onboarding: true });
+  ui.byID('onboarding-paste').click();
+  ui.byID('edit-url').value = page.url;
+  ui.byID('edit-note').value = 'Try this for my design project';
+  ui.byID('editor-form').dispatchEvent(new ui.window.Event('submit', { bubbles: true, cancelable: true }));
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(ui.byID('onboarding-find').hidden, false);
+  assert.equal(ui.calls.some(call => call.command === 'onboardingDone'), false);
+  assert.ok(ui.calls.some(call => call.command === 'search' && call.scope === 'Saved'));
+  ui.update({ scope: 'Saved', query: '' });
+  ui.update({ scope: 'Saved', query: 'design', rows: [{ ...page, note: 'Try this for my design project' }] });
+  ui.byID('primary').click();
+  await new Promise(resolve => setImmediate(resolve));
+  assert.ok(ui.calls.some(call => call.command === 'open'));
+  assert.ok(ui.calls.some(call => call.command === 'onboardingDone'));
+});
+
+test('failed save keeps the draft and does not advance the guide', async t => {
+  const ui = launcher(t, { onboarding: true });
+  ui.byID('onboarding-paste').click();
+  ui.byID('edit-url').value = page.url; ui.byID('edit-note').value = 'Keep this thought';
+  ui.window.savenest.command = async request => { if (request.command === 'add') throw new Error('Disk full'); return true; };
+  ui.byID('editor-form').dispatchEvent(new ui.window.Event('submit', { bubbles: true, cancelable: true }));
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(ui.byID('editor-view').hidden, false);
+  assert.equal(ui.byID('edit-note').value, 'Keep this thought');
+  assert.match(ui.byID('editor-error').textContent, /Disk full/);
+  assert.equal(ui.byID('onboarding-find').hidden, true);
+});
+
+test('saved links navigation works without results and preserves an unfinished draft', t => {
+  const ui = launcher(t);
+  ui.byID('open-saved').click();
+  assert.ok(ui.calls.some(call => call.command === 'search' && call.scope === 'Saved'));
+  ui.update({ onboarding: true }); ui.byID('onboarding-paste').click();
+  ui.byID('edit-note').value = 'Unfinished'; ui.byID('open-saved').click();
+  assert.equal(ui.byID('editor-view').hidden, false);
+  assert.equal(ui.byID('edit-note').value, 'Unfinished');
+});
+
+
+test('skip dismisses only the guide and never grants browser access', t => {
+  const ui = launcher(t, { onboarding: true, browserAccessExplained: false, showUsageNotice: true });
+  assert.equal(ui.byID('usage-notice').hidden, true);
+  ui.byID('onboarding-done').click();
+  assert.deepEqual(ui.calls, [{ command: 'onboardingDone' }]);
+  ui.update({ onboarding: false });
+  assert.equal(ui.byID('usage-notice').hidden, false);
+  assert.equal(ui.byID('connect-browser').hidden, false);
+  ui.byID('usage-off').click();
+  assert.deepEqual(ui.calls.at(-1), { command: 'analyticsEnabled', enabled: false });
+});
+
+test('capture and browser connection require explicit actions in the guide', t => {
+  const ui = launcher(t, { onboarding: true, browserAccessExplained: false });
+  assert.deepEqual(ui.calls, []);
+  ui.byID('onboarding-save').click();
+  assert.deepEqual(ui.calls, [{ command: 'capture', action: 'note' }]);
+  ui.byID('connect-browser').click();
+  assert.deepEqual(ui.calls.at(-1), { command: 'browserAccess' });
 });

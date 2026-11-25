@@ -12,8 +12,8 @@ struct OnboardingView: View {
                 Spacer()
             }
             VStack(alignment: .leading, spacing: 10) {
-                Text("All your tabs. One place.").font(.system(size: 28, weight: .semibold)).tracking(-0.6)
-                Text("Free on your Mac. No account required. Search open tabs and saved links, switch to a page, or keep it for later.")
+                Text("Save a page. Remember why.").font(.system(size: 28, weight: .semibold)).tracking(-0.6)
+                Text("Save a useful page with a few words about why it matters. Search for those words when you need it again. Free on your Mac; no account required.")
                     .font(.system(size: 13)).foregroundStyle(Color.muted).lineSpacing(3)
             }
             VStack(spacing: 0) {
@@ -31,12 +31,12 @@ struct OnboardingView: View {
                         .font(.system(size: 12)).foregroundStyle(Color.muted).lineSpacing(3)
                 }
             }
-            Text("macOS may ask for browser access. Page context becomes searchable when your browser allows JavaScript from Apple Events. Your links and page text stay on this Mac.")
+            Text("Browser access is optional. Savenest explains what it reads before macOS asks for access. You can also paste a link without connecting a browser.")
                 .font(.system(size: 11)).foregroundStyle(Color.muted).lineSpacing(3)
             HStack {
                 Text("Shortcuts stay visible in the main window.").font(.system(size: 10)).foregroundStyle(Color.muted)
                 Spacer()
-                Button("Show my tabs") { model.completeOnboarding(); dismiss() }
+                Button("Start saving") { model.completeOnboarding(); dismiss() }
                     .buttonStyle(SageButton()).keyboardShortcut(.defaultAction)
             }
         }.padding(28).frame(width: 540).background(Color.paper).foregroundStyle(Color.ink).nestAppearance()

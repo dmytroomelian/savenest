@@ -83,6 +83,18 @@ footer { border-top: 1px solid var(--line); height: 51px; flex-shrink: 0; displa
 .footer-actions button { font-size: 11px; padding: 6px 8px; white-space: nowrap; }
 #primary:not(:disabled) { background: var(--selected); color: var(--ink); border: 1px solid color-mix(in srgb, var(--accent) 20%, transparent); }
 .separator { height: 17px; width: 1px; background: var(--line); }
+#library-navigation { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 20px; border-bottom: 1px solid var(--line); font-size: 12px; }
+#library-navigation button[aria-pressed="true"] { background: var(--selected); color: var(--accent); }
+#connect-browser { margin-left: auto; }
+.onboarding-card { margin: 10px 20px 0; padding: 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); flex-shrink: 0; }
+.onboarding-heading { display: flex; align-items: baseline; gap: 10px; }
+.onboarding-heading h2 { flex: 1; }
+.onboarding-heading button { color: var(--muted); font-size: 12px; }
+.onboarding-card p { font-size: 13px; line-height: 1.5; margin: 6px 0; }
+.onboarding-card .subtle { font-size: 11px; }
+.onboarding-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.onboarding-actions button { font-size: 12px; border: 1px solid var(--line); }
+#onboarding-save, #onboarding-find { background: var(--selected); }
 .hint-banner { margin: 8px 20px 0; padding: 8px 11px; background: var(--surface); color: var(--muted); font-size: 11px; border: 1px solid var(--line); border-radius: 10px; display: flex; align-items: center; gap: 10px; }
 .hint-banner button { margin-left: auto; font-size: 10px; flex-shrink: 0; color: var(--accent); }
 .form-view { padding: 23px 28px; }

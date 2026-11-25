@@ -285,6 +285,7 @@ async function start() {
       tray = new Tray(icon); tray.setToolTip('Savenest');
       tray.setContextMenu(Menu.buildFromTemplate([
         { label: 'Open Savenest', click: show },
+        { label: 'Saved links', click: () => { void show().then(() => send({ event: 'savedLinks' })); } },
         { label: 'Read & note current tab', click: () => void command({ command: 'readerCurrent' }) },
         { label: 'Save current tab', click: () => void command({ command: 'capture', action: 'quick' }) },
         { label: 'Save with a note…', click: () => void command({ command: 'capture', action: 'note' }) },
@@ -344,6 +345,7 @@ function createMenu() {
     { label: 'Tools', submenu: [action('Manage tags…', 'tags'), action('Clean up tabs…', 'cleanup'), { label: 'Close duplicate tabs', click: () => void command({ command: 'capture', action: 'duplicates' }) }] },
     { label: 'Window', submenu: [{ role: 'minimize' }, { role: 'zoom' }, { label: 'Open Savenest', click: show }] },
     { role: 'help', label: 'Help', submenu: [
+      { label: 'Save and find a page…', click: () => { void show().then(() => command({ command: 'onboardingStart' })); } },
       { label: 'Explore features…', click: () => { void show().then(() => send({ event: 'features' })); } },
       { type: 'separator' },
       action('Request a feature', 'requestFeature'), action('Report a bug', 'reportBug')

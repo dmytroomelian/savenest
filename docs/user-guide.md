@@ -20,6 +20,16 @@ Local saving, search, reading, browser tools, and import/export remain free. The
 
 The [Read & note workspace](read-and-note.md) opens an article beside its Obsidian Markdown file. It is available in the 0.12 preview series.
 
+## First save and browser access
+
+The launcher offers a **Save and find a page** guide: save a real page with a note, search for a word from that note, then open the result. **Paste a link instead** works without browser access. Skip the guide at any time or restart it from Help. Captures during the guide keep the original tab open even if your normal capture preference closes saved tabs.
+
+**Saved links** is visible above the result list and in the menu bar. **Save with a note** opens the capture editor from the browser; the guide displays your configured, available shortcuts.
+
+Before automatic browser discovery or the first capture, Savenest explains open-tab, history, and page-text access. **Not now** leaves discovery paused; use **Connect browsers…** or a capture action to try again. This explanation does not grant macOS Automation permission. History and unsaved page context remain local; optional cloud backup and MCP have their own sharing choices.
+
+Usage counts remain on by default. The non-blocking notice appears after the guide, with **Stop sending usage counts** and Settings controls.
+
 ## Launcher
 
 Press **⌘O**, then type. Commands, open tabs, saved links, notes, tags, and recent browser history share one search. **Enter** runs the selected command, switches to an open tab, or opens a saved/visited page. Pasting a URL offers **Save this link**. Saving with a note and choosing multiple tabs happen inside the same panel. The launcher keeps its borderless search field, scope dropdown, quick actions, and result list.
