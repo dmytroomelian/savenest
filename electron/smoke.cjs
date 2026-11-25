@@ -226,7 +226,8 @@ exports.run = async ({ win, native, root, show, toggle }) => {
   await wait(() => !win.isVisible(), 'successful save-with-note dismisses launcher');
   await show(); await route('root');
   await type('Captured inside the launcher'); await wait(() => state.rows.some(row => row.note === 'Captured inside the launcher'), 'native capture saved in same panel');
-  await type('save selected'); await key('Enter'); await route('selection');
+  // Saving returns to the Saved scope, where global commands are not listed.
+  await scope('All'); await type('save selected'); await key('Enter'); await route('selection');
   assert.equal(state.canRestartForUpdate, false, 'native tab selection blocks update restarts');
   await js("document.querySelectorAll('#capture-tabs input')[2].click()");
   await key('Enter', { metaKey: true }); await route('root');
