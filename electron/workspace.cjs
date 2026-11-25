@@ -65,7 +65,7 @@ class ReadingWorkspace {
           type: 'question', message: 'Finished reading?',
           detail: `Archive “${source.title || source.url}” in Savenest and close its browser tab? Your notes will be saved before closing. Press Shift+Esc to change a remembered choice.`,
           buttons: ['Keep reading', 'Close reader', 'Archive and close tab'], defaultId: 1, cancelId: 0,
-          checkboxLabel: 'Remember my choice', checkboxChecked: Boolean(this.closeChoice),
+          checkboxLabel: 'Remember this choice for next time', checkboxChecked: Boolean(this.closeChoice),
           noLink: true
         });
         choice = response === 1 ? 'window' : response === 2 ? 'archive' : null;

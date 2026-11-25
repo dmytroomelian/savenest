@@ -221,7 +221,7 @@ exports.run = async ({ workspace, native, root }) => {
   // Real keyboard events must flush the latest edit before destroying either pane.
   try {
     dialog.showMessageBox = async (_owner, options) => {
-      assert.equal(options.checkboxLabel, 'Remember my choice');
+      assert.equal(options.checkboxLabel, 'Remember this choice for next time');
       return {response:1, checkboxChecked:false};
     };
     for (const pane of ['window', 'original']) {

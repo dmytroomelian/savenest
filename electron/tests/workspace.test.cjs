@@ -147,7 +147,7 @@ test('Command W and Escape in both panes save before closing through the same ch
     let prompts = 0;
     electron.dialog.showMessageBox = async (_owner, options) => {
       prompts++;
-      assert.equal(options.checkboxLabel, 'Remember my choice');
+      assert.equal(options.checkboxLabel, 'Remember this choice for next time');
       return {response:1};
     };
     workspace[pane].webContents.emit('before-input-event', {preventDefault() {}}, input);
