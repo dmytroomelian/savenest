@@ -119,6 +119,7 @@ final class TabSearchModel: ObservableObject {
     }
     func refresh() {
         guard !isPreview else { rebuildIndex(); return }
+        guard BrowserAccess.isExplained else { return }
         refreshHistory()
         suspend()
         let current = generation
@@ -163,7 +164,7 @@ final class TabSearchModel: ObservableObject {
     }
     func refreshHistory(force: Bool = false) {
         if isPreview { if historyEnabled { history = previewHistory; rebuildIndex() }; return }
-        guard historyEnabled, !isPreview, !loadingHistory,
+        guard BrowserAccess.isExplained, historyEnabled, !isPreview, !loadingHistory,
               force || historyReadAt == nil || Date().timeIntervalSince(historyReadAt!) > 60 else { return }
         let current = UUID(); historyGeneration = current; loadingHistory = true
         let read = Task.detached(priority: .utility) { HistoryDiscovery.scan() }

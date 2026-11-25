@@ -25,10 +25,16 @@
       </span>
     </header>
     <header id="route-header" hidden><button id="route-back" class="icon-button" aria-label="Back">‹</button><div><span class="breadcrumb">Savenest</span><h1 id="route-title">Save a link</h1></div><kbd>esc</kbd></header>
-    <div id="onboarding" class="hint-banner" hidden><span>Type to find a page. Open Actions ⌘K to browse search, saving, and app controls.</span><button id="onboarding-done">Got it</button></div>
+    <section id="onboarding" class="onboarding-card" hidden aria-label="Save and find your first page">
+      <div class="onboarding-heading"><h2 id="onboarding-title">Keep a useful page. Remember why.</h2><button id="onboarding-done">Skip for now</button></div>
+      <p id="onboarding-description">Choose a page you want to return to and add a few words about why it matters. Then find it using your own words.</p>
+      <div class="onboarding-actions"><button id="onboarding-save">Save current tab with a note</button><button id="onboarding-paste">Paste a link instead</button><button id="onboarding-find" hidden>Find your saved page</button></div>
+      <p id="onboarding-shortcuts" class="subtle"></p>
+    </section>
+    <nav id="library-navigation" aria-label="Your pages"><button id="open-saved">Saved links</button><button id="save-with-note">Save with a note</button><button id="connect-browser" hidden>Connect browsers…</button></nav>
     <aside id="usage-notice" hidden aria-label="Anonymous usage reporting">
       <p id="usage-notice-text">Anonymous usage counts are on. No saved content, account IDs, or device IDs are sent.</p>
-      <div><button id="usage-off">Turn off</button><button id="usage-privacy">Privacy policy ↗</button><button id="usage-dismiss" aria-label="Dismiss usage notice">Dismiss</button></div>
+      <div><button id="usage-off">Stop sending usage counts</button><button id="usage-privacy">Privacy policy ↗</button><button id="usage-dismiss" aria-label="Dismiss usage notice">Dismiss</button></div>
     </aside>
     <section id="root-view" class="view">
       <div id="selection-bar" hidden>
@@ -96,10 +102,10 @@
     <footer>
       <button id="home" aria-label="Back to root search"><span class="footer-mark" aria-hidden="true">≋</span><span id="status">Starting Savenest…</span><span id="sync-status" role="status" aria-live="polite" aria-atomic="true" hidden><span class="sync-dot" aria-hidden="true"></span><span id="sync-label"></span></span></button>
       <span id="preview" hidden>Preview</span>
-      <div class="footer-utilities"><div class="help-control"><button id="open-help" title="Help" aria-haspopup="menu" aria-expanded="false" aria-controls="help-menu">Help</button><div id="help-menu" class="help-menu" role="menu" aria-label="Help" hidden><button type="button" role="menuitem" data-help-action="features">Explore features</button><button type="button" role="menuitem" data-help-action="request-feature">Request a feature…</button><button type="button" role="menuitem" data-help-action="report-bug">Report a bug…</button><button type="button" role="menuitem" data-help-action="shortcuts">Keyboard shortcuts</button></div></div><button id="open-settings" title="Settings (⌘,)">Settings</button><button id="open-activity" title="Activity dashboard">Activity</button><button id="show-shortcuts" title="Keyboard shortcuts (⌘/)" aria-haspopup="dialog" aria-controls="shortcuts-dialog">Shortcuts</button></div>
+      <div class="footer-utilities"><div class="help-control"><button id="open-help" title="Help" aria-haspopup="menu" aria-expanded="false" aria-controls="help-menu">Help</button><div id="help-menu" class="help-menu" role="menu" aria-label="Help" hidden><button type="button" role="menuitem" data-help-action="onboarding">Save and find a page</button><button type="button" role="menuitem" data-help-action="features">Explore features</button><button type="button" role="menuitem" data-help-action="request-feature">Request a feature…</button><button type="button" role="menuitem" data-help-action="report-bug">Report a bug…</button><button type="button" role="menuitem" data-help-action="shortcuts">Keyboard shortcuts</button></div></div><button id="open-settings" title="Settings (⌘,)">Settings</button><button id="open-activity" title="Activity dashboard">Activity</button><button id="show-shortcuts" title="Keyboard shortcuts (⌘/)" aria-haspopup="dialog" aria-controls="shortcuts-dialog">Shortcuts</button></div>
       <div class="footer-actions"><button id="primary">Open <kbd>↵</kbd></button><span class="separator"></span><button id="actions" title="Browse all actions (⌘K)" aria-haspopup="dialog" aria-controls="action-dialog">Actions <kbd>⌘K</kbd></button></div>
     </footer>
-    <div id="notice" role="status" hidden><span id="notice-text"></span><button id="dismiss-notice" aria-label="Dismiss message">×</button></div>
+    <div id="notice" role="status" hidden><span id="notice-text"></span><button id="notice-saved" hidden>View saved links</button><button id="dismiss-notice" aria-label="Dismiss message">×</button></div>
   </main>
   <dialog id="action-dialog" aria-labelledby="actions-title"><h2 id="actions-title">Actions</h2><p id="actions-context"></p><input id="action-search" placeholder="Search actions…" aria-label="Search actions" autocomplete="off"><div id="action-options"></div><div class="action-hint"><span><kbd>↑</kbd><kbd>↓</kbd> navigate</span><span><kbd>esc</kbd> back</span></div></dialog>
   <dialog id="shortcuts-dialog" aria-labelledby="shortcuts-title">

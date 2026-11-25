@@ -30,7 +30,7 @@ struct LibraryView: View {
                     Text("Anonymous usage counts are on. No saved content, account IDs, or device IDs are sent.")
                         .font(.system(size: 11)).foregroundStyle(Color.muted)
                     Link("Privacy policy", destination: URL(string: "https://savenest.app/privacy")!).buttonStyle(.link)
-                    Button("Turn off") { model.dismissUsageNotice(disable: true) }.buttonStyle(.link)
+                    Button("Stop sending usage counts") { model.dismissUsageNotice(disable: true) }.buttonStyle(.link)
                     Button { model.dismissUsageNotice() } label: { Image(systemName: "xmark") }.buttonStyle(.plain).accessibilityLabel("Dismiss usage notice")
                 }.padding(14).background(Color.sage.opacity(0.08)).padding(.horizontal, 26).padding(.top, 10)
             }

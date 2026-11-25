@@ -162,6 +162,7 @@ final class ElectronBridge {
         let indicator = model.cloud.indicator
         state["syncStatus"] = ["state": indicator.rawValue, "label": indicator.label]
         state["onboarding"] = model.showingOnboarding
+        state["browserAccessExplained"] = model.isPreview || BrowserAccess.isExplained
         state["analyticsEnabled"] = model.analyticsEnabled
         state["showUsageNotice"] = model.analyticsEnabled && !model.hasSeenUsageNotice
         state["launcherShortcut"] = (model.shortcuts[.search] ?? CaptureAction.search.defaultShortcut).label
@@ -261,7 +262,9 @@ final class ElectronBridge {
             guard let data = await SiteIconLoader.shared.image(page: url, hint: item.link?.iconURL) else { return [:] }
             return ["dataURL": "data:image/png;base64," + data.base64EncodedString()]
         case "readerCurrent":
-            var source = try await ReaderCapture.current(using: model.captureService, sourceApplication: panelVisible ? previousApplication : nil, preview: model.readerPreview)
+            let sourceApplication = panelVisible ? previousApplication : NSWorkspace.shared.frontmostApplication
+            guard model.readerPreview || BrowserAccess.confirm() else { throw Failure(message: "Browser access was skipped. You can paste a link into Savenest instead.") }
+            var source = try await ReaderCapture.current(using: model.captureService, sourceApplication: sourceApplication, preview: model.readerPreview)
             if let url = source["url"] as? String {
                 source["quickNote"] = model.library.links.first(where: { Library.identity($0.url) == Library.identity(url) })?.note ?? ""
             }
@@ -339,8 +342,12 @@ final class ElectronBridge {
             if let scope = request.scope, let value = TabScope(rawValue: scope) { search.scope = value }
             if let query = request.query { search.query = String(query.prefix(2_000)) }
         case "resume": search.refresh()
-        case "refresh": search.refresh(); search.refreshHistory(force: true)
-        case "historyEnabled": search.historyEnabled = request.enabled ?? false
+        case "refresh", "browserAccess":
+            guard model.isPreview || BrowserAccess.confirm() else { return }
+            search.refresh(); search.refreshHistory(force: true)
+        case "historyEnabled":
+            if request.enabled == true && !model.isPreview && !BrowserAccess.confirm() { return }
+            search.historyEnabled = request.enabled ?? false
         case "historyAccess":
             NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles")!)
         case "suspend": panelVisible = false; search.suspend()
@@ -450,7 +457,8 @@ final class ElectronBridge {
             guard let enabled = request.enabled else { return }
             model.analyticsEnabled = enabled
             if !enabled { model.dismissUsageNotice() }
-        case "onboardingDone": if !model.isPreview { model.completeOnboarding() }
+        case "onboardingDone": model.completeOnboarding()
+        case "onboardingStart": model.showOnboarding()
         case "dismissMessage": model.error = nil; search.setMessage("")
         default: throw Failure(message: "Unknown Savenest action.")
         }

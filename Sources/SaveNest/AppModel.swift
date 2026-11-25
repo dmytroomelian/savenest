@@ -378,7 +378,8 @@ final class AppModel: ObservableObject {
         isCapturing = true
         // Keep the browser context from before the launcher or sign-in took focus.
         let sourceApplication = sourceApplication ?? NSWorkspace.shared.frontmostApplication
-        let shouldClose = [.quick, .note].contains(action) && closeAfterQuickSave
+        guard isPreview || BrowserAccess.confirm() else { isCapturing = false; return }
+        let shouldClose = [.quick, .note].contains(action) && closeAfterQuickSave && !showingOnboarding
         Task { @MainActor in
             defer { isCapturing = false }
             guard prepareLocalWrite() else { return }
@@ -819,6 +820,7 @@ final class AppModel: ObservableObject {
         UserDefaults.standard.set(try? JSONEncoder().encode(tabCleanupDomains), forKey: "tabCleanupDomains")
     }
     func refreshCleanupOpenTabs() {
+        guard isPreview || BrowserAccess.confirm() else { return }
         guard !isCleaningTabs else { return }
         isCleaningTabs = true
         Task { @MainActor in
@@ -831,6 +833,7 @@ final class AppModel: ObservableObject {
         }
     }
     func closeDuplicateTabs() {
+        guard isPreview || BrowserAccess.confirm() else { return }
         if isPreview { tabSearch.setMessage("Preview: duplicate cleanup would run on your open browser tabs."); return }
         guard !isCleaningTabs else { return }
         isCleaningTabs = true
