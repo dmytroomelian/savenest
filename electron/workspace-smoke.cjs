@@ -89,9 +89,16 @@ exports.run = async ({ workspace, native, root }) => {
   copied = await state();
 
   // Reader extraction is optional and never resets the note or its source.
+  // A narrow window focuses the note and deliberately removes the Original view.
+  win.setSize(800, 700);
+  await wait(() => js('innerWidth < 900'), 'compact reader layout');
   const metadata = { ...(await state()).source }; delete metadata.article;
   await workspace.openSource(metadata);
   await wait(async () => { const current = await state(); return current.original && !current.source?.article && current.document?.documentId === copied.document.documentId; }, 'metadata-only Original');
+  assert.equal(await js("document.getElementById('workspace').dataset.pane"), 'notes');
+  await wait(() => workspace.original === null, 'Original hidden behind compact note pane');
+  await js("document.getElementById('show-preview').click()");
+  await wait(() => Boolean(workspace.original), 'Original shown in compact preview pane');
   assert(workspace.original);
   await js('window.workspaceTest.setOriginal(false)');
   assert((await state()).source.article?.content);
@@ -102,10 +109,15 @@ exports.run = async ({ workspace, native, root }) => {
   const fixture = await native.request({ command: 'readerCurrent' });
   fixture.article.content += '<script>window.injected=true</script><img src="https://example.invalid/tracker.png" onerror="window.injected=true"><table background="https://example.invalid/tracker2.png"><tr><td>Safe table</td></tr></table>';
   await workspace.openSource(fixture);
-  await wait(async () => (await state()).document?.documentId === copied.document.documentId, 'same URL restores note');
+  await wait(async () => {
+    const current = await state();
+    return current.source?.article?.content === fixture.article.content && current.document?.documentId === copied.document.documentId;
+  }, 'new article restores the same note');
   assert.equal(await js('window.injected === true'), false);
   assert.equal(await js("document.querySelectorAll('#article-content [onerror], #article-content script, #article-content img[src], #article-content [background]').length"), 0);
+  await js("document.getElementById('show-preview').click()");
   await js('window.workspaceTest.setOriginal(true)');
+  await wait(() => Boolean(workspace.original), 'isolated Original view ready');
   assert(workspace.original);
   await wait(() => !workspace.original.webContents.isLoading(), 'isolated original webpage');
   assert.equal(await workspace.original.webContents.executeJavaScript('typeof window.workspace'), 'undefined');
@@ -117,6 +129,7 @@ exports.run = async ({ workspace, native, root }) => {
   await js("document.getElementById('divider').dispatchEvent(new KeyboardEvent('keydown', {key:'Home',bubbles:true}))");
 
   await fs.mkdir(path.join(root, 'build'), { recursive: true });
+  win.setSize(1240, 820);
   for (const theme of ['cream', 'black']) {
     workspace.send({ event: 'appearance', appearance: theme });
     await js('new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))');
