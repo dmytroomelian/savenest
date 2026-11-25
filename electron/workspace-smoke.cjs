@@ -23,6 +23,26 @@ exports.run = async ({ workspace, native, root }) => {
   assert.equal(await js('typeof process'), 'undefined');
   assert.equal(win.isAlwaysOnTop(), false);
   assert.equal(win.isResizable(), true);
+  const { dialog } = require('electron');
+  const showMessageBox = dialog.showMessageBox;
+  let escapePrompts = 0;
+  try {
+    dialog.showMessageBox = async (_owner, options) => {
+      assert.equal(options.buttons[2], 'Archive and close tab');
+      escapePrompts++;
+      return {response:0};
+    };
+    for (const contents of [win.webContents, workspace.original.webContents]) {
+      for (const input of [{keyCode:'Escape'}, {keyCode:'W',modifiers:['meta']}]) {
+        const expected = escapePrompts + 1;
+        contents.focus();
+        contents.sendInputEvent({type:'keyDown',...input});
+        contents.sendInputEvent({type:'keyUp',...input});
+        await wait(() => escapePrompts === expected && !workspace.escapePrompt, 'close popup from each pane');
+        assert.equal(win.isDestroyed(), false, 'cancelling keeps the reading window open');
+      }
+    }
+  } finally { dialog.showMessageBox = showMessageBox; }
   await assert.rejects(js("window.workspace.request({command:'exec'})"), /Unknown workspace action/);
   await js('window.workspaceTest.chooseVault()');
   let first = await state();
@@ -122,6 +142,49 @@ exports.run = async ({ workspace, native, root }) => {
   await wait(() => !workspace.original.webContents.isLoading(), 'isolated original webpage');
   assert.equal(await workspace.original.webContents.executeJavaScript('typeof window.workspace'), 'undefined');
   assert.equal(workspace.original.webContents.getLastWebPreferences().sandbox, true);
+
+  // Exercise actual new-tab links in Chromium, including the browser action.
+  const linkedSource = workspace.source, linkedNote = (await state()).document.documentId;
+  const browserRequests = [], workspaceRequest = workspace.request.bind(workspace);
+  workspace.request = (event, input) => {
+    if (input?.command === 'browser') browserRequests.push(input.url);
+    return workspaceRequest(event, input);
+  };
+  try {
+    for (const [index, {target, width}] of [{target:'_blank',width:1240}, {target:'_self',width:1240}, {target:'_blank',width:800}].entries()) {
+      win.setSize(width, 820);
+      await js('new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))');
+      const destination = `https://example.com/preview-link?target=${target}`;
+      await workspace.original.webContents.executeJavaScript(`
+        (() => {
+          const link = document.createElement('a');
+          link.href = ${JSON.stringify(destination)};
+          link.target = ${JSON.stringify(target)};
+          link.textContent = 'Linked article';
+          document.body.append(link);
+          link.click();
+          link.remove();
+        })();
+      `, true);
+      await wait(() => js("!document.getElementById('workspace-notice').hidden && !document.getElementById('notice-open-link').hidden"), `${target} link browser action`);
+      await wait(async () => {
+        const noticeBounds = await js(`(() => {
+          const rect = document.getElementById('workspace-notice').getBoundingClientRect();
+          return {top:rect.top,bottom:rect.bottom,left:rect.left,right:rect.right};
+        })()`);
+        const previewBounds = workspace.original.getBounds();
+        return noticeBounds.bottom <= previewBounds.y || noticeBounds.top >= previewBounds.y + previewBounds.height || noticeBounds.right <= previewBounds.x || noticeBounds.left >= previewBounds.x + previewBounds.width;
+      }, 'browser action outside the native webpage');
+      assert.equal(browserRequests.length, index, 'the page itself cannot open the browser');
+      await js("document.getElementById('notice-open-link').click()");
+      await wait(() => browserRequests.at(-1) === destination, `${target} link destination`);
+      await wait(() => js("document.getElementById('workspace-notice').hidden"), 'browser action completed');
+      assert.equal(workspace.source, linkedSource);
+      assert.equal((await state()).document.documentId, linkedNote);
+      assert(workspace.original.webContents.getURL().startsWith('data:text/html,'), 'the preview stays on the original page');
+    }
+  } finally { workspace.request = workspaceRequest; win.setSize(1240, 820); }
+
   await js('window.workspaceTest.setOriginal(false)');
   assert.equal(workspace.original, null);
   await js("document.getElementById('divider').dispatchEvent(new KeyboardEvent('keydown', {key:'ArrowLeft',bubbles:true}))");
@@ -143,7 +206,11 @@ exports.run = async ({ workspace, native, root }) => {
   win.setSize(1240, 820);
   const pending = (await state()).text + '\nSaved while closing.\n';
   await js(`window.workspaceTest.setText(${JSON.stringify(pending)})`);
-  assert.equal(await workspace.close(), true);
+  await assert.rejects(native.request({command:'readerArchiveClose',url:workspace.source.url,sourceId:'stale-session'}), /session changed/);
+  try {
+    dialog.showMessageBox = async () => ({response:2});
+    assert.equal(await workspace.confirmArchiveAndClose(), true);
+  } finally { dialog.showMessageBox = showMessageBox; }
   await wait(() => workspace.window === null, 'workspace finishes closing before reopen');
   assert.equal(await fs.readFile(copied.document.path, 'utf8'), pending);
   await workspace.open({ command: 'readerCurrent' });
@@ -151,6 +218,30 @@ exports.run = async ({ workspace, native, root }) => {
   await wait(() => js('Boolean(window.workspaceTest)'), 'reopened workspace');
   assert.equal((await state()).text, pending);
   assert.equal((await state()).original, true, 'reopening defaults to Original');
+  // Real keyboard events must flush the latest edit before destroying either pane.
+  try {
+    dialog.showMessageBox = async (_owner, options) => {
+      assert.equal(options.checkboxLabel, 'Remember this choice for next time');
+      return {response:1, checkboxChecked:false};
+    };
+    for (const pane of ['window', 'original']) {
+      for (const input of [{keyCode:'W',modifiers:['meta']}, {keyCode:'Escape'}]) {
+        const before = await state();
+        const expected = before.text + `\nSaved by ${input.keyCode} from ${pane}.\n`;
+        await js(`window.workspaceTest.setText(${JSON.stringify(expected)})`);
+        const contents = workspace[pane].webContents;
+        contents.focus();
+        contents.sendInputEvent({type:'keyDown',...input});
+        contents.sendInputEvent({type:'keyUp',...input});
+        await wait(() => workspace.window === null && !workspace.escapePrompt, 'keyboard close saves notes');
+        assert.equal(await fs.readFile(before.document.path, 'utf8'), expected);
+        await workspace.open({command:'readerCurrent'});
+        win = workspace.window;
+        await wait(() => js('Boolean(window.workspaceTest)'), 'reopened after keyboard close');
+        assert.equal((await state()).text, expected);
+      }
+    }
+  } finally { dialog.showMessageBox = showMessageBox; }
   assert.equal(await workspace.close(), true);
   assert.deepEqual(errors, []);
   console.log('Passed workspace: vault setup, Markdown autosave, external edits, conflict copy, isolation, layouts, and close/reopen.');

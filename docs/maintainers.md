@@ -16,6 +16,8 @@ All three `arm64`, `x64`, and `universal` archives are mandatory. Set both priva
 
 ## Official Electron distribution
 
+Before preparing any release, compare the installed/public build, current merged source, and pending local work. Inventory every pending product change and include all changes that pass the relevant checks; record any exclusions and their concrete blockers in the release notes or handoff. Do not assume a clean release checkout includes features implemented in another working folder, and do not replace newer merged fixes with an older dirty checkout. Verify the final packaged reader contains the close-choice implementation and exercise ⌘W and Esc in both panes before calling that improvement released.
+
 1. Complete the relevant checks in [CONTRIBUTING.md](../CONTRIBUTING.md) and review the [preview acceptance checklist](preview-acceptance.md). Passing build checks does not establish installed-app migration, Intel runtime, or update behavior.
 2. Keep `package.json`, `package-lock.json`, and `Resources/Info.plist` versions consistent, with an increasing native build number. Add release notes under `Resources/ReleaseNotes/`.
 3. Preview the exact inputs and stages without credentials: `npm run release:electron:plan`. This is read-only: no snapshots, locks, caches, signing, network calls, or child builds are created. On the release machine, set `SIGNING_IDENTITY` and `NOTARY_PROFILE` to existing credentials, then run `npm run release:electron`. Never commit their values or key material.

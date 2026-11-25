@@ -16,6 +16,12 @@ Click the book button beside a page, or choose **Read & note current tab**. The 
 
 **Original** opens by default in a separate temporary web session; your browser logins are not shared. Some websites cannot be read or embedded. Use **Open in browser** in those cases. **Reader** is optional: selecting it extracts the pinned browser tab’s article. Only this view needs the browser’s “Allow JavaScript from Apple Events” setting. If unavailable, enable that setting in your browser’s developer settings and click **Try Reader again**, or return to Original. Reader images remain unloaded until you click **Load images**.
 
+Clicking a web link in **Original**, including a link that requests a new tab, shows an **Open link** action. Use it to open the destination in your default browser while keeping the current page and its note open.
+
+Press **⌘W** or **Esc** in either pane, or click the window close button, to choose **Close reader**, **Archive and close tab**, or **Keep reading**. Both closing choices save pending notes first; a failed save keeps the reader open. **Close reader** leaves the original browser tab and library alone. Enable **Remember my choice** to reuse either closing choice. Press **Shift+Esc** to show the question again; uncheck the box to restore asking on every close.
+
+Press **⌘⇧W** in either pane to archive the article and close its original browser tab directly, after saving notes. Archiving saves the page to Savenest if needed. Changed or ambiguous tabs stay open with an explanation. Preview modes never archive real links or close real tabs.
+
 Choose an Obsidian vault in the workspace or **Settings → Library → Notes & Obsidian**. Savenest starts with the vault's configured new-note folder, or a `SaveNest` folder when there is no fixed destination. Folder changes affect new page notes; existing associations retain their original files.
 
 Each page has one Markdown file. Opening a page alone creates no file; writing creates it. Notes save after a short pause, on ⌘S, and before closing. The footer reports the actual save state. **Open in Obsidian** opens the saved file; clicking its location reveals it in Finder. The **</>** button exposes Markdown source, including source metadata.

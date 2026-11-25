@@ -456,14 +456,16 @@ $('divider').onkeydown = event => {
   if (event.key === 'Home') { event.preventDefault(); setSplit(55); }
 };
 window.addEventListener('resize', () => { void updateOriginal(); positionSelectionTools(); });
+const originalResizeObserver = new ResizeObserver(() => { if (original && !destroyed) void updateOriginal(); });
+originalResizeObserver.observe($('original-frame'));
 window.addEventListener('keydown', event => {
   if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 's') { event.preventDefault(); void saveDocument(); }
-  if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'w') { event.preventDefault(); void quietRequest('close'); }
+  if ((event.metaKey || event.ctrlKey) && !event.shiftKey && !event.altKey && event.key.toLowerCase() === 'w') { event.preventDefault(); void quietRequest('close'); }
   if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'f' && editor) { event.preventDefault(); compactPane('notes'); openSearchPanel(editor); }
   if (event.key === 'Escape') { notice(''); $('selection-tools').hidden = true; }
 });
 window.addEventListener('blur', () => { $('selection-tools').hidden = true; if (dirty()) void persistDraft().catch(() => {}); });
-window.addEventListener('beforeunload', () => { destroyed = true; clearTimeout(saveTimer); clearTimeout(draftTimer); });
+window.addEventListener('beforeunload', () => { destroyed = true; originalResizeObserver.disconnect(); clearTimeout(saveTimer); clearTimeout(draftTimer); });
 api.onEvent(async event => {
   if (event.event === 'source') await acceptSource(event);
   if (event.event === 'appearance') document.documentElement.dataset.appearance = event.appearance;

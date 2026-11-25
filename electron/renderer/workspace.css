@@ -130,7 +130,8 @@ body.resizing{cursor:col-resize;user-select:none}
 #save-status[data-state="error"]{color:var(--error)}
 #save-status[data-state="error"] .status-dot{background:var(--error)}
 #retry-save{font-size:10px;color:var(--error);padding:4px 7px}
-#workspace-notice{position:absolute;left:50%;bottom:50px;transform:translateX(-50%);max-width:650px;width:max-content;display:flex;align-items:center;gap:16px;background:var(--glass-dialog);border:1px solid var(--glass-highlight);border-radius:14px;padding:11px 14px;font-size:12px;line-height:1.6;box-shadow:var(--glass-shadow);backdrop-filter:blur(24px);z-index:5}
+/* Native webpage views sit above HTML overlays, so notices need their own row. */
+#workspace-notice{align-self:center;flex-shrink:0;margin:0 12px 12px;max-width:min(650px,calc(100% - 24px));width:max-content;display:flex;align-items:center;gap:16px;background:var(--glass-dialog);border:1px solid var(--glass-highlight);border-radius:14px;padding:11px 14px;font-size:12px;line-height:1.6;box-shadow:var(--glass-shadow);backdrop-filter:blur(24px)}
 #workspace-notice button{font-size:18px;padding:0 4px}
 .selection-tools{position:absolute;z-index:4;display:flex;gap:2px;align-items:center;background:var(--glass-dialog);border:1px solid var(--glass-highlight);padding:4px;border-radius:11px;box-shadow:var(--glass-shadow);backdrop-filter:blur(24px)}
 .selection-tools button{font-size:12px;min-width:27px;padding:5px 6px}
