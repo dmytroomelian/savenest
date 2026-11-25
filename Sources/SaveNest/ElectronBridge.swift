@@ -213,6 +213,7 @@ final class ElectronBridge {
         var available: Bool?
         var message: String?
         var documentId: String?
+        var sourceId: String?
         var text: String?
         var revision: String?
         var year: Int?
@@ -242,8 +243,13 @@ final class ElectronBridge {
         var errorDescription: String? { message }
     }
 
-    private func rememberReaderSource(_ source: [String: Any]) {
+    private func rememberReaderSource(_ source: inout [String: Any]) {
         guard let url = source["url"] as? String else { return }
+        source["sourceId"] = UUID().uuidString
+        if var target = source["readerTarget"] as? [String: Any], let browserID = target["browserID"] as? String {
+            target["processID"] = NSRunningApplication.runningApplications(withBundleIdentifier: browserID).first?.processIdentifier ?? 0
+            source["readerTarget"] = target
+        }
         if readerSources.count >= 64 { readerSources.removeAll() }
         readerSources[url] = source
     }
@@ -268,7 +274,7 @@ final class ElectronBridge {
             if let url = source["url"] as? String {
                 source["quickNote"] = model.library.links.first(where: { Library.identity($0.url) == Library.identity(url) })?.note ?? ""
             }
-            rememberReaderSource(source)
+            rememberReaderSource(&source)
             source.removeValue(forKey: "readerTarget")
             return source
         case "readerOpen":
@@ -277,7 +283,7 @@ final class ElectronBridge {
             }
             var source = await ReaderCapture.selected(item, preview: model.readerPreview)
             source["quickNote"] = item.link?.note ?? ""
-            rememberReaderSource(source)
+            rememberReaderSource(&source)
             source.removeValue(forKey: "readerTarget")
             return source
         case "readerExtract":
@@ -287,6 +293,37 @@ final class ElectronBridge {
             var result = await ReaderCapture.extract(source, preview: model.readerPreview)
             result.removeValue(forKey: "readerTarget")
             return result
+        case "readerArchiveClose":
+            guard let url = request.url, let source = readerSources[url],
+                  let sourceId = request.sourceId, source["sourceId"] as? String == sourceId else {
+                throw Failure(message: "This reading session changed. Reopen the page before archiving it.")
+            }
+            // Both preview modes must leave the real library and browser untouched.
+            if model.isPreview { return ["archived": true, "preview": true] }
+            if !model.library.links.contains(where: { Library.identity($0.url) == Library.identity(url) }) {
+                guard await model.add(url: url, title: source["title"] as? String ?? url, collection: "Inbox") else {
+                    throw Failure(message: "Couldn’t save this page. Its browser tab stayed open.")
+                }
+            }
+            guard let link = model.library.links.first(where: { Library.identity($0.url) == Library.identity(url) }),
+                  link.isArchived || model.setArchived(true, ids: [link.id]) else {
+                throw Failure(message: "Couldn’t archive this page. Its browser tab stayed open.")
+            }
+            if var target = source["readerTarget"] as? [String: Any] {
+                guard let browserID = target["browserID"] as? String,
+                      let browser = Browser.supported.first(where: { $0.id == browserID }),
+                      let index = target["index"] as? Int, index > 0 else {
+                    throw Failure(message: "Page archived. The original browser tab could not be identified, so it stayed open.")
+                }
+                target["index"] = index - 1
+                target["safari"] = browser.safari
+                let captured = try JSONDecoder().decode(CapturedTabTarget.self, from: JSONSerialization.data(withJSONObject: target))
+                guard await model.captureService.closeSavedTab(captured) else {
+                    throw Failure(message: "Page archived. The browser tab changed, closed, or couldn’t be accessed, so no tab was closed. You can close this reading window when ready.")
+                }
+                model.tabSearch.refresh()
+            }
+            return ["archived": true]
         case "notesStatus": return model.notes.status()
         case "notesChooseVault": return try model.notes.chooseVault()
         case "notesChooseFolder": return try model.notes.chooseFolder()

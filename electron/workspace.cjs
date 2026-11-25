@@ -15,6 +15,12 @@ class ReadingWorkspace {
     this.pendingOpens = 0; this.openingChain = Promise.resolve(); this.operationWaiters = [];
     this.quitting = false; this.destroyed = false; this.imagesEnabled = false;
     this.rendererCrashed = false; this.crashConfirmation = null;
+    this.escapePrompt = false;
+    this.closeChoice = null;
+    try {
+      const saved = JSON.parse(require('node:fs').readFileSync(path.join(userData, 'reader-close-choice.json'), 'utf8'));
+      if (['window', 'archive'].includes(saved.choice)) this.closeChoice = saved.choice;
+    } catch {}
     ipcMain.handle('savenest:workspace', (event, input) => this.request(event, input));
     // Sanitizing an inert HTML fragment can still initiate image loads in Chromium.
     // Enforce the image opt-in at the network boundary, scoped to this local renderer.
@@ -24,7 +30,66 @@ class ReadingWorkspace {
     });
   }
   send(value) { if (this.window && !this.window.isDestroyed()) this.window.webContents.send('savenest:workspace-event', value); }
-  get busy() { return this.dirty || this.operations > 0 || this.pendingOpens > 0 || this.closing || this.quitting || this.pendingFlushes.size > 0; }
+  get busy() { return this.escapePrompt || this.dirty || this.operations > 0 || this.pendingOpens > 0 || this.closing || this.quitting || this.pendingFlushes.size > 0; }
+  handleInput(event, input) {
+    const archiveShortcut = input.meta && input.shift && !input.control && !input.alt && input.key?.toLowerCase() === 'w';
+    if (archiveShortcut) {
+      event.preventDefault();
+      if (input.type === 'keyDown' && !input.isAutoRepeat) void this.archiveAndClose();
+      return;
+    }
+    const closeShortcut = input.meta && !input.shift && !input.control && !input.alt && input.key?.toLowerCase() === 'w';
+    const escape = input.key === 'Escape' && !input.meta && !input.control && !input.alt;
+    if (!closeShortcut && !escape) return;
+    event.preventDefault();
+    if (input.type === 'keyDown' && !input.isAutoRepeat) void this.confirmArchiveAndClose({ forcePrompt: escape && input.shift });
+  }
+  async archiveAndClose() {
+    if (this.escapePrompt || this.closing || this.quitting || this.destroyed || this.pendingOpens || !this.source || !this.window || this.window.isDestroyed()) return false;
+    try { return await this.close({ archive: true }); }
+    catch (error) {
+      this.send({ event: 'error', message: error.message });
+      this.send({ event: 'flushCancelled' });
+      return false;
+    }
+  }
+  async confirmArchiveAndClose({ forcePrompt = false } = {}) {
+    if (this.escapePrompt || this.closing || this.quitting || this.destroyed || this.pendingOpens || !this.source || !this.window || this.window.isDestroyed()) return false;
+    this.escapePrompt = true;
+    const owner = this.window, source = this.source;
+    try {
+      let choice = forcePrompt ? null : this.closeChoice;
+      let remember = false;
+      if (!choice) {
+        const { response, checkboxChecked } = await dialog.showMessageBox(owner, {
+          type: 'question', message: 'Finished reading?',
+          detail: `Archive “${source.title || source.url}” in Savenest and close its browser tab? Your notes will be saved before closing. Press Shift+Esc to change a remembered choice.`,
+          buttons: ['Keep reading', 'Close reader', 'Archive and close tab'], defaultId: 1, cancelId: 0,
+          checkboxLabel: 'Remember my choice', checkboxChecked: Boolean(this.closeChoice),
+          noLink: true
+        });
+        choice = response === 1 ? 'window' : response === 2 ? 'archive' : null;
+        remember = Boolean(checkboxChecked);
+      }
+      if (owner !== this.window || source !== this.source || this.destroyed) return false;
+      if (!choice) return false;
+      const closed = await this.close({ archive: choice === 'archive' });
+      if (closed && (remember || forcePrompt)) {
+        this.closeChoice = remember ? choice : null;
+        try {
+          await fs.mkdir(this.userData, { recursive: true });
+          const file = path.join(this.userData, 'reader-close-choice.json');
+          await fs.writeFile(file + '.tmp', JSON.stringify({ choice: this.closeChoice }));
+          await fs.rename(file + '.tmp', file);
+        } catch { this.closeChoice = null; console.warn('Could not remember the reader close choice.'); }
+      }
+      return closed;
+    } catch (error) {
+      this.send({ event: 'error', message: error.message });
+      this.send({ event: 'flushCancelled' });
+      return false;
+    } finally { this.escapePrompt = false; }
+  }
   finishOperation() {
     this.operations--;
     if (!this.operations) this.operationWaiters.splice(0).forEach(resolve => resolve());
@@ -48,12 +113,13 @@ class ReadingWorkspace {
       webPreferences: { preload: path.join(__dirname, 'workspace-preload.cjs'), sandbox: true, nodeIntegration: false, contextIsolation: true, webSecurity: true, webviewTag: false }
     });
     this.onWindow(this.window);
+    this.window.webContents.on('before-input-event', (event, input) => this.handleInput(event, input));
     this.window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
     this.window.webContents.on('will-navigate', event => event.preventDefault());
     this.window.webContents.on('will-attach-webview', event => event.preventDefault());
     this.window.webContents.on('render-process-gone', () => { this.dirty = true; this.rendererCrashed = true; });
     this.window.on('close', event => {
-      if (!this.allowClose) { event.preventDefault(); void this.close(); }
+      if (!this.allowClose) { event.preventDefault(); void this.confirmArchiveAndClose(); }
     });
     this.window.on('closed', () => {
       this.removeOriginal(); this.window = null; this.imagesEnabled = false;
@@ -65,7 +131,7 @@ class ReadingWorkspace {
     return true;
   }
   async open(request) {
-    if (this.closing || this.quitting || this.destroyed) return false;
+    if (this.escapePrompt || this.closing || this.quitting || this.destroyed) return false;
     const generation = ++this.generation;
     let source;
     this.operations++;
@@ -76,7 +142,7 @@ class ReadingWorkspace {
     return this.openSource(source, generation);
   }
   openSource(source, generation = ++this.generation) {
-    if (this.closing || this.quitting || this.destroyed) return Promise.resolve(false);
+    if (this.escapePrompt || this.closing || this.quitting || this.destroyed) return Promise.resolve(false);
     this.pendingOpens++;
     // Serialize transitions: only one renderer flush and one source commit at a time.
     const opening = this.openingChain.then(() => this.applySource(source, generation));
@@ -123,7 +189,7 @@ class ReadingWorkspace {
       if (pending) { clearTimeout(pending.timer); this.pendingFlushes.delete(request.requestId); pending.resolve(request.ok && !this.dirty); }
       return true;
     }
-    if (request.command === 'close') { void this.close(); return true; }
+    if (request.command === 'close') { void this.confirmArchiveAndClose(); return true; }
     if (request.command === 'readerImages') { this.imagesEnabled = request.enabled; return true; }
     if (request.command === 'browser') {
       const url = webURL(request.url || this.source?.url);
@@ -172,14 +238,26 @@ class ReadingWorkspace {
     isolated.on('will-download', event => event.preventDefault());
     const view = new WebContentsView({ webPreferences: { session: isolated, sandbox: true, nodeIntegration: false, contextIsolation: true, webSecurity: true, webviewTag: false, navigateOnDragDrop: false } });
     this.original = view;
-    view.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+    view.webContents.on('before-input-event', (event, input) => {
+      if (this.original === view) this.handleInput(event, input);
+    });
+    const offerNavigation = destination => {
+      const url = webURL(destination);
+      if (this.original === view && url) this.send({ event: 'originalNavigation', url });
+    };
+    view.webContents.setWindowOpenHandler(({ url }) => {
+      // target="_blank" and window.open bypass will-navigate. Offer the same
+      // browser action while keeping remote pages from creating app windows.
+      offerNavigation(url);
+      return { action: 'deny' };
+    });
     view.webContents.on('will-attach-webview', event => event.preventDefault());
     let loadingInitial = true;
     view.webContents.on('will-navigate', (event, destination) => {
       // loadURL does not emit this event. All subsequent top-level navigation
       // belongs in the external browser, even if the first load is still pending.
       event.preventDefault();
-      if (webURL(destination)) this.send({ event: 'originalNavigation', url: destination });
+      offerNavigation(destination);
     });
     view.webContents.on('will-redirect', (event, destination) => { if (!loadingInitial || !webURL(destination)) event.preventDefault(); });
     view.webContents.on('did-finish-load', () => { loadingInitial = false; if (this.original === view) this.send({ event: 'originalState', loading: false }); });
@@ -217,12 +295,18 @@ class ReadingWorkspace {
       this.send({ event: 'flush', requestId, reason });
     });
   }
-  async close() {
+  async close({ archive = false } = {}) {
     if (this.closing || !this.window || this.window.isDestroyed()) return false;
     this.closing = true; ++this.generation;
     try {
       if (!await this.flush('close')) { this.send({ event: 'flushCancelled' }); return false; }
       await this.waitForOperations();
+      if (!this.window || this.window.isDestroyed()) return true;
+      if (archive) {
+        this.operations++;
+        try { await this.native.request({ command: 'readerArchiveClose', url: this.source.url, sourceId: this.source.sourceId }); }
+        finally { this.finishOperation(); }
+      }
       if (!this.window || this.window.isDestroyed()) return true;
       const { width, height } = this.window.getBounds();
       // Window geometry must never prevent closing a safely saved document.

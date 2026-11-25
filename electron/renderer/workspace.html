@@ -15,6 +15,7 @@
       <button id="open-browser" class="quiet-button" title="Open this page in your browser">Open in browser <span aria-hidden="true">↗</span></button>
     </header>
     <nav id="compact-tabs" class="segmented" aria-label="Workspace pane"><button id="show-preview" aria-pressed="true">Preview</button><button id="show-notes" aria-pressed="false">Notes</button></nav>
+    <div id="workspace-notice" role="alert" hidden><span id="workspace-notice-text"></span><button id="notice-open-link" hidden>Open link</button><button id="dismiss-notice" aria-label="Dismiss message">×</button></div>
     <div id="workspace" data-pane="preview">
       <section id="preview-pane" class="pane" aria-label="Page preview">
         <div class="pane-bar">
@@ -43,8 +44,7 @@
         <div id="note-bottom"><span id="word-count"></span><span id="editor-mode">Markdown</span></div>
       </section>
     </div>
-    <footer class="workspace-footer"><div class="footer-brand"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M4 8l8 5 8-5M4 13l8 5 8-5M6 18l6 4 6-4"/></svg><span>Read & note</span><span id="workspace-mode" hidden></span></div><div id="save-status" role="status" aria-live="polite"><span class="status-dot"></span><span id="save-status-text">Opening workspace…</span></div><button id="retry-save" hidden>Retry save</button></footer>
-    <div id="workspace-notice" role="alert" hidden><span id="workspace-notice-text"></span><button id="notice-open-link" hidden>Open link</button><button id="dismiss-notice" aria-label="Dismiss message">×</button></div>
+    <footer class="workspace-footer"><div class="footer-brand"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M4 8l8 5 8-5M4 13l8 5 8-5M6 18l6 4 6-4"/></svg><span title="⌘W or Esc saves notes before closing. Shift+Esc changes your remembered close choice. ⌘⇧W archives and closes the browser tab directly.">Close · ⌘W / Esc · Change choice · ⇧Esc</span><span id="workspace-mode" hidden></span></div><div id="save-status" role="status" aria-live="polite"><span class="status-dot"></span><span id="save-status-text">Opening workspace…</span></div><button id="retry-save" hidden>Retry save</button></footer>
   </main>
 </body>
 </html>

@@ -1,8 +1,8 @@
 'use strict';
-const { test } = require('node:test');
+const { test, afterEach } = require('node:test');
 const assert = require('node:assert/strict');
 const { EventEmitter } = require('node:events');
-const { readFileSync } = require('node:fs');
+const { readFileSync, mkdtempSync, rmSync, writeFileSync } = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const vm = require('node:vm');
@@ -10,7 +10,16 @@ const { WORKSPACE_URL, validateWorkspaceCommand, trustedWorkspaceSender, webURL,
 
 function deferred() { let resolve, reject; const promise = new Promise((a, b) => { resolve = a; reject = b; }); return { promise, resolve, reject }; }
 async function tick() { await new Promise(resolve => setImmediate(resolve)); }
-function harness(native = { request: async () => ({ configured: false }) }) {
+const testDirectories = [];
+afterEach(() => { for (const directory of testDirectories.splice(0)) rmSync(directory, {recursive:true, force:true}); });
+async function waitForClose(workspace) {
+  const deadline = Date.now() + 3000;
+  while (workspace.escapePrompt || workspace.closing) {
+    assert.ok(Date.now() < deadline, 'close operation must finish');
+    await new Promise(resolve => setTimeout(resolve, 5));
+  }
+}
+function harness(native = { request: async () => ({ configured: false }) }, userData) {
   let networkHandler, nextID = 1;
   const fakeContents = () => Object.assign(new EventEmitter(), {
     id: nextID++, mainFrame: { url: WORKSPACE_URL }, destroyed: false,
@@ -45,7 +54,8 @@ function harness(native = { request: async () => ({ configured: false }) }) {
   const module = { exports: {} }, directory = path.resolve(__dirname, '..');
   const code = readFileSync(path.join(directory, 'workspace.cjs'), 'utf8');
   vm.runInNewContext(code, { module, exports: module.exports, require: name => name === 'electron' ? electron : name.startsWith('./') ? require(path.join(directory, name)) : require(name), __dirname: directory, setTimeout, clearTimeout, console });
-  const workspace = new module.exports.ReadingWorkspace({ native, preview: true, userData: path.join(os.tmpdir(), 'savenest-workspace-tests') });
+  if (!userData) { userData = mkdtempSync(path.join(os.tmpdir(), 'savenest-workspace-tests-')); testDirectories.push(userData); }
+  const workspace = new module.exports.ReadingWorkspace({ native, preview: true, userData });
   workspace.window = new FakeWindow({});
   workspace.source = { url: 'https://example.com/a', title: 'Page A' };
   workspace.payload = { source: workspace.source, notes: {configured:true} };
@@ -91,6 +101,224 @@ test('a successful flush acknowledgement cannot close a document still marked di
   assert.equal(workspace.window.isDestroyed(),false);
   assert.equal(workspace.dirty,true);
   workspace.destroy();
+});
+
+test('Escape in either reading pane offers one cancellable archive prompt', async () => {
+  const {workspace,electron} = harness();
+  workspace.window = null;
+  await workspace.ensureWindow();
+  await workspace.showOriginal({enabled:true,bounds:{x:0,y:100,width:600,height:600}});
+  const answer = deferred();
+  let prompts = 0, prevented = 0;
+  electron.dialog.showMessageBox = async (_owner, options) => {
+    prompts++;
+    assert.equal(options.buttons[2], 'Archive and close tab');
+    assert.equal(options.cancelId, 0);
+    return answer.promise;
+  };
+  const input = {type:'keyDown',key:'Escape'};
+  const event = {preventDefault() { prevented++; }};
+  workspace.original.webContents.emit('before-input-event', event, input);
+  workspace.window.webContents.emit('before-input-event', event, input);
+  assert.equal(prompts, 1);
+  assert.equal(prevented, 2);
+  assert.equal(await workspace.openSource({url:'https://example.com/b'}), false);
+  answer.resolve({response:0});
+  await tick();
+  assert.equal(workspace.window.isDestroyed(), false);
+  assert.equal(workspace.escapePrompt, false);
+  workspace.window.webContents.emit('before-input-event', event, {...input,isAutoRepeat:true});
+  assert.equal(prompts, 1);
+  workspace.window.webContents.emit('before-input-event', event, input);
+  await tick();
+  assert.equal(prompts, 2, 'the notes pane can also trigger the popup');
+  workspace.destroy();
+});
+
+test('Command W and Escape in both panes save before closing through the same choice', async () => {
+  for (const pane of ['window', 'original']) for (const input of [
+    {type:'keyDown',key:'w',meta:true}, {type:'keyDown',key:'Escape'}
+  ]) {
+    const {workspace,electron} = harness();
+    workspace.window = null;
+    await workspace.ensureWindow();
+    await workspace.showOriginal({enabled:true,bounds:{x:0,y:100,width:600,height:600}});
+    const owner = workspace.window;
+    let prompts = 0;
+    electron.dialog.showMessageBox = async (_owner, options) => {
+      prompts++;
+      assert.equal(options.checkboxLabel, 'Remember my choice');
+      return {response:1};
+    };
+    workspace[pane].webContents.emit('before-input-event', {preventDefault() {}}, input);
+    await waitForClose(workspace);
+    assert.equal(prompts, 1);
+    assert.equal(owner.isDestroyed(), true);
+    assert.equal(owner.webContents.messages.some(message => message.event === 'flush'), true);
+  }
+});
+
+test('window close and renderer close cannot bypass the close choice', async () => {
+  for (const trigger of ['window', 'ipc']) {
+    const {workspace,electron,event} = harness();
+    workspace.window = null;
+    await workspace.ensureWindow();
+    let prompts = 0;
+    electron.dialog.showMessageBox = async () => { prompts++; return {response:0}; };
+    if (trigger === 'window') workspace.window.emit('close', {preventDefault() {}});
+    else await workspace.request(event(), {command:'close'});
+    await waitForClose(workspace);
+    assert.equal(prompts, 1);
+    assert.equal(workspace.window.isDestroyed(), false);
+    workspace.destroy();
+  }
+});
+
+test('remembered close choices survive reopening and can be reset with Shift Escape', async () => {
+  for (const response of [1, 2]) {
+    const {workspace,electron} = harness();
+    electron.dialog.showMessageBox = async () => ({response, checkboxChecked:true});
+    assert.equal(await workspace.confirmArchiveAndClose(), true);
+    const reopened = harness(undefined, workspace.userData);
+    let prompts = 0;
+    reopened.electron.dialog.showMessageBox = async () => { prompts++; return {response:0}; };
+    assert.equal(reopened.workspace.closeChoice, response === 1 ? 'window' : 'archive');
+    assert.equal(await reopened.workspace.confirmArchiveAndClose(), true);
+    assert.equal(prompts, 0);
+    const reset = harness(undefined, workspace.userData);
+    reset.electron.dialog.showMessageBox = async () => ({response:1, checkboxChecked:false});
+    reset.workspace.handleInput({preventDefault() {}}, {type:'keyDown',key:'Escape',shift:true});
+    await waitForClose(reset.workspace);
+    assert.equal(reset.workspace.closeChoice, null);
+    const next = harness(undefined, workspace.userData);
+    assert.equal(next.workspace.closeChoice, null);
+    next.workspace.destroy();
+  }
+});
+
+test('cancel, failed saves, and invalid preferences never remember a destructive action', async () => {
+  const {workspace,electron} = harness();
+  electron.dialog.showMessageBox = async () => ({response:0, checkboxChecked:true});
+  assert.equal(await workspace.confirmArchiveAndClose(), false);
+  assert.equal(workspace.closeChoice, null);
+  workspace.dirty = true;
+  electron.dialog.showMessageBox = async () => ({response:2, checkboxChecked:true});
+  assert.equal(await workspace.confirmArchiveAndClose(), false);
+  assert.equal(workspace.closeChoice, null);
+  workspace.closeChoice = 'archive';
+  electron.dialog.showMessageBox = async () => { throw new Error('Should use remembered choice'); };
+  assert.equal(await workspace.confirmArchiveAndClose(), false);
+  assert.equal(workspace.window.isDestroyed(), false);
+  writeFileSync(path.join(workspace.userData, 'reader-close-choice.json'), '{"choice":"delete"}');
+  const invalid = harness(undefined, workspace.userData);
+  assert.equal(invalid.workspace.closeChoice, null);
+  invalid.workspace.destroy(); workspace.destroy();
+});
+
+test('Command Shift W in either pane archives once after saving without prompting', async () => {
+  for (const pane of ['window', 'original']) {
+    const archived = deferred();
+    let called = 0;
+    const {workspace,electron} = harness({request:async request => {
+      called++;
+      assert.equal(workspace.window.webContents.messages.at(-1).event, 'flush');
+      assert.equal(request.command, 'readerArchiveClose');
+      assert.equal(request.url, 'https://example.com/a');
+      assert.equal(request.sourceId, 'pinned-session');
+      return archived.promise;
+    }});
+    workspace.source.sourceId = 'pinned-session';
+    workspace.window = null;
+    await workspace.ensureWindow();
+    await workspace.showOriginal({enabled:true,bounds:{x:0,y:100,width:600,height:600}});
+    let prompts = 0, prevented = 0;
+    electron.dialog.showMessageBox = async () => { prompts++; return {response:0}; };
+    const contents = workspace[pane].webContents;
+    const event = {preventDefault() { prevented++; }};
+    const input = {type:'keyDown',key:'W',meta:true,shift:true};
+    for (const ignored of [{meta:false},{alt:true},{control:true}]) {
+      contents.emit('before-input-event', event, {...input,...ignored});
+    }
+    assert.equal(prevented, 0);
+    contents.emit('before-input-event', event, {...input,isAutoRepeat:true});
+    contents.emit('before-input-event', event, {...input,type:'keyUp'});
+    await tick();
+    assert.equal(called, 0);
+    contents.emit('before-input-event', event, input);
+    contents.emit('before-input-event', event, input);
+    await tick();
+    assert.equal(called, 1);
+    assert.equal(prompts, 0);
+    assert.equal(await workspace.openSource({url:'https://example.com/b'}), false);
+    const closed = new Promise(resolve => workspace.window.once('closed', resolve));
+    archived.resolve({archived:true});
+    await closed;
+    assert.equal(workspace.window, null);
+  }
+});
+
+test('direct archive shortcut preserves notes on save failure and recovers from archive errors', async () => {
+  let called = 0;
+  const {workspace} = harness({request:async () => { called++; throw new Error('Archive failed'); }});
+  workspace.dirty = true;
+  assert.equal(await workspace.archiveAndClose(), false);
+  assert.equal(called, 0);
+  workspace.dirty = false;
+  for (const blocked of ['escapePrompt', 'quitting', 'pendingOpens']) {
+    workspace[blocked] = 1;
+    assert.equal(await workspace.archiveAndClose(), false);
+    workspace[blocked] = 0;
+  }
+  assert.equal(called, 0);
+  assert.equal(await workspace.archiveAndClose(), false);
+  assert.equal(called, 1);
+  assert.equal(workspace.window.isDestroyed(), false);
+  assert.equal(workspace.window.webContents.messages.at(-1).event, 'flushCancelled');
+  assert.equal(workspace.window.webContents.messages.at(-2).message, 'Archive failed');
+  assert.equal(workspace.closing, false);
+  workspace.destroy();
+});
+
+test('archive confirmation flushes notes before acting on the pinned source', async () => {
+  let called = 0;
+  const {workspace,electron} = harness({request:async request => {
+    called++;
+    assert.equal(workspace.dirty, false);
+    assert.equal(workspace.window.webContents.messages.at(-1).event, 'flush');
+    assert.equal(request.command, 'readerArchiveClose');
+    assert.equal(request.url, 'https://example.com/a');
+    assert.equal(request.sourceId, 'pinned-session');
+    return {archived:true};
+  }});
+  workspace.source.sourceId = 'pinned-session';
+  electron.dialog.showMessageBox = async () => ({response:2});
+  assert.equal(await workspace.confirmArchiveAndClose(), true);
+  assert.equal(called, 1);
+  assert.equal(workspace.window.isDestroyed(), true);
+});
+
+test('failed note save or archive keeps the workspace open and unlocks editing', async () => {
+  let called = 0;
+  const {workspace,electron} = harness({request:async () => { called++; throw new Error('Archive failed'); }});
+  electron.dialog.showMessageBox = async () => ({response:2});
+  workspace.dirty = true;
+  assert.equal(await workspace.confirmArchiveAndClose(), false);
+  assert.equal(called, 0, 'unsaved writing blocks archiving and tab closure');
+  workspace.dirty = false;
+  assert.equal(await workspace.confirmArchiveAndClose(), false);
+  assert.equal(called, 1);
+  assert.equal(workspace.window.isDestroyed(), false);
+  assert.equal(workspace.window.webContents.messages.at(-1).event, 'flushCancelled');
+  assert.equal(workspace.window.webContents.messages.at(-2).message, 'Archive failed');
+  assert.equal(workspace.closing, false);
+  workspace.destroy();
+});
+
+test('Close window from the Escape prompt leaves the browser and library alone', async () => {
+  const {workspace,electron} = harness({request:async () => { throw new Error('Must not archive'); }});
+  electron.dialog.showMessageBox = async () => ({response:1});
+  assert.equal(await workspace.confirmArchiveAndClose(), true);
+  assert.equal(workspace.window.isDestroyed(), true);
 });
 
 test('only the latest requested page wins when browser capture returns out of order', async () => {
@@ -162,6 +390,38 @@ test('Original view has no preload or Node access and blocks unsolicited navigat
   const before=workspace.window.webContents.messages.length;
   view.webContents.emit('did-finish-load');
   assert.equal(workspace.window.webContents.messages.length,before,'old view must not send state into a replacement');
+  workspace.destroy();
+});
+
+test('Original new-tab links offer the browser action without opening an app window or changing the note', async () => {
+  const {workspace,event,electron}=harness();
+  const opened = [];
+  electron.shell.openExternal = async url => opened.push(url);
+  workspace.preview = false;
+  await workspace.request(event(),{command:'original',enabled:true,bounds:{x:0,y:100,width:600,height:600}});
+  const view = workspace.original, source = workspace.source;
+  for (const disposition of ['foreground-tab', 'background-tab', 'new-window']) {
+    const url = `https://example.com/${disposition}`;
+    assert.equal(view.webContents.windowOpenHandler({url,disposition}).action, 'deny');
+    const message = workspace.window.webContents.messages.at(-1);
+    assert.equal(message.event, 'originalNavigation');
+    assert.equal(message.url, url);
+  }
+  assert.equal(opened.length, 0, 'the page cannot launch a browser without the workspace action');
+  await workspace.request(event(),{command:'browser',url:workspace.window.webContents.messages.at(-1).url});
+  assert.deepEqual(opened, ['https://example.com/new-window']);
+  assert.equal(workspace.source, source);
+  assert.equal(workspace.documents.has('note-a'), true);
+
+  const before = workspace.window.webContents.messages.length;
+  for (const url of ['javascript:alert(1)', 'file:///etc/passwd', 'data:text/html,test', 'obsidian://open', 'https://user:password@example.com', 'invalid']) {
+    assert.equal(view.webContents.windowOpenHandler({url}).action, 'deny');
+  }
+  assert.equal(workspace.window.webContents.messages.length, before, 'unsupported destinations cannot create an open-link action');
+  workspace.removeOriginal();
+  view.webContents.windowOpenHandler({url:'https://example.com/stale-popup'});
+  view.webContents.emit('will-navigate',{preventDefault(){}},'https://example.com/stale-navigation');
+  assert.equal(workspace.window.webContents.messages.length, before, 'a removed view cannot offer stale links');
   workspace.destroy();
 });
 
